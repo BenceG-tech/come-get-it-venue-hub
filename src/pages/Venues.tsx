@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Building, Plus, Search, Eye, Edit } from 'lucide-react';
 import { RouteGuard } from '@/components/RouteGuard';
+import { PageLayout } from '@/components/PageLayout';
 import { Venue } from '@/lib/types';
 import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
 import { getActiveFreeDrinkStatus, calculateCapUsage } from '@/lib/businessLogic';
@@ -105,16 +106,16 @@ export default function Venues() {
   if (isLoading) {
     return (
       <RouteGuard requiredRoles={['cgi_admin']}>
-        <div className="cgi-page">
+        <PageLayout>
           <div className="animate-pulse">Betöltés...</div>
-        </div>
+        </PageLayout>
       </RouteGuard>
     );
   }
 
   return (
     <RouteGuard requiredRoles={['cgi_admin']}>
-      <div className="cgi-page">
+      <PageLayout>
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -261,7 +262,7 @@ export default function Venues() {
             )}
           </Card>
         </div>
-      </div>
+      </PageLayout>
     </RouteGuard>
   );
 }

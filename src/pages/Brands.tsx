@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Factory, Plus, Search, Edit, Users } from 'lucide-react';
 import { RouteGuard } from '@/components/RouteGuard';
+import { PageLayout } from '@/components/PageLayout';
 import { Brand, BrandCampaign } from '@/lib/types';
 import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
 
@@ -84,16 +85,16 @@ export default function Brands() {
   if (isLoading) {
     return (
       <RouteGuard requiredRoles={['cgi_admin']}>
-        <div className="cgi-page">
+        <PageLayout>
           <div className="animate-pulse">Betöltés...</div>
-        </div>
+        </PageLayout>
       </RouteGuard>
     );
   }
 
   return (
     <RouteGuard requiredRoles={['cgi_admin']}>
-      <div className="cgi-page">
+      <PageLayout>
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -320,7 +321,7 @@ export default function Brands() {
             </Card>
           </div>
         </div>
-      </div>
+      </PageLayout>
     </RouteGuard>
   );
 }
