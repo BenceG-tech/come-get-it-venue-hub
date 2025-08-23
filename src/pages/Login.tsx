@@ -5,11 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Lock, Mail } from "lucide-react";
+import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
+import { seedData } from "@/lib/mock/seed";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -17,11 +21,33 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Mock login - in real app, this would authenticate with your backend
-    setTimeout(() => {
+    // Initialize seed data
+    await seedData();
+    
+    // Mock login - find user by ID or email
+    let user = DEMO_USERS.find(u => u.id === selectedUserId);
+    if (!user && email) {
+      user = DEMO_USERS.find(u => u.email === email);
+    }
+    
+    if (user) {
+      sessionManager.setCurrentSession(user);
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate('/dashboard');
+      }, 1000);
+    } else {
       setIsLoading(false);
-      navigate('/dashboard');
-    }, 1000);
+      alert('Felhasználó nem található');
+    }
+  };
+
+  const handleDemoUserSelect = (userId: string) => {
+    const user = DEMO_USERS.find(u => u.id === userId);
+    if (user) {
+      setSelectedUserId(userId);
+      setEmail(user.email);
+    }
   };
 
   return (
@@ -39,6 +65,22 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="demo-user" className="text-cgi-surface-foreground">Demo Felhasználó</Label>
+              <Select value={selectedUserId} onValueChange={handleDemoUserSelect}>
+                <SelectTrigger className="cgi-input">
+                  <SelectValue placeholder="Válassz demo felhasználót" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEMO_USERS.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name} ({user.role.replace('_', ' ')})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-cgi-surface-foreground">E-mail cím</Label>
               <div className="relative">
@@ -84,6 +126,15 @@ export default function Login() {
             <Button variant="ghost" className="cgi-button-ghost text-sm">
               Elfelejtett jelszó?
             </Button>
+          </div>
+
+          <div className="text-xs text-cgi-muted-foreground space-y-1">
+            <p><strong>Demo felhasználók:</strong></p>
+            <ul className="space-y-1">
+              <li>• CGI Admin: teljes hozzáférés</li>
+              <li>• Venue Owner: saját helyszín kezelése</li>
+              <li>• Venue Staff: csak olvasási jogok</li>
+            </ul>
           </div>
         </div>
       </Card>

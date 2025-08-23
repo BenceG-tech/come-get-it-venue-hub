@@ -10,22 +10,34 @@ import {
   Settings,
   Menu,
   Users,
-  X
+  X,
+  Building,
+  Factory
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { sessionManager } from "@/auth/mockSession";
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Beváltások', href: '/redemptions', icon: Receipt },
-  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard },
-  { name: 'Jutalmak', href: '/rewards', icon: Gift },
-  { name: 'Analitika', href: '/analytics', icon: BarChart3 },
-  { name: 'Beállítások', href: '/settings', icon: Settings },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'] },
+  { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'] },
+  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
 ];
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const session = sessionManager.getCurrentSession();
+
+  // Filter navigation based on user role
+  const filteredNavigation = navigation.filter(item => {
+    if (!session) return false;
+    return item.roles.includes(session.user.role);
+  });
 
   return (
     <>
@@ -59,7 +71,7 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-4">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
               
@@ -81,14 +93,19 @@ export function Sidebar() {
           <div className="border-t border-cgi-muted p-4">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
-                <span className="text-xs font-medium text-cgi-secondary">TB</span>
+                <span className="text-xs font-medium text-cgi-secondary">
+                  {session?.user.name.split(' ').map(n => n[0]).join('') || 'U'}
+                </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-cgi-surface-foreground truncate">
-                  Trendy Bar & Lounge
+                  {session?.user.name || 'User'}
                 </p>
                 <p className="text-xs text-cgi-muted-foreground truncate">
-                  admin@venue.com
+                  {session?.user.email || 'user@example.com'}
+                </p>
+                <p className="text-xs text-cgi-muted-foreground capitalize">
+                  {session?.user.role.replace('_', ' ') || 'Role'}
                 </p>
               </div>
             </div>

@@ -11,6 +11,9 @@ import Transactions from "./pages/Transactions";
 import Rewards from "./pages/Rewards";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import Venues from "./pages/Venues";
+import VenueDetail from "./pages/VenueDetail";
+import Brands from "./pages/Brands";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +32,9 @@ const App = () => (
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/venues" element={<Venues />} />
+          <Route path="/venues/:id" element={<VenueDetail />} />
+          <Route path="/brands" element={<Brands />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
