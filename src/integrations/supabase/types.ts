@@ -14,16 +14,341 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      caps: {
+        Row: {
+          alt_offer_text: string | null
+          created_at: string
+          daily: number | null
+          hourly: number | null
+          monthly: number | null
+          on_exhaust: string | null
+          per_user_daily: number | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          alt_offer_text?: string | null
+          created_at?: string
+          daily?: number | null
+          hourly?: number | null
+          monthly?: number | null
+          on_exhaust?: string | null
+          per_user_daily?: number | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          alt_offer_text?: string | null
+          created_at?: string
+          daily?: number | null
+          hourly?: number | null
+          monthly?: number | null
+          on_exhaust?: string | null
+          per_user_daily?: number | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caps_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      free_drink_windows: {
+        Row: {
+          created_at: string
+          days: number[]
+          end_time: string
+          id: string
+          start_time: string
+          timezone: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          days: number[]
+          end_time: string
+          id?: string
+          start_time: string
+          timezone?: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          days?: number[]
+          end_time?: string
+          id?: string
+          start_time?: string
+          timezone?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "free_drink_windows_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          is_admin: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_admin?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      redemptions: {
+        Row: {
+          created_at: string
+          drink: string
+          id: string
+          redeemed_at: string
+          user_id: string
+          value: number
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          drink: string
+          id?: string
+          redeemed_at?: string
+          user_id: string
+          value: number
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          drink?: string
+          id?: string
+          redeemed_at?: string
+          user_id?: string
+          value?: number
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redemptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rewards: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          points_required: number
+          updated_at: string
+          valid_until: string
+          venue_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          points_required: number
+          updated_at?: string
+          valid_until: string
+          venue_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          points_required?: number
+          updated_at?: string
+          valid_until?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rewards_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          items: Json
+          points: number
+          timestamp: string
+          venue_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          items?: Json
+          points?: number
+          timestamp?: string
+          venue_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          items?: Json
+          points?: number
+          timestamp?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          role: Database["public"]["Enums"]["venue_role"]
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          role: Database["public"]["Enums"]["venue_role"]
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          role?: Database["public"]["Enums"]["venue_role"]
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_memberships_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_memberships_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venues: {
+        Row: {
+          address: string
+          created_at: string
+          description: string | null
+          id: string
+          is_paused: boolean
+          name: string
+          owner_profile_id: string
+          phone_number: string | null
+          plan: Database["public"]["Enums"]["venue_plan"]
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_paused?: boolean
+          name: string
+          owner_profile_id: string
+          phone_number?: string | null
+          plan?: Database["public"]["Enums"]["venue_plan"]
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_paused?: boolean
+          name?: string
+          owner_profile_id?: string
+          phone_number?: string | null
+          plan?: Database["public"]["Enums"]["venue_plan"]
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venues_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_venue_ids: {
+        Args: { user_id?: string }
+        Returns: string[]
+      }
+      is_admin: {
+        Args: { user_id?: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      venue_plan: "basic" | "standard" | "premium"
+      venue_role: "venue_owner" | "venue_staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +475,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      venue_plan: ["basic", "standard", "premium"],
+      venue_role: ["venue_owner", "venue_staff"],
+    },
   },
 } as const

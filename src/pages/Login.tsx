@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Lock, Mail } from "lucide-react";
+import { Users, Lock, Mail, ShieldCheck } from "lucide-react";
 import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
 import { seedData } from "@/lib/mock/seed";
+import { runtimeConfig } from "@/config/runtime";
+import { signInWithEmailPassword } from "@/auth/supabaseAuth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,25 +18,42 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  const isSupabaseMode = runtimeConfig.useSupabase;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Initialize seed data
+
+    // Always keep mock data seeded for demo mode
     await seedData();
-    
+
+    if (isSupabaseMode) {
+      console.log("[Login] Supabase mode enabled, using email/password auth");
+      try {
+        await signInWithEmailPassword(email, password);
+        setIsLoading(false);
+        navigate('/dashboard');
+        return;
+      } catch (err) {
+        console.error("[Login] Supabase sign-in failed", err);
+        alert('Bejelentkezés sikertelen. Ellenőrizd az email/jelszó párost.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
     // Mock login - find user by ID or email
     let user = DEMO_USERS.find(u => u.id === selectedUserId);
     if (!user && email) {
       user = DEMO_USERS.find(u => u.email === email);
     }
-    
+
     if (user) {
       sessionManager.setCurrentSession(user);
       setTimeout(() => {
         setIsLoading(false);
         navigate('/dashboard');
-      }, 1000);
+      }, 800);
     } else {
       setIsLoading(false);
       alert('Felhasználó nem található');
@@ -62,24 +80,32 @@ export default function Login() {
             </div>
             <h1 className="text-2xl font-bold text-cgi-surface-foreground">Come Get It</h1>
             <p className="text-cgi-muted-foreground mt-2">Partner Dashboard</p>
+            {isSupabaseMode && (
+              <div className="mt-3 inline-flex items-center gap-2 text-cgi-success">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="text-xs">Supabase Auth mód aktív</span>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="demo-user" className="text-cgi-surface-foreground">Demo Felhasználó</Label>
-              <Select value={selectedUserId} onValueChange={handleDemoUserSelect}>
-                <SelectTrigger className="cgi-input">
-                  <SelectValue placeholder="Válassz demo felhasználót" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DEMO_USERS.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.role.replace('_', ' ')})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isSupabaseMode && (
+              <div className="space-y-2">
+                <Label htmlFor="demo-user" className="text-cgi-surface-foreground">Demo Felhasználó</Label>
+                <Select value={selectedUserId} onValueChange={handleDemoUserSelect}>
+                  <SelectTrigger className="cgi-input">
+                    <SelectValue placeholder="Válassz demo felhasználót" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEMO_USERS.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name} ({user.role.replace('_', ' ')})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-cgi-surface-foreground">E-mail cím</Label>
@@ -88,7 +114,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@venue.com"
+                  placeholder={isSupabaseMode ? "you@example.com" : "admin@venue.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="cgi-input pl-10"
@@ -118,7 +144,7 @@ export default function Login() {
               className="w-full cgi-button-primary"
               disabled={isLoading}
             >
-              {isLoading ? 'Bejelentkezés...' : 'Bejelentkezés'}
+              {isLoading ? 'Bejelentkezés...' : (isSupabaseMode ? 'Bejelentkezés Supabase-szel' : 'Bejelentkezés')}
             </Button>
           </form>
 
@@ -128,14 +154,16 @@ export default function Login() {
             </Button>
           </div>
 
-          <div className="text-xs text-cgi-muted-foreground space-y-1">
-            <p><strong>Demo felhasználók:</strong></p>
-            <ul className="space-y-1">
-              <li>• CGI Admin: teljes hozzáférés</li>
-              <li>• Venue Owner: saját helyszín kezelése</li>
-              <li>• Venue Staff: csak olvasási jogok</li>
-            </ul>
-          </div>
+          {!isSupabaseMode && (
+            <div className="text-xs text-cgi-muted-foreground space-y-1">
+              <p><strong>Demo felhasználók:</strong></p>
+              <ul className="space-y-1">
+                <li>• CGI Admin: teljes hozzáférés</li>
+                <li>• Venue Owner: saját helyszín kezelése</li>
+                <li>• Venue Staff: csak olvasási jogok</li>
+              </ul>
+            </div>
+          )}
         </div>
       </Card>
     </div>
