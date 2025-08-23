@@ -28,6 +28,30 @@ export const DEMO_USERS: User[] = [
 class MockSessionManager {
   private currentSession: Session | null = null;
   private previewRole: 'cgi_admin' | 'venue_owner' | 'venue_staff' | null = null;
+  private listeners: Set<() => void> = new Set();
+
+  constructor() {
+    // Load preview role from localStorage on initialization
+    try {
+      const savedPreviewRole = localStorage.getItem('cgi_admin_preview_role');
+      if (savedPreviewRole && savedPreviewRole !== 'null') {
+        this.previewRole = savedPreviewRole as 'cgi_admin' | 'venue_owner' | 'venue_staff';
+        console.log('Loaded preview role from localStorage:', this.previewRole);
+      }
+    } catch (error) {
+      console.error('Error loading preview role from localStorage:', error);
+    }
+  }
+
+  // Add listener for role changes
+  addListener(callback: () => void): () => void {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach(callback => callback());
+  }
 
   getCurrentSession(): Session | null {
     if (!this.currentSession) {
@@ -58,6 +82,8 @@ class MockSessionManager {
     this.currentSession = null;
     this.previewRole = null;
     localStorage.removeItem('cgi_admin_session');
+    localStorage.removeItem('cgi_admin_preview_role');
+    this.notifyListeners();
   }
 
   // Add clear() method that calls clearSession() for consistency
@@ -70,6 +96,22 @@ class MockSessionManager {
     const session = this.getCurrentSession();
     if (session && session.user.role === 'cgi_admin') {
       this.previewRole = role;
+      
+      // Persist to localStorage
+      try {
+        if (role) {
+          localStorage.setItem('cgi_admin_preview_role', role);
+          console.log('Saved preview role to localStorage:', role);
+        } else {
+          localStorage.removeItem('cgi_admin_preview_role');
+          console.log('Removed preview role from localStorage');
+        }
+      } catch (error) {
+        console.error('Error saving preview role to localStorage:', error);
+      }
+      
+      // Notify listeners of the change
+      this.notifyListeners();
     }
   }
 
@@ -83,9 +125,11 @@ class MockSessionManager {
     
     // Only admins can use preview mode
     if (session.user.role === 'cgi_admin' && this.previewRole) {
+      console.log('Using preview role:', this.previewRole);
       return this.previewRole;
     }
     
+    console.log('Using actual role:', session.user.role);
     return session.user.role;
   }
 

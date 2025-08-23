@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { sessionManager } from "@/auth/mockSession";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
@@ -7,15 +8,34 @@ import { StaffDashboard } from "@/components/dashboard/StaffDashboard";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
+  const [effectiveRole, setEffectiveRole] = useState(sessionManager.getEffectiveRole());
+  const [isInPreviewMode, setIsInPreviewMode] = useState(sessionManager.isInPreviewMode());
+  
   const session = sessionManager.getCurrentSession();
-  const effectiveRole = sessionManager.getEffectiveRole();
-  const isInPreviewMode = sessionManager.isInPreviewMode();
+
+  // Listen for role changes
+  useEffect(() => {
+    const unsubscribe = sessionManager.addListener(() => {
+      const newEffectiveRole = sessionManager.getEffectiveRole();
+      const newIsInPreviewMode = sessionManager.isInPreviewMode();
+      
+      console.log('Dashboard: Role changed to:', newEffectiveRole);
+      console.log('Dashboard: Preview mode:', newIsInPreviewMode);
+      
+      setEffectiveRole(newEffectiveRole);
+      setIsInPreviewMode(newIsInPreviewMode);
+    });
+
+    return unsubscribe;
+  }, []);
 
   if (!session || !effectiveRole) {
     return null;
   }
 
   const renderDashboard = () => {
+    console.log('Dashboard: Rendering for role:', effectiveRole);
+    
     switch (effectiveRole) {
       case 'cgi_admin':
         return <AdminDashboard />;

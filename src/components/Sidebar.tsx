@@ -46,10 +46,22 @@ const roleLabels = {
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [effectiveRole, setEffectiveRole] = useState(sessionManager.getEffectiveRole());
+  
   const location = useLocation();
   const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
-  const effectiveRole = sessionManager.getEffectiveRole();
+
+  // Listen for role changes
+  useEffect(() => {
+    const unsubscribe = sessionManager.addListener(() => {
+      const newEffectiveRole = sessionManager.getEffectiveRole();
+      console.log('Sidebar: Role changed to:', newEffectiveRole);
+      setEffectiveRole(newEffectiveRole);
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -68,9 +80,8 @@ export function Sidebar() {
   };
 
   const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff') => {
+    console.log('Sidebar: Changing role to:', role);
     sessionManager.setPreviewRole(role === 'cgi_admin' ? null : role);
-    // Refresh the current page to show the new dashboard
-    window.location.reload();
   };
 
   // Don't render sidebar if no session
