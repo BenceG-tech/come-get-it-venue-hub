@@ -9,6 +9,7 @@ export default function Transactions() {
     {
       key: 'timestamp' as keyof Transaction,
       label: 'Időpont',
+      tooltip: 'A tranzakció pontos időpontja. Segít nyomon követni a napi forgalmi mintákat és csúcsidőket.',
       render: (value: string) => (
         <span className="text-cgi-surface-foreground">{formatDateTime(value)}</span>
       )
@@ -16,6 +17,7 @@ export default function Transactions() {
     {
       key: 'amount' as keyof Transaction,
       label: 'Összeg',
+      tooltip: 'A tranzakció teljes értéke forintban. Tartalmazza az összes megvásárolt terméket és szolgáltatást.',
       render: (value: number) => (
         <span className="font-medium text-cgi-secondary">
           {formatCurrency(value)}
@@ -25,6 +27,7 @@ export default function Transactions() {
     {
       key: 'items' as keyof Transaction,
       label: 'Tételek',
+      tooltip: 'A vásárlás részletes tételes bontása JSON formátumban. Tartalmazza a termékeket, árakat és mennyiségeket.',
       render: (value: Record<string, any>) => (
         <div className="max-w-xs">
           <code className="text-xs bg-cgi-muted px-2 py-1 rounded text-cgi-muted-foreground">
@@ -36,6 +39,7 @@ export default function Transactions() {
     {
       key: 'points' as keyof Transaction,
       label: 'Pontok',
+      tooltip: 'A tranzakcióért járó pontok száma. Ezeket a pontokat a felhasználók ingyenes italokra válthatják be.',
       render: (value: number) => (
         <div className="flex items-center gap-1">
           <span className="font-medium text-cgi-secondary">{value}</span>

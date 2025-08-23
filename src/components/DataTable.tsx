@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, Filter, Info } from "lucide-react";
 
 interface Column<T> {
   key: keyof T;
   label: string;
   render?: (value: any, item: T) => React.ReactNode;
+  tooltip?: string;
 }
 
 interface DataTableProps<T> {
@@ -58,7 +60,21 @@ export function DataTable<T extends Record<string, any>>({
                   key={String(column.key)}
                   className="h-12 px-4 text-left align-middle font-medium text-cgi-muted-foreground"
                 >
-                  {column.label}
+                  <div className="flex items-center gap-2">
+                    <span>{column.label}</span>
+                    {column.tooltip && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-sm">{column.tooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>

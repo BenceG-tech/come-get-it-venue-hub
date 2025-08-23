@@ -1,4 +1,3 @@
-
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
@@ -36,23 +35,29 @@ export function StaffDashboard() {
           value={mockStaffKPIData.today_redemptions}
           change={{ value: 8, isPositive: true }}
           icon={Receipt}
+          tooltip="Az aktuális nap során az italbeváltó alkalmazáson keresztül beváltott italok teljes száma. Ez mutatja a napi forgalom aktivitását."
         />
         <KPICard
           title="Free drink státusz"
           value={isFreeDrinkPaused ? "Szüneteltetve" : "Aktív"}
           change={{ value: 0, isPositive: true }}
           icon={Clock}
+          tooltip="A free drink kampány jelenlegi állapota. Aktív állapotban a felhasználók beválthatják az ingyenes italokat, szüneteltetett állapotban nem."
         />
         <KPICard
           title="Cap kihasználtság"
           value={`${mockStaffKPIData.cap_usage}%`}
           change={{ value: 12, isPositive: true }}
           icon={TrendingUp}
+          tooltip="A napi italbeváltási limit kihasználtsága százalékban. A cap védi a helyszínt a túlzott ingyenes italfogyasztástól."
         />
       </div>
 
       {/* Operational Controls */}
-      <ChartCard title="Operatív vezérlők">
+      <ChartCard 
+        title="Operatív vezérlők"
+        tooltip="Gyors műveletek a free drink kampány kezeléséhez. A szüneteltetés azonnal leállítja az új beváltásokat."
+      >
         <div className="flex flex-col md:flex-row gap-4">
           <Button
             onClick={handleToggleFreeDrink}
@@ -88,7 +93,10 @@ export function StaffDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Live Redemption Feed */}
-        <ChartCard title="Mai beváltások - Élő feed">
+        <ChartCard 
+          title="Mai beváltások - Élő feed"
+          tooltip="Valós idejű lista a mai beváltásokról. Új és visszatérő felhasználók megkülönböztetésével, az italok értékével és helyszínével."
+        >
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {mockTodayRedemptions.map((redemption) => (
               <div key={redemption.id} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
@@ -112,7 +120,10 @@ export function StaffDashboard() {
         </ChartCard>
 
         {/* Today's Top Drinks */}
-        <ChartCard title="Mai top italok">
+        <ChartCard 
+          title="Mai top italok"
+          tooltip="A mai nap legnépszerűbb italai beváltások száma és generált bevétel szerint rangsorolva. Segít a készletgazdálkodásban."
+        >
           <div className="space-y-3">
             {mockTodayTopDrinks.map((drink, index) => (
               <div key={drink.name} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">

@@ -1,4 +1,3 @@
-
 import { PageLayout } from "@/components/PageLayout";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,10 @@ export default function VenueComparison() {
         </div>
 
         {/* Venue Comparison Table */}
-        <ChartCard title="Venue Teljesítmény Összehasonlítás">
+        <ChartCard 
+          title="Venue Teljesítmény Összehasonlítás"
+          tooltip="Részletes összehasonlító táblázat az összes helyszín teljesítményéről. A csomagok, bevételek és felhasználói aktivitás alapján rangsorolva."
+        >
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -82,7 +84,10 @@ export default function VenueComparison() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Comparison Chart */}
-          <ChartCard title="Havi bevétel összehasonlítás">
+          <ChartCard 
+            title="Havi bevétel összehasonlítás"
+            tooltip="Vizuális összehasonlítás a helyszínek havi bevételéről. Segít azonosítani a legjobban és leggyengébben teljesítő helyszíneket."
+          >
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={mockVenueComparisonData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
@@ -114,7 +119,10 @@ export default function VenueComparison() {
           </ChartCard>
 
           {/* Redemptions Trend */}
-          <ChartCard title="Beváltások trend - Top venues">
+          <ChartCard 
+            title="Beváltások trend - Top venues"
+            tooltip="A három legjobban teljesítő helyszín beváltási trendjének időbeli alakulása. Hasznos a teljesítménymintázatok és növekedési trendek azonosításához."
+          >
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={mockComparisonTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
@@ -161,7 +169,10 @@ export default function VenueComparison() {
         </div>
 
         {/* Quick Actions */}
-        <ChartCard title="Gyors műveletek">
+        <ChartCard 
+          title="Gyors műveletek"
+          tooltip="Kapcsolódó funkciók gyors elérése a venue adatok mélyebb elemzéséhez és jelentéskészítéshez."
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link to="/venues">
               <Button variant="outline" className="w-full h-auto p-4 cgi-button-secondary justify-start">

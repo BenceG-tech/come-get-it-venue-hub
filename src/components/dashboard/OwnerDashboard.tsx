@@ -1,4 +1,3 @@
-
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
@@ -29,30 +28,37 @@ export function OwnerDashboard() {
           value={mockOwnerKPIData.daily_redemptions}
           change={{ value: 12, isPositive: true }}
           icon={Receipt}
+          tooltip="Az Ön helyszínén ma beváltott italok száma. Ez az adat valós időben frissül és segít nyomon követni a napi teljesítményt."
         />
         <KPICard
           title="Napi forgalom"
           value={formatCurrency(mockOwnerKPIData.daily_revenue)}
           change={{ value: 8, isPositive: true }}
           icon={DollarSign}
+          tooltip="A mai nap teljes bevétele az italbeváltásokból és egyéb vásárlásokból. Tartalmazza mind a fizetős, mind az ingyenes italok elszámolását."
         />
         <KPICard
           title="Visszatérő arány"
           value={`${mockOwnerKPIData.returning_rate}%`}
           change={{ value: 5, isPositive: true }}
           icon={Users}
+          tooltip="A visszatérő vendégek aránya az összes mai látogatóhoz képest. Magasabb érték erősebb vendéglojalitást jelez."
         />
         <KPICard
           title="Átlag kosárérték"
           value={formatCurrency(mockOwnerKPIData.avg_basket_value)}
           change={{ value: 15, isPositive: true }}
           icon={TrendingUp}
+          tooltip="Az egy látogató által átlagosan elköltött összeg. Ez tartalmazza az italokat és egyéb termékeket is."
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Venue Trend Chart */}
-        <ChartCard title="Heti trend - Saját venue">
+        <ChartCard 
+          title="Heti trend - Saját venue"
+          tooltip="Az elmúlt hét beváltásainak alakulása. Segít azonosítani a forgalmi mintákat és a legnépszerűbb napokat."
+        >
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={mockTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
@@ -86,7 +92,10 @@ export function OwnerDashboard() {
         </ChartCard>
 
         {/* Top Drinks for Venue */}
-        <ChartCard title="Top 5 ital - Saját venue">
+        <ChartCard 
+          title="Top 5 ital - Saját venue"
+          tooltip="Az Ön helyszínének legnépszerűbb italai beváltások száma szerint. Hasznos a menü optimalizálásához és készletgazdálkodáshoz."
+        >
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={mockDrinkData} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
@@ -118,7 +127,10 @@ export function OwnerDashboard() {
       </div>
 
       {/* Owner Management Links */}
-      <ChartCard title="Venue Menedzsment">
+      <ChartCard 
+        title="Venue Menedzsment"
+        tooltip="Gyors hozzáférés a helyszín kezelési funkciókhoz. Itt módosíthatja a jutalmakat, tekintheti meg a részletes analitikákat és kezelheti a beállításokat."
+      >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link to="/rewards">
             <Button variant="outline" className="w-full h-auto p-4 cgi-button-secondary justify-start">

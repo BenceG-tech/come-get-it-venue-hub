@@ -1,4 +1,3 @@
-
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
@@ -29,30 +28,37 @@ export function AdminDashboard() {
           value={mockAdminKPIData.total_redemptions}
           change={{ value: 15, isPositive: true }}
           icon={Zap}
+          tooltip="Az összes aktív helyszínen beváltott italok teljes száma a mai napon. Ez a platform teljes aktivitásának fő mutatója."
         />
         <KPICard
           title="Platform forgalom"
           value={formatCurrency(mockAdminKPIData.total_revenue)}
           change={{ value: 12, isPositive: true }}
           icon={DollarSign}
+          tooltip="A teljes platform napi bevétele az összes helyszínről összesítve. Tartalmazza az italbeváltásokat és a kapcsolódó vásárlásokat."
         />
         <KPICard
           title="Összes felhasználó"
           value={mockAdminKPIData.total_users}
           change={{ value: 8, isPositive: true }}
           icon={Users}
+          tooltip="A platformon regisztrált felhasználók teljes száma. Ez mutatja a felhasználói bázis növekedését és aktivitását."
         />
         <KPICard
           title="Aktív helyszínek"
           value={mockAdminKPIData.active_venues}
           change={{ value: 5, isPositive: true }}
           icon={Building}
+          tooltip="A jelenleg aktív és működő helyszínek száma. Egy helyszín akkor aktív, ha rendelkezik érvényes előfizetéssel és fogad beváltásokat."
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Platform Trend Chart */}
-        <ChartCard title="Platform Trend - Heti összesítés">
+        <ChartCard 
+          title="Platform Trend - Heti összesítés"
+          tooltip="Az összes helyszín beváltásainak összesített heti trendje. Segít azonosítani a platform szintű növekedési mintákat és szezonális változásokat."
+        >
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={mockAdminTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
@@ -86,7 +92,10 @@ export function AdminDashboard() {
         </ChartCard>
 
         {/* Top Venues */}
-        <ChartCard title="Top 5 Helyszín - Bevétel">
+        <ChartCard 
+          title="Top 5 Helyszín - Bevétel"
+          tooltip="A legjobban teljesítő helyszínek bevétel alapján rangsorolva. Ez segít azonosítani a sikeres partnereket és a legjobb gyakorlatokat."
+        >
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={mockTopVenuesData} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
@@ -118,7 +127,10 @@ export function AdminDashboard() {
       </div>
 
       {/* Admin Quick Actions */}
-      <ChartCard title="Platform Menedzsment">
+      <ChartCard 
+        title="Platform Menedzsment"
+        tooltip="Központi adminisztrációs funkciók gyors elérése. Itt kezelheti a helyszíneket, elemezheti a teljesítményeket és adminisztrálhatja a márkákat."
+      >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link to="/venues">
             <Button variant="outline" className="w-full h-auto p-4 cgi-button-secondary justify-start">
