@@ -13,15 +13,25 @@ export function VenueImageGallery({ images, venueName }: VenueImageGalleryProps)
   const [selectedImage, setSelectedImage] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
 
+  console.log('[VenueImageGallery] Received images:', images);
+  console.log('[VenueImageGallery] Venue name:', venueName);
+  console.log('[VenueImageGallery] Number of images:', images.length);
+
   // Find cover image or use first image
   const coverImage = images.find(img => img.isCover) || images[0];
   const mainImageIndex = coverImage ? images.findIndex(img => img.id === coverImage.id) : 0;
 
+  console.log('[VenueImageGallery] Cover image found:', coverImage);
+  console.log('[VenueImageGallery] Main image index:', mainImageIndex);
+  console.log('[VenueImageGallery] Selected image index:', selectedImage);
+
   const handleImageError = (index: number) => {
+    console.log('[VenueImageGallery] Image error at index:', index, 'URL:', images[index]?.url);
     setImageErrors(prev => new Set([...prev, index]));
   };
 
   const handleImageLoad = (index: number) => {
+    console.log('[VenueImageGallery] Image loaded successfully at index:', index, 'URL:', images[index]?.url);
     setImageErrors(prev => {
       const newSet = new Set(prev);
       newSet.delete(index);
@@ -32,7 +42,11 @@ export function VenueImageGallery({ images, venueName }: VenueImageGalleryProps)
   // If no images or all images failed to load, show placeholder
   const hasValidImages = images.length > 0 && images.some((_, index) => !imageErrors.has(index));
 
+  console.log('[VenueImageGallery] Has valid images:', hasValidImages);
+  console.log('[VenueImageGallery] Image errors:', Array.from(imageErrors));
+
   if (!hasValidImages) {
+    console.log('[VenueImageGallery] Showing placeholder - no valid images');
     return (
       <Card className="cgi-card overflow-hidden">
         <div className="aspect-video bg-gradient-to-br from-cgi-primary/20 to-cgi-secondary/20 flex items-center justify-center">
@@ -43,6 +57,12 @@ export function VenueImageGallery({ images, venueName }: VenueImageGalleryProps)
   }
 
   const currentImage = images[selectedImage] || images[mainImageIndex] || images[0];
+  console.log('[VenueImageGallery] Current image being displayed:', {
+    index: selectedImage,
+    image: currentImage,
+    url: currentImage?.url,
+    isCover: currentImage?.isCover
+  });
 
   return (
     <div className="space-y-4">
@@ -71,7 +91,10 @@ export function VenueImageGallery({ images, venueName }: VenueImageGalleryProps)
           {images.map((image, index) => (
             <button
               key={image.id}
-              onClick={() => setSelectedImage(index)}
+              onClick={() => {
+                console.log('[VenueImageGallery] Thumbnail clicked, setting selected image to index:', index);
+                setSelectedImage(index);
+              }}
               className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                 selectedImage === index
                   ? 'border-cgi-primary shadow-md'
