@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,7 @@ import { Factory, Plus, Search, Edit, Users } from 'lucide-react';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
 import { Brand, BrandCampaign } from '@/lib/types';
-import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
+import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 
 export default function Brands() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -19,6 +18,8 @@ export default function Brands() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const dataProvider = getDataProvider();
 
   const [brandForm, setBrandForm] = useState({
     name: '',

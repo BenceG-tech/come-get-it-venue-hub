@@ -1,16 +1,24 @@
-
 import { Venue, Brand, BrandCampaign, Redemption, Transaction, Reward } from '@/lib/types';
-import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
+import { getDataProvider } from '@/lib/dataProvider/providerFactory';
+import { runtimeConfig } from '@/config/runtime';
 
 const SEED_KEY = 'cgi_admin_v1:seeded';
 
 export async function seedData() {
+  // Only seed in localStorage mode
+  if (runtimeConfig.useSupabase) {
+    console.log('Skipping seed - using Supabase provider');
+    return;
+  }
+
   // Check if already seeded
   if (localStorage.getItem(SEED_KEY)) {
     return;
   }
 
   console.log('Seeding mock data...');
+
+  const dataProvider = getDataProvider();
 
   // Seed venues
   const venues: Venue[] = [

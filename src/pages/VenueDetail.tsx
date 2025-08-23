@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -18,7 +17,7 @@ import { ChartCard } from '@/components/ChartCard';
 import { KPICard } from '@/components/KPICard';
 import ScheduleGrid from '@/components/ScheduleGrid';
 import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe } from 'lucide-react';
-import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
+import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { seedData } from '@/lib/mock/seed';
 import { 
   getActiveFreeDrinkStatus, 
@@ -35,6 +34,8 @@ export default function VenueDetail() {
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+
+  const dataProvider = getDataProvider();
 
   useEffect(() => {
     const loadVenue = async () => {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { Building, Plus, Search, Eye, Edit } from 'lucide-react';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
 import { Venue } from '@/lib/types';
-import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
+import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { getActiveFreeDrinkStatus, calculateCapUsage } from '@/lib/businessLogic';
 import { VenueFormModal } from '@/components/VenueFormModal';
 
@@ -23,6 +22,7 @@ export default function Venues() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const dataProvider = getDataProvider();
   const allTags = Array.from(new Set(venues.flatMap(venue => venue.tags)));
 
   useEffect(() => {
