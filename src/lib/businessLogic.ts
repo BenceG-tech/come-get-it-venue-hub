@@ -1,4 +1,3 @@
-
 import { Venue, FreeDrinkWindow, ActiveFreeDrinkStatus, CapUsage, BusinessHours } from './types';
 
 const dayIndexISO = (d: Date) => {
@@ -50,6 +49,11 @@ export function getActiveFreeDrinkStatus(venue: Venue, now: Date): ActiveFreeDri
     return { isActive: false };
   }
   
+  // Add null check for freeDrinkWindows
+  if (!venue.freeDrinkWindows || venue.freeDrinkWindows.length === 0) {
+    return { isActive: false };
+  }
+  
   const activeWindow = venue.freeDrinkWindows.find(window => isWindowActive(window, now));
   
   return {
@@ -59,6 +63,11 @@ export function getActiveFreeDrinkStatus(venue: Venue, now: Date): ActiveFreeDri
 }
 
 export function getNextActiveWindow(venue: Venue, now: Date): FreeDrinkWindow | null {
+  // Add null check for freeDrinkWindows
+  if (!venue.freeDrinkWindows || venue.freeDrinkWindows.length === 0) {
+    return null;
+  }
+
   const currentDay = now.getDay();
   const currentTime = now.toTimeString().slice(0, 5);
   
@@ -90,7 +99,7 @@ export function getNextActiveWindow(venue: Venue, now: Date): FreeDrinkWindow | 
 }
 
 export function calculateCapUsage(venue: Venue, redemptionsTodayCount: number): CapUsage {
-  const dailyLimit = venue.caps.daily || 0;
+  const dailyLimit = venue.caps?.daily || 0;
   
   return {
     used: redemptionsTodayCount,
@@ -106,7 +115,7 @@ export function canShowFreeDrink(venue: Venue, now: Date, redemptionsTodayCount:
   if (!status.isActive) return false;
   
   const capUsage = calculateCapUsage(venue, redemptionsTodayCount);  
-  if (venue.caps.daily && capUsage.used >= capUsage.limit) {
+  if (venue.caps?.daily && capUsage.used >= capUsage.limit) {
     return false;
   }
   
