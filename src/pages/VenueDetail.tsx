@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -64,7 +65,7 @@ export default function VenueDetail() {
     }
   }, [id]);
 
-  // Business logic calculations
+  // Business logic calculations with proper null checks
   const now = useMemo(() => new Date(), []);
   const openNow = useMemo(() => venue ? isVenueOpenNow(venue, now) : false, [venue, now]);
   const closesAt = useMemo(() => venue ? getClosingTimeToday(venue, now) : null, [venue, now]);
@@ -72,6 +73,12 @@ export default function VenueDetail() {
   const nextWindow = useMemo(() => venue ? getNextActiveWindow(venue, now) : null, [venue, now]);
   const mockRedemptionCount = 50; // This should come from actual data
   const capUsage = useMemo(() => venue ? calculateCapUsage(venue, mockRedemptionCount) : { used: 0, limit: 0, pct: 0 }, [venue, mockRedemptionCount]);
+
+  // Add null check for venue.images to prevent the error
+  const coverImage = useMemo(() => {
+    if (!venue?.images?.length) return null;
+    return venue.images.find(i => i.isCover) || venue.images[0];
+  }, [venue?.images]);
 
   const handlePauseToggle = async () => {
     if (!venue) return;
@@ -181,9 +188,9 @@ export default function VenueDetail() {
               )}
 
               <div className="flex gap-2 mt-2">
-                {venue.tags.map(tag => (
+                {venue.tags?.map(tag => (
                   <Badge key={tag} className="cgi-badge bg-cgi-secondary text-cgi-secondary-foreground">{tag}</Badge>
-                ))}
+                )) || []}
               </div>
             </div>
 
@@ -228,12 +235,12 @@ export default function VenueDetail() {
             </div>
           </div>
 
-          {/* Image Gallery */}
+          {/* Image Gallery - Fixed null check */}
           {venue.images?.length ? (
             <Card className="cgi-card mb-6">
               <div className="space-y-3">
                 <img
-                  src={venue.images.find(i => i.isCover)?.url || venue.images[0].url}
+                  src={coverImage?.url || 'https://via.placeholder.com/800x400?text=No+Image'}
                   alt={venue.name}
                   className="w-full h-48 object-cover rounded-lg"
                   onError={(e) => {
