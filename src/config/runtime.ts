@@ -19,8 +19,19 @@ const envProvider =
     ? 'supabase' 
     : null;
 
-const resolvedProvider = (queryProvider || localProvider || envProvider || 'mock').toLowerCase();
+// Default: production -> supabase, development -> mock
+const mode = typeof window !== 'undefined' ? (import.meta.env.MODE || 'development') : 'development';
+const defaultProvider = mode === 'production' ? 'supabase' : 'mock';
+
+const resolvedProvider = (queryProvider || localProvider || envProvider || defaultProvider).toLowerCase();
 
 export const runtimeConfig = {
   useSupabase: resolvedProvider === 'supabase',
 };
+
+// Helpful logs
+if (typeof window !== 'undefined') {
+  console.log("[runtimeConfig] mode:", mode);
+  console.log("[runtimeConfig] resolvedProvider:", resolvedProvider);
+  console.log("[runtimeConfig] useSupabase:", runtimeConfig.useSupabase);
+}

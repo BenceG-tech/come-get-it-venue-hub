@@ -28,12 +28,16 @@ import {
   getClosingTimeToday
 } from '@/lib/businessLogic';
 import { Venue, FreeDrinkWindow } from '@/lib/types';
+import { FeatureGate } from '@/components/FeatureGate';
+import { useToast } from '@/hooks/use-toast';
+import { runtimeConfig } from '@/config/runtime';
 
 export default function VenueDetail() {
   const { id } = useParams<{ id: string }>();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const { toast } = useToast();
 
   const dataProvider = getDataProvider();
 
@@ -45,15 +49,19 @@ export default function VenueDetail() {
         const venueData = await dataProvider.getOne<Venue>('venues', id);
         setVenue(venueData);
         setIsPaused(venueData.is_paused);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load venue:", error);
+        toast({ title: "Hiba", description: String(error?.message || error), variant: "destructive" as any });
       } finally {
         setIsLoading(false);
       }
     };
 
     loadVenue();
-    seedData(); // Ensure mock data is seeded
+    // Seed only when NOT using Supabase
+    if (!runtimeConfig.useSupabase) {
+      seedData();
+    }
   }, [id]);
 
   // Business logic calculations
@@ -74,8 +82,9 @@ export default function VenueDetail() {
       await dataProvider.update<Venue>('venues', venue.id, { is_paused: !isPaused });
       setVenue(updatedVenue);
       setIsPaused(!isPaused);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update venue pause status:", error);
+      toast({ title: "Hiba", description: String(error?.message || error), variant: "destructive" as any });
     }
   };
 
@@ -86,8 +95,9 @@ export default function VenueDetail() {
       const updatedVenue = { ...venue, ...updates };
       await dataProvider.update<Venue>('venues', venue.id, updates);
       setVenue(updatedVenue);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update venue:", error);
+      toast({ title: "Hiba", description: String(error?.message || error), variant: "destructive" as any });
     }
   };
 
@@ -178,43 +188,43 @@ export default function VenueDetail() {
             </div>
 
             <div className="flex items-start gap-4">
-              <VenueFormModal 
-                venue={venue} 
-                onSave={handleVenueSave}
-                trigger={
-                  <Button variant="outline" className="cgi-button-secondary">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Szerkesztés
-                  </Button>
-                }
-              />
+              <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}>
+                <VenueFormModal 
+                  venue={venue} 
+                  onSave={handleVenueSave}
+                  trigger={
+                    <Button variant="outline" className="cgi-button-secondary">
+                      <Edit className="h-4 w-4 mr-2" />
+                      Szerkesztés
+                    </Button>
+                  }
+                />
+              </FeatureGate>
               
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="cgi-button-secondary"
-                onClick={() => {/* Future: open VenueFormModal in suggestion mode */}}
-              >
-                Javasolj módosítást
-              </Button>
-              
-              <Button 
-                variant={isPaused ? 'default' : 'destructive'} 
-                className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
-                onClick={handlePauseToggle}
-              >
-                {isPaused ? (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Folytatás
-                  </>
-                ) : (
-                  <>
-                    <Pause className="h-4 w-4 mr-2" />
-                    Szüneteltetés
-                  </>
-                )}
-              </Button>
+              <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={
+                <Button variant="outline" size="sm" className="cgi-button-secondary" disabled>
+                  <Pause className="h-4 w-4 mr-2" />
+                  Szüneteltetés
+                </Button>
+              }>
+                <Button 
+                  variant={isPaused ? 'default' : 'destructive'} 
+                  className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
+                  onClick={handlePauseToggle}
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Folytatás
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Szüneteltetés
+                    </>
+                  )}
+                </Button>
+              </FeatureGate>
             </div>
           </div>
 

@@ -6,10 +6,15 @@ import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { OwnerDashboard } from "@/components/dashboard/OwnerDashboard";
 import { StaffDashboard } from "@/components/dashboard/StaffDashboard";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { getDataProvider } from "@/lib/dataProvider/providerFactory";
+import { runtimeConfig } from "@/config/runtime";
 
 export default function Dashboard() {
   const [effectiveRole, setEffectiveRole] = useState(sessionManager.getEffectiveRole());
   const [isInPreviewMode, setIsInPreviewMode] = useState(sessionManager.isInPreviewMode());
+  const [apiCount, setApiCount] = useState<number | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   
   const session = sessionManager.getCurrentSession();
 
@@ -27,6 +32,29 @@ export default function Dashboard() {
     });
 
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    console.log("[Dashboard] runtimeConfig.useSupabase:", runtimeConfig.useSupabase);
+    const provider = getDataProvider() as any;
+    console.log("[Dashboard] Provider has getCount:", typeof provider.getCount === 'function');
+
+    // Only check API status if Supabase is active
+    if (runtimeConfig.useSupabase && typeof provider.getCount === 'function') {
+      provider.getCount("venues")
+        .then((count: number) => {
+          setApiCount(count);
+          setApiError(null);
+        })
+        .catch((err: any) => {
+          console.error("[Dashboard] API status error:", err);
+          setApiCount(null);
+          setApiError(err?.message || String(err));
+        });
+    } else {
+      setApiCount(null);
+      setApiError(null);
+    }
   }, []);
 
   if (!session || !effectiveRole) {
@@ -50,6 +78,29 @@ export default function Dashboard() {
 
   return (
     <PageLayout>
+      {/* API Status */}
+      <Card className="cgi-card p-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="text-cgi-surface-foreground font-medium">API Status</div>
+          {apiError ? (
+            <Badge variant="destructive" className="cgi-badge bg-cgi-error text-cgi-error-foreground">
+              Hiba
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="cgi-badge bg-cgi-secondary text-cgi-secondary-foreground">
+              OK
+            </Badge>
+          )}
+        </div>
+        <div className="mt-2 text-sm text-cgi-muted-foreground">
+          {apiError
+            ? `Hiba: ${apiError}`
+            : runtimeConfig.useSupabase
+              ? `Venues száma: ${apiCount ?? '—'}`
+              : 'Mock provider használatban'}
+        </div>
+      </Card>
+
       {isInPreviewMode && (
         <div className="mb-4">
           <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">

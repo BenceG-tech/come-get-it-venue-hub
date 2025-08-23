@@ -1,113 +1,148 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building, Plus, Search, Eye, Edit } from 'lucide-react';
+import { Building, Plus, Search, Eye } from 'lucide-react';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
-import { Venue } from '@/lib/types';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
-import { getActiveFreeDrinkStatus, calculateCapUsage } from '@/lib/businessLogic';
-import { VenueFormModal } from '@/components/VenueFormModal';
+import { runtimeConfig } from '@/config/runtime';
+
+type VenueRow = {
+  id: string;
+  name: string;
+  address: string;
+  plan: 'basic' | 'standard' | 'premium';
+  is_paused: boolean;
+  website_url?: string | null;
+  phone_number?: string | null;
+  created_at: string;
+};
+
+const PAGE_SIZE = 20;
 
 export default function Venues() {
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [filteredVenues, setFilteredVenues] = useState<Venue[]>([]);
+  const [venues, setVenues] = useState<VenueRow[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [csvExporting, setCsvExporting] = useState(false);
   const dataProvider = getDataProvider();
-  const allTags = Array.from(new Set(venues.flatMap(venue => venue.tags)));
 
   useEffect(() => {
     loadVenues();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, page]);
 
-  useEffect(() => {
-    filterVenues();
-  }, [venues, searchTerm, selectedTags]);
+  const offset = useMemo(() => (page - 1) * PAGE_SIZE, [page]);
 
   const loadVenues = async () => {
+    setIsLoading(true);
     try {
-      const venueList = await dataProvider.getList<Venue>('venues');
-      setVenues(venueList);
+      // Fetch PAGE_SIZE + 1 to detect "has more"
+      const rows = await dataProvider.getList<VenueRow>('venues', {
+        search: searchTerm || undefined,
+        orderBy: 'created_at',
+        orderDir: 'desc',
+        limit: PAGE_SIZE + 1,
+        offset,
+      } as any);
+      setHasMore(rows.length > PAGE_SIZE);
+      setVenues(rows.slice(0, PAGE_SIZE));
     } catch (error) {
       console.error('Error loading venues:', error);
+      setVenues([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filterVenues = () => {
-    let filtered = venues;
-
-    if (searchTerm) {
-      filtered = filtered.filter(venue =>
-        venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        venue.address.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(venue =>
-        selectedTags.some(tag => venue.tags.includes(tag))
-      );
-    }
-
-    setFilteredVenues(filtered);
-  };
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag)
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-  };
-
-  const getPlanBadgeColor = (plan: string) => {
+  const planBadgeColor = (plan: VenueRow['plan']) => {
     switch (plan) {
-      case 'premium': return 'bg-cgi-secondary text-cgi-secondary-foreground';
-      case 'standard': return 'bg-blue-500 text-white';
-      case 'basic': return 'bg-gray-500 text-white';
-      default: return 'bg-gray-500 text-white';
+      case 'premium':
+        return 'bg-cgi-secondary text-cgi-secondary-foreground';
+      case 'standard':
+        return 'bg-cgi-primary/10 text-cgi-primary border border-cgi-primary/30';
+      case 'basic':
+      default:
+        return 'bg-cgi-muted text-cgi-muted-foreground';
     }
   };
 
-  const getFreeDrinkStatus = (venue: Venue) => {
-    const now = new Date();
-    const status = getActiveFreeDrinkStatus(venue, now);
-    
-    if (venue.is_paused) {
-      return { text: 'Szünetel', color: 'bg-red-500 text-white' };
-    }
-    
-    if (status.isActive) {
-      return { text: 'Aktív', color: 'bg-green-500 text-white' };
-    }
-    
-    return { text: 'Inaktív', color: 'bg-gray-500 text-white' };
-  };
+  const exportCSV = async () => {
+    setCsvExporting(true);
+    try {
+      // Export using current search filter, without pagination
+      const all = await dataProvider.getList<VenueRow>('venues', {
+        search: searchTerm || undefined,
+        orderBy: 'created_at',
+        orderDir: 'desc',
+        limit: 1000, // simple cap for client-side export
+        offset: 0,
+      } as any);
 
-  const getCapStatus = (venue: Venue) => {
-    // Mock today's redemptions count
-    const todayRedemptions = Math.floor(Math.random() * (venue.caps.daily || 50));
-    const usage = calculateCapUsage(venue, todayRedemptions);
-    
-    return `${usage.used} / ${usage.limit || '∞'}`;
+      const header = [
+        'id',
+        'name',
+        'address',
+        'plan',
+        'is_paused',
+        'website_url',
+        'phone_number',
+        'created_at',
+      ];
+      const lines = [
+        header.join(','),
+        ...all.map(v =>
+          [
+            v.id,
+            `"${(v.name || '').replace(/"/g, '""')}"`,
+            `"${(v.address || '').replace(/"/g, '""')}"`,
+            v.plan,
+            v.is_paused,
+            v.website_url || '',
+            v.phone_number || '',
+            v.created_at,
+          ].join(',')
+        ),
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'venues.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+    } finally {
+      setCsvExporting(false);
+    }
   };
 
   if (isLoading) {
     return (
       <RouteGuard requiredRoles={['cgi_admin']}>
         <PageLayout>
-          <div className="animate-pulse">Betöltés...</div>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Building className="h-8 w-8 text-cgi-secondary" />
+                <div>
+                  <h1 className="text-2xl font-bold text-cgi-surface-foreground">Helyszínek</h1>
+                  <p className="text-cgi-muted-foreground">Betöltés...</p>
+                </div>
+              </div>
+            </div>
+            <Card className="cgi-card p-6">
+              <div className="h-32 animate-pulse bg-cgi-muted rounded" />
+            </Card>
+          </div>
         </PageLayout>
       </RouteGuard>
     );
@@ -126,63 +161,28 @@ export default function Venues() {
                 <p className="text-cgi-muted-foreground">Venue-k kezelése és beállításai</p>
               </div>
             </div>
-            
-            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="cgi-button-primary">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Új helyszín
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Új helyszín létrehozása</DialogTitle>
-                </DialogHeader>
-                <VenueFormModal
-                  onSave={async (venueData) => {
-                    await dataProvider.create('venues', venueData);
-                    loadVenues();
-                    setIsCreateModalOpen(false);
-                  }}
-                />
-              </DialogContent>
-            </Dialog>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="cgi-button-secondary" onClick={() => setPage(1)}>
+                Frissítés
+              </Button>
+              <Button className="cgi-button-primary" onClick={exportCSV} disabled={csvExporting}>
+                CSV export
+              </Button>
+            </div>
           </div>
 
           {/* Filters */}
           <Card className="p-6 cgi-card">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cgi-muted-foreground" />
-                  <Input
-                    placeholder="Keresés név vagy cím alapján..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="cgi-input pl-10"
-                  />
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cgi-muted-foreground" />
+                <Input
+                  placeholder="Keresés név vagy cím alapján..."
+                  value={searchTerm}
+                  onChange={(e) => { setPage(1); setSearchTerm(e.target.value); }}
+                  className="cgi-input pl-10"
+                />
               </div>
-              
-              {allTags.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-cgi-surface-foreground">Szűrés tag-ek alapján:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {allTags.map(tag => (
-                      <Badge
-                        key={tag}
-                        variant={selectedTags.includes(tag) ? "default" : "outline"}
-                        className={`cursor-pointer cgi-badge ${
-                          selectedTags.includes(tag) ? 'bg-cgi-secondary text-cgi-secondary-foreground' : ''
-                        }`}
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </Card>
 
@@ -194,72 +194,90 @@ export default function Venues() {
                   <TableHead>Név</TableHead>
                   <TableHead>Cím</TableHead>
                   <TableHead>Csomag</TableHead>
-                  <TableHead>Free Drink</TableHead>
-                  <TableHead>Ma beváltva / Cap</TableHead>
-                  <TableHead>Tag-ek</TableHead>
+                  <TableHead>Státusz</TableHead>
+                  <TableHead>Telefon</TableHead>
+                  <TableHead>Web</TableHead>
+                  <TableHead>Létrehozva</TableHead>
                   <TableHead>Műveletek</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVenues.map((venue) => {
-                  const freeDrinkStatus = getFreeDrinkStatus(venue);
-                  const capStatus = getCapStatus(venue);
-                  
-                  return (
-                    <TableRow key={venue.id}>
-                      <TableCell className="font-medium">{venue.name}</TableCell>
-                      <TableCell className="text-cgi-muted-foreground">{venue.address}</TableCell>
-                      <TableCell>
-                        <Badge className={`${getPlanBadgeColor(venue.plan)} capitalize`}>
-                          {venue.plan}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={freeDrinkStatus.color}>
-                          {freeDrinkStatus.text}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{capStatus}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {venue.tags.slice(0, 3).map(tag => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {venue.tags.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{venue.tags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Link to={`/venues/${venue.id}`}>
-                            <Button variant="ghost" size="sm" className="cgi-button-ghost">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                {venues.map((venue) => (
+                  <TableRow key={venue.id}>
+                    <TableCell className="font-medium">{venue.name}</TableCell>
+                    <TableCell className="text-cgi-muted-foreground">{venue.address}</TableCell>
+                    <TableCell>
+                      <Badge className={`${planBadgeColor(venue.plan)} capitalize`}>{venue.plan}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {venue.is_paused ? (
+                        <Badge className="bg-cgi-error text-cgi-error-foreground">Szünetel</Badge>
+                      ) : (
+                        <Badge className="bg-cgi-success text-cgi-success-foreground">Aktív</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-cgi-muted-foreground">{venue.phone_number || '—'}</TableCell>
+                    <TableCell>
+                      {venue.website_url ? (
+                        <a
+                          href={venue.website_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cgi-secondary underline"
+                        >
+                          Megnyitás
+                        </a>
+                      ) : (
+                        <span className="text-cgi-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-cgi-muted-foreground">
+                      {new Date(venue.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Link to={`/venues/${venue.id}`}>
                           <Button variant="ghost" size="sm" className="cgi-button-ghost">
-                            <Edit className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        </Link>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
-            
-            {filteredVenues.length === 0 && (
+
+            {venues.length === 0 && (
               <div className="text-center py-8 text-cgi-muted-foreground">
-                {searchTerm || selectedTags.length > 0 
-                  ? 'Nincs a szűrési feltételeknek megfelelő helyszín.'
-                  : 'Még nincsenek helyszínek létrehozva.'
-                }
+                {runtimeConfig.useSupabase
+                  ? 'No venues yet'
+                  : 'Még nincsenek helyszínek létrehozva.'}
               </div>
             )}
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between p-4">
+              <span className="text-sm text-cgi-muted-foreground">Oldal: {page}</span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="cgi-button-secondary"
+                  disabled={page === 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  Előző
+                </Button>
+                <Button
+                  variant="outline"
+                  className="cgi-button-secondary"
+                  disabled={!hasMore}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Következő
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
       </PageLayout>
