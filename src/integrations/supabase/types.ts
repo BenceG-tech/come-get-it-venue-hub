@@ -337,6 +337,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_public_venues: {
+        Args: { limit_count?: number; search_term?: string }
+        Returns: {
+          address: string
+          created_at: string
+          description: string
+          id: string
+          is_paused: boolean
+          name: string
+          phone_number: string
+          plan: Database["public"]["Enums"]["venue_plan"]
+          website_url: string
+        }[]
+      }
       get_user_venue_ids: {
         Args: { user_id?: string }
         Returns: string[]
