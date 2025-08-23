@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,7 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Venues from "./pages/Venues";
 import VenueDetail from "./pages/VenueDetail";
+import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
 import NotFound from "./pages/NotFound";
 
@@ -50,26 +50,32 @@ const App = () => (
           } />
           
           <Route path="/transactions" element={
-            <ProtectedRoute>
+            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
               <Transactions />
-            </ProtectedRoute>
+            </RouteGuard>
           } />
           
           <Route path="/rewards" element={
-            <ProtectedRoute>
+            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
               <Rewards />
-            </ProtectedRoute>
+            </RouteGuard>
           } />
           
           <Route path="/analytics" element={
-            <ProtectedRoute>
+            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
               <Analytics />
-            </ProtectedRoute>
+            </RouteGuard>
           } />
           
           <Route path="/venues" element={
             <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
               <Venues />
+            </RouteGuard>
+          } />
+          
+          <Route path="/venues/comparison" element={
+            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+              <VenueComparison />
             </RouteGuard>
           } />
           
@@ -86,9 +92,9 @@ const App = () => (
           } />
           
           <Route path="/settings" element={
-            <ProtectedRoute>
+            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
               <Settings />
-            </ProtectedRoute>
+            </RouteGuard>
           } />
           
           <Route path="*" element={<NotFound />} />

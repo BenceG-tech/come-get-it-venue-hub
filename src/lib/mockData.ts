@@ -60,6 +60,221 @@ export const mockVenue: Venue = {
   }
 };
 
+// New Admin-specific KPI data
+export const mockAdminKPIData = {
+  total_redemptions: 1240,
+  total_revenue: 892000,
+  total_users: 456,
+  active_venues: 12,
+  platform_conversion_rate: 23.4
+};
+
+// New Owner-specific KPI data
+export const mockOwnerKPIData = {
+  daily_redemptions: 127,
+  daily_revenue: 89500,
+  returning_rate: 68,
+  avg_basket_value: 2340,
+  upsell_rate: 32,
+  clv: 8900
+};
+
+// New Staff-specific KPI data
+export const mockStaffKPIData = {
+  today_redemptions: 47,
+  active_free_drink: true,
+  cap_usage: 47,
+  last_redemption_time: '14:32'
+};
+
+// Admin trend data (platform-wide)
+export const mockAdminTrendData: TrendData[] = [
+  { date: '2024-08-17', redemptions: 950, revenue: 673000, users: 760 },
+  { date: '2024-08-18', redemptions: 1080, revenue: 782000, users: 820 },
+  { date: '2024-08-19', redemptions: 1340, revenue: 948000, users: 950 },
+  { date: '2024-08-20', redemptions: 890, revenue: 594000, users: 670 },
+  { date: '2024-08-21', redemptions: 1560, revenue: 1123000, users: 1040 },
+  { date: '2024-08-22', redemptions: 1430, revenue: 987000, users: 980 },
+  { date: '2024-08-23', redemptions: 1270, revenue: 895000, users: 890 }
+];
+
+// Top venues data for admin
+export const mockTopVenuesData = [
+  { name: 'Trendy Bar', revenue: 89500, redemptions: 127 },
+  { name: 'Rooftop Lounge', revenue: 78200, redemptions: 108 },
+  { name: 'Downtown Pub', revenue: 67800, redemptions: 94 },
+  { name: 'Sky Bar', revenue: 56900, redemptions: 82 },
+  { name: 'Garden Terrace', revenue: 45600, redemptions: 67 }
+];
+
+// Today's redemptions for staff
+export const mockTodayRedemptions: Redemption[] = [
+  {
+    id: 'red-today-1',
+    date: '2024-08-23',
+    time: '14:32',
+    user_id: 'usr_a1b2c3',
+    drink: 'Mojito',
+    value: 890,
+    location: 'Bar Counter',
+    user_type: 'returning',
+    venue_id: 'venue-1'
+  },
+  {
+    id: 'red-today-2',
+    date: '2024-08-23',
+    time: '14:28',
+    user_id: 'usr_d4e5f6',
+    drink: 'Whiskey Sour',
+    value: 950,
+    location: 'VIP Section',
+    user_type: 'new',
+    venue_id: 'venue-1'
+  },
+  {
+    id: 'red-today-3',
+    date: '2024-08-23',
+    time: '14:15',
+    user_id: 'usr_g7h8i9',
+    drink: 'Negroni',
+    value: 1200,
+    location: 'Terrace',
+    user_type: 'returning',
+    venue_id: 'venue-1'
+  },
+  {
+    id: 'red-today-4',
+    date: '2024-08-23',
+    time: '13:45',
+    user_id: 'usr_j1k2l3',
+    drink: 'Moscow Mule',
+    value: 750,
+    location: 'Bar Counter',
+    user_type: 'new',
+    venue_id: 'venue-1'
+  },
+  {
+    id: 'red-today-5',
+    date: '2024-08-23',
+    time: '13:22',
+    user_id: 'usr_m4n5o6',
+    drink: 'Old Fashioned',
+    value: 1100,
+    location: 'Lounge Area',
+    user_type: 'returning',
+    venue_id: 'venue-1'
+  }
+];
+
+// Today's top drinks for staff
+export const mockTodayTopDrinks: DrinkData[] = [
+  { name: 'Mojito', count: 12, revenue: 10680 },
+  { name: 'Whiskey Sour', count: 9, revenue: 8550 },
+  { name: 'Negroni', count: 8, revenue: 9600 },
+  { name: 'Moscow Mule', count: 7, revenue: 5250 },
+  { name: 'Old Fashioned', count: 6, revenue: 6600 }
+];
+
+// Venue comparison data for admin
+export const mockVenueComparisonData = [
+  {
+    id: 'venue-1',
+    name: 'Trendy Bar & Lounge',
+    plan: 'premium',
+    monthly_revenue: 268500,
+    redemptions: 3810,
+    avg_basket: 2340,
+    active_users: 456,
+    is_active: true
+  },
+  {
+    id: 'venue-2',
+    name: 'Rooftop Lounge',
+    plan: 'standard',
+    monthly_revenue: 234600,
+    redemptions: 3240,
+    avg_basket: 2180,
+    active_users: 389,
+    is_active: true
+  },
+  {
+    id: 'venue-3',
+    name: 'Downtown Pub',
+    plan: 'premium',
+    monthly_revenue: 203400,
+    redemptions: 2820,
+    avg_basket: 1980,
+    active_users: 324,
+    is_active: true
+  },
+  {
+    id: 'venue-4',
+    name: 'Sky Bar',
+    plan: 'basic',
+    monthly_revenue: 170700,
+    redemptions: 2460,
+    avg_basket: 1750,
+    active_users: 278,
+    is_active: false
+  },
+  {
+    id: 'venue-5',
+    name: 'Garden Terrace',
+    plan: 'standard',
+    monthly_revenue: 136800,
+    redemptions: 2010,
+    avg_basket: 1650,
+    active_users: 234,
+    is_active: true
+  }
+];
+
+// Comparison trend data for multiple venues
+export const mockComparisonTrend = [
+  { 
+    date: '2024-08-17', 
+    trendy_bar: 95, 
+    rooftop_lounge: 87, 
+    downtown_pub: 76 
+  },
+  { 
+    date: '2024-08-18', 
+    trendy_bar: 108, 
+    rooftop_lounge: 92, 
+    downtown_pub: 81 
+  },
+  { 
+    date: '2024-08-19', 
+    trendy_bar: 134, 
+    rooftop_lounge: 118, 
+    downtown_pub: 94 
+  },
+  { 
+    date: '2024-08-20', 
+    trendy_bar: 89, 
+    rooftop_lounge: 76, 
+    downtown_pub: 67 
+  },
+  { 
+    date: '2024-08-21', 
+    trendy_bar: 156, 
+    rooftop_lounge: 139, 
+    downtown_pub: 112 
+  },
+  { 
+    date: '2024-08-22', 
+    trendy_bar: 143, 
+    rooftop_lounge: 128, 
+    downtown_pub: 98 
+  },
+  { 
+    date: '2024-08-23', 
+    trendy_bar: 127, 
+    rooftop_lounge: 112, 
+    downtown_pub: 89 
+  }
+];
+
 export const mockKPIData: KPIData = {
   daily_redemptions: 127,
   revenue_generated: 89500,

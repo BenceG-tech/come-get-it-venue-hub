@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
@@ -13,7 +12,8 @@ import {
   X,
   Building,
   Factory,
-  LogOut
+  LogOut,
+  TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -21,12 +21,13 @@ import { sessionManager } from "@/auth/mockSession";
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
   { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
-  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
-  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
-  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'] },
+  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'] },
+  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner'] },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'] },
+  { name: 'Venue Összehasonlítás', href: '/venues/comparison', icon: TrendingUp, roles: ['cgi_admin'] },
   { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'] },
-  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'] },
 ];
 
 export function Sidebar() {

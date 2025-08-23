@@ -1,5 +1,6 @@
 
 import { DataProvider } from './index';
+import { sessionManager } from '@/auth/mockSession';
 
 const NAMESPACE = 'cgi_admin_v1';
 
@@ -26,10 +27,50 @@ class LocalStorageProvider implements DataProvider {
     }
   }
 
+  private filterByVenueAccess<T>(data: T[]): T[] {
+    const session = sessionManager.getCurrentSession();
+    if (!session) return [];
+    
+    // CGI Admin sees all data
+    if (session.user.role === 'cgi_admin') {
+      return data;
+    }
+    
+    // Owner and Staff see only their venues' data
+    return data.filter((item: any) => {
+      if (item.venue_id) {
+        return session.venues.includes(item.venue_id);
+      }
+      return true; // Keep items without venue_id
+    });
+  }
+
+  private filterTodayData<T>(data: T[]): T[] {
+    const today = new Date().toISOString().split('T')[0];
+    return data.filter((item: any) => {
+      if (item.date) {
+        return item.date === today;
+      }
+      if (item.timestamp) {
+        return item.timestamp.startsWith(today);
+      }
+      return true;
+    });
+  }
+
   async getList<T>(resource: string, filters?: any): Promise<T[]> {
     let data = this.getStorageData<T>(resource);
     
-    // Apply basic filters if provided
+    // Apply venue access filtering
+    data = this.filterByVenueAccess(data);
+    
+    // Staff only sees today's data for certain resources
+    const session = sessionManager.getCurrentSession();
+    if (session?.user.role === 'venue_staff' && ['redemptions', 'transactions'].includes(resource)) {
+      data = this.filterTodayData(data);
+    }
+    
+    // Apply additional filters if provided
     if (filters) {
       if (filters.venue_id) {
         data = data.filter((item: any) => item.venue_id === filters.venue_id);
@@ -44,13 +85,26 @@ class LocalStorageProvider implements DataProvider {
           item.tags && item.tags.some((tag: string) => filters.tags.includes(tag))
         );
       }
+      if (filters.date) {
+        data = data.filter((item: any) => item.date === filters.date);
+      }
     }
     
     return data;
   }
 
+  async getListForCurrentUser<T>(resource: string, filters?: any): Promise<T[]> {
+    // Helper method for explicit user-scoped data fetching
+    return this.getList(resource, filters);
+  }
+
+  async getTodayData<T>(resource: string): Promise<T[]> {
+    const data = await this.getListForCurrentUser(resource);
+    return this.filterTodayData(data);
+  }
+
   async getOne<T>(resource: string, id: string): Promise<T> {
-    const data = this.getStorageData<T>(resource);
+    const data = await this.getListForCurrentUser<T>(resource);
     const item = data.find((item: any) => item.id === id);
     if (!item) {
       throw new Error(`${resource} with id ${id} not found`);
