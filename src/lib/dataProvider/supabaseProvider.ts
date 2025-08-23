@@ -26,6 +26,82 @@ function logSbError(where: string, err: any) {
   });
 }
 
+// Allowed columns for the "venues" table so we don't send unsupported fields
+const VENUE_COLUMNS = new Set([
+  "name",
+  "address",
+  "description",
+  "plan",
+  "is_paused",
+  "phone_number",
+  "website_url",
+  "owner_profile_id",
+]);
+
+function pickVenueColumns(payload: any) {
+  const out: any = {};
+  Object.keys(payload || {}).forEach((k) => {
+    if (VENUE_COLUMNS.has(k)) out[k] = (payload as any)[k];
+  });
+  return out;
+}
+
+async function fetchVenueImages(venueId: string) {
+  const { data: imgs, error: imgsErr } = await supabase
+    .from("venue_images")
+    .select("id, url, label, is_cover, created_at")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: true });
+  if (imgsErr) {
+    logSbError("fetchVenueImages", imgsErr);
+    throw imgsErr;
+  }
+  // Map to camelCase for UI
+  return (imgs || []).map((i: any) => ({
+    id: i.id,
+    url: i.url,
+    label: i.label || "",
+    isCover: !!i.is_cover,
+  }));
+}
+
+async function replaceVenueImages(venueId: string, images: any[]) {
+  // Delete all images for this venue
+  const { error: delErr } = await supabase
+    .from("venue_images")
+    .delete()
+    .eq("venue_id", venueId);
+  if (delErr) {
+    logSbError("replaceVenueImages(delete)", delErr);
+    throw delErr;
+  }
+
+  if (!images || images.length === 0) return [];
+
+  const rows = images.map((img: any) => ({
+    venue_id: venueId,
+    url: img.url,
+    label: img.label || null,
+    is_cover: !!img.isCover,
+  }));
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("venue_images")
+    .insert(rows)
+    .select();
+  if (insErr) {
+    logSbError("replaceVenueImages(insert)", insErr);
+    throw insErr;
+  }
+
+  return (inserted || []).map((i: any) => ({
+    id: i.id,
+    url: i.url,
+    label: i.label || "",
+    isCover: !!i.is_cover,
+  }));
+}
+
 export const supabaseProvider: DataProvider & {
   getCount?: (resource: string, filters?: ListFilters) => Promise<number>;
   getPublicVenues?: (filters?: ListFilters) => Promise<any[]>;
@@ -116,6 +192,24 @@ export const supabaseProvider: DataProvider & {
 
   async getOne<T>(resource: string, id: string): Promise<T> {
     console.log("[supabaseProvider] getOne", resource, id);
+
+    if (resource === "venues") {
+      const { data: row, error } = await supabase
+        .from("venues")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) {
+        logSbError("getOne(venues)", error);
+        throw error;
+      }
+
+      // Attach images
+      const images = await fetchVenueImages(id);
+      const enriched = { ...(row as any), images };
+      return enriched as T;
+    }
+
     const { data, error } = await supabase
       .from(resource)
       .select("*")
@@ -143,6 +237,29 @@ export const supabaseProvider: DataProvider & {
       if (!payload.owner_profile_id) {
         payload = { ...payload, owner_profile_id: authData.user.id };
       }
+
+      // Extract images from payload; store only supported columns in venues
+      const images = Array.isArray(payload.images) ? payload.images : undefined;
+      const insertPayload = pickVenueColumns(payload);
+
+      const { data: row, error } = await supabase
+        .from("venues")
+        .insert(insertPayload as any)
+        .select()
+        .single();
+      if (error) {
+        logSbError("create(venues)", error);
+        throw error;
+      }
+
+      // If images provided, insert them into venue_images
+      if (images && images.length > 0) {
+        await replaceVenueImages(row.id, images);
+      }
+
+      // Return venue with images
+      const enriched = { ...(row as any), images: images ? await fetchVenueImages(row.id) : [] };
+      return enriched as T;
     }
 
     const { data: rows, error } = await supabase
@@ -159,6 +276,35 @@ export const supabaseProvider: DataProvider & {
 
   async update<T>(resource: string, id: string, data: Partial<T>): Promise<T> {
     console.log("[supabaseProvider] update", resource, id, data);
+
+    if (resource === "venues") {
+      const payload = data as any;
+      const images = Array.isArray(payload.images) ? payload.images : undefined;
+      const updatePayload = pickVenueColumns(payload);
+
+      // Update the venue row (only supported columns)
+      const { data: row, error } = await supabase
+        .from("venues")
+        .update(updatePayload as any)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) {
+        logSbError("update(venues)", error);
+        throw error;
+      }
+
+      // If images provided, sync them in venue_images
+      if (images) {
+        await replaceVenueImages(id, images);
+      }
+
+      // Return updated venue with images
+      const finalImages = await fetchVenueImages(id);
+      const enriched = { ...(row as any), images: finalImages };
+      return enriched as T;
+    }
+
     const { data: row, error } = await supabase
       .from(resource)
       .update(data as any)
