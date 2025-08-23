@@ -1,4 +1,3 @@
-
 import { DataProvider } from './index';
 import { sessionManager } from '@/auth/mockSession';
 
@@ -99,8 +98,8 @@ class LocalStorageProvider implements DataProvider {
   }
 
   async getTodayData<T>(resource: string): Promise<T[]> {
-    const data = await this.getListForCurrentUser(resource);
-    return this.filterTodayData(data);
+    const data = await this.getListForCurrentUser<T>(resource);
+    return this.filterTodayData<T>(data as T[]);
   }
 
   async getOne<T>(resource: string, id: string): Promise<T> {
