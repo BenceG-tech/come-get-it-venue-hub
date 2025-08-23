@@ -1,99 +1,41 @@
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Come Get It Design System - Dark theme with cyan accents */
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 13% 9%;
+    --foreground: 220 9% 95%;
+    --card: 220 13% 11%;
+    --card-foreground: 220 9% 95%;
+    --popover: 220 13% 11%;
+    --popover-foreground: 220 9% 95%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 220 13% 9%;
+    --secondary: 220 13% 15%;
+    --secondary-foreground: 220 9% 95%;
+    --muted: 220 13% 15%;
+    --muted-foreground: 220 9% 60%;
+    --accent: 180 100% 50%;
+    --accent-foreground: 220 13% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 9% 95%;
+    --border: 220 13% 20%;
+    --input: 220 13% 15%;
+    --ring: 180 100% 50%;
+    --radius: 0.5rem;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.75rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    /* Come Get It Brand Colors - Dark Theme */
-    --cgi-primary: 0 0% 4%; /* Deep black */
-    --cgi-primary-foreground: 0 0% 98%;
-    --cgi-secondary: 188 94% 43%; /* Cyan accent */
-    --cgi-secondary-foreground: 0 0% 98%;
-    --cgi-surface: 0 0% 8%; /* Dark card background */
-    --cgi-surface-foreground: 0 0% 92%;
-    --cgi-muted: 0 0% 15%; /* Subtle gray */
-    --cgi-muted-foreground: 0 0% 60%;
-  }
-
-  .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 4%;
-
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 188 94% 43%;
-
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 0 0% 92%;
-    --sidebar-primary: 188 94% 43%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 188 94% 43%;
+    /* Come Get It specific colors */
+    --cgi-primary: 180 100% 50%;
+    --cgi-primary-foreground: 220 13% 9%;
+    --cgi-secondary: 180 100% 50%;
+    --cgi-secondary-foreground: 220 13% 9%;
+    --cgi-surface: 220 13% 11%;
+    --cgi-surface-foreground: 220 9% 95%;
+    --cgi-muted: 220 13% 20%;
+    --cgi-muted-foreground: 220 9% 60%;
   }
 }
 
@@ -101,132 +43,83 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-cgi-primary text-cgi-primary-foreground font-sans antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-cgi-muted;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-cgi-muted-foreground rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-cgi-secondary;
+    @apply bg-cgi-surface text-cgi-surface-foreground;
   }
 }
 
 @layer components {
-  /* Layout Components */
+  /* Page Layout */
   .cgi-page {
-    @apply min-h-screen bg-cgi-primary;
+    @apply bg-cgi-surface min-h-screen;
   }
-
+  
   .cgi-container {
-    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+    @apply container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  /* Cards */
   .cgi-card {
-    @apply rounded-xl border border-cgi-muted bg-cgi-surface p-6 shadow-lg backdrop-blur-sm transition-all duration-200 hover:border-cgi-secondary/20;
+    @apply bg-cgi-surface border border-cgi-muted rounded-lg p-6 shadow-sm;
   }
-
+  
   .cgi-card-header {
-    @apply mb-4 flex items-center justify-between;
+    @apply flex flex-row items-center justify-between space-y-0 pb-2;
   }
-
+  
   .cgi-card-title {
-    @apply text-lg font-semibold text-cgi-surface-foreground;
+    @apply text-sm font-medium text-cgi-surface-foreground;
   }
-
+  
   .cgi-card-value {
-    @apply text-2xl font-bold text-cgi-secondary;
-  }
-
-  /* Navigation */
-  .cgi-nav-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-cgi-muted-foreground transition-all duration-200 hover:bg-cgi-muted hover:text-cgi-secondary;
-  }
-
-  .cgi-nav-item.active {
-    @apply bg-cgi-secondary/10 text-cgi-secondary;
-  }
-
-  /* Forms */
-  .cgi-input {
-    @apply flex h-10 w-full rounded-md border border-cgi-muted bg-cgi-surface px-3 py-2 text-sm text-cgi-surface-foreground ring-offset-cgi-primary file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-cgi-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cgi-secondary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply text-2xl font-bold text-cgi-surface-foreground;
   }
 
   /* Buttons */
   .cgi-button-primary {
-    @apply inline-flex items-center justify-center rounded-md bg-cgi-secondary px-4 py-2 text-sm font-medium text-cgi-secondary-foreground ring-offset-cgi-primary transition-colors hover:bg-cgi-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cgi-secondary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-cgi-primary text-cgi-primary-foreground hover:bg-cgi-primary/90;
   }
-
+  
   .cgi-button-secondary {
-    @apply inline-flex items-center justify-center rounded-md border border-cgi-muted bg-transparent px-4 py-2 text-sm font-medium text-cgi-surface-foreground ring-offset-cgi-primary transition-colors hover:bg-cgi-muted hover:text-cgi-surface-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cgi-secondary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted/80 border border-cgi-muted;
   }
-
+  
   .cgi-button-ghost {
-    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-cgi-muted-foreground ring-offset-cgi-primary transition-colors hover:bg-cgi-muted hover:text-cgi-surface-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cgi-secondary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply hover:bg-cgi-muted text-cgi-surface-foreground;
+  }
+  
+  .cgi-button-error {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
   }
 
-  /* Tables */
-  .cgi-table {
-    @apply w-full caption-bottom text-sm;
+  /* Navigation */
+  .cgi-nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-cgi-muted-foreground transition-all hover:text-cgi-surface-foreground hover:bg-cgi-muted;
+  }
+  
+  .cgi-nav-item.active {
+    @apply bg-cgi-secondary text-cgi-secondary-foreground;
   }
 
-  .cgi-table-header {
-    @apply [&_tr]:border-b [&_tr]:border-cgi-muted;
+  /* Forms */
+  .cgi-input {
+    @apply flex h-10 w-full rounded-md border border-cgi-muted bg-cgi-surface px-3 py-2 text-sm text-cgi-surface-foreground placeholder:text-cgi-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cgi-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cgi-surface disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  .cgi-table-body {
-    @apply [&_tr:last-child]:border-0 [&_tr]:border-b [&_tr]:border-cgi-muted/50;
-  }
-
-  .cgi-table-row {
-    @apply border-b border-cgi-muted/50 transition-colors hover:bg-cgi-muted/50 data-[state=selected]:bg-cgi-muted;
-  }
-
-  /* Status badges */
+  /* Badges */
   .cgi-badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors;
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
   }
-
+  
   .cgi-badge-success {
-    @apply bg-green-500/10 text-green-400 border border-green-500/20;
+    @apply border-transparent bg-cgi-secondary text-cgi-secondary-foreground;
   }
-
+  
   .cgi-badge-warning {
-    @apply bg-yellow-500/10 text-yellow-400 border border-yellow-500/20;
+    @apply border-transparent bg-yellow-500 text-yellow-50;
   }
-
-  .cgi-badge-error {
-    @apply bg-red-500/10 text-red-400 border border-red-500/20;
-  }
-
+  
   .cgi-badge-info {
-    @apply bg-cgi-secondary/10 text-cgi-secondary border border-cgi-secondary/20;
-  }
-}
-
-@layer utilities {
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .text-gradient {
-    @apply bg-gradient-to-r from-cgi-secondary to-cgi-secondary/80 bg-clip-text text-transparent;
-  }
-
-  .glass-effect {
-    @apply bg-cgi-surface/80 backdrop-blur-xl border border-cgi-muted/20;
+    @apply border-transparent bg-cgi-muted text-cgi-surface-foreground;
   }
 }

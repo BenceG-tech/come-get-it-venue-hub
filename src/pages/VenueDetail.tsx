@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
@@ -26,20 +27,11 @@ import {
 } from '@/lib/businessLogic';
 import { Venue, FreeDrinkWindow } from '@/lib/types';
 
-interface CapData {
-  label: string;
-  used: number;
-  limit: number;
-}
-
 export default function VenueDetail() {
   const { id } = useParams<{ id: string }>();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
-  const [activeFreeDrinkStatus, setActiveFreeDrinkStatus] = useState({ isActive: false });
-  const [nextWindow, setNextWindow] = useState<FreeDrinkWindow | null>(null);
-  const [capData, setCapData] = useState<CapData[]>([]);
 
   useEffect(() => {
     const loadVenue = async () => {
@@ -59,22 +51,6 @@ export default function VenueDetail() {
     loadVenue();
     seedData(); // Ensure mock data is seeded
   }, [id]);
-
-  useEffect(() => {
-    if (venue) {
-      setActiveFreeDrinkStatus(getActiveFreeDrinkStatus(venue.freeDrinkWindows));
-      setNextWindow(getNextActiveWindow(venue.freeDrinkWindows));
-
-      // Prepare cap usage data
-      const dailyCap = calculateCapUsage(venue.caps.daily, 50);
-      const hourlyCap = calculateCapUsage(venue.caps.hourly, 10);
-
-      setCapData([
-        { label: 'Napi limit', used: dailyCap.used, limit: dailyCap.limit },
-        { label: 'Óránkénti limit', used: hourlyCap.used, limit: hourlyCap.limit },
-      ]);
-    }
-  }, [venue]);
 
   const handlePauseToggle = async () => {
     if (!venue) return;
@@ -103,17 +79,44 @@ export default function VenueDetail() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="cgi-page flex bg-cgi-surface">
+        <Sidebar />
+        <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
+          <div className="cgi-container py-8">
+            <div className="text-cgi-surface-foreground">Loading...</div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (!venue) {
-    return <div>Venue not found</div>;
+    return (
+      <div className="cgi-page flex bg-cgi-surface">
+        <Sidebar />
+        <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
+          <div className="cgi-container py-8">
+            <div className="text-cgi-surface-foreground">Venue not found</div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
+  // Fix: Pass complete venue object and current date to business logic functions
+  const now = new Date();
+  const activeFreeDrinkStatus = getActiveFreeDrinkStatus(venue, now);
+  const nextWindow = getNextActiveWindow(venue, now);
+  
+  // Fix: Calculate cap usage with proper venue object and mock redemption count
+  const mockRedemptionCount = 50; // This should come from actual data
+  const capUsage = calculateCapUsage(venue, mockRedemptionCount);
+
   return (
-    <div className="cgi-page flex">
+    <div className="cgi-page flex bg-cgi-surface">
       <Sidebar />
-      <main className="flex-1 lg:ml-0 min-h-screen">
+      <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
         <div className="cgi-container py-8">
           <div className="mb-8 flex items-start justify-between">
             <div>
@@ -124,18 +127,22 @@ export default function VenueDetail() {
               </p>
               <div className="flex gap-2 mt-2">
                 {venue.tags.map(tag => (
-                  <Badge key={tag} className="cgi-badge">{tag}</Badge>
+                  <Badge key={tag} className="cgi-badge bg-cgi-secondary text-cgi-secondary-foreground">{tag}</Badge>
                 ))}
               </div>
             </div>
 
             <div className="flex items-start gap-4">
-              <VenueFormModal venue={venue} onSave={handleVenueSave}>
-                <Button variant="outline" className="cgi-button-secondary">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Szerkesztés
-                </Button>
-              </VenueFormModal>
+              <VenueFormModal 
+                venue={venue} 
+                onSave={handleVenueSave}
+                trigger={
+                  <Button variant="outline" className="cgi-button-secondary">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Szerkesztés
+                  </Button>
+                }
+              />
               
               <Button 
                 variant={isPaused ? 'default' : 'destructive'} 
@@ -161,83 +168,81 @@ export default function VenueDetail() {
             <KPICard 
               title="Mai forgalom" 
               value={formatCurrency(123456)} 
-              icon={TrendingUp} 
-              helpText="A mai napon eddig realizált forgalom"
+              icon={TrendingUp}
             />
             <KPICard 
               title="Mai ingyenes italok" 
               value="89" 
-              icon={Users} 
-              helpText="A mai napon eddig felhasznált ingyenes italok száma"
+              icon={Users}
             />
             <KPICard 
               title="Aktív vendégek" 
               value="42" 
-              icon={Building} 
-              helpText="Jelenleg a helyszínen tartózkodó aktív vendégek száma"
+              icon={Building}
             />
             <KPICard 
               title="Következő akció" 
               value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}
-              icon={Clock} 
-              helpText="A következő ingyenes ital akció időpontja"
+              icon={Clock}
             />
           </div>
 
           <Tabs defaultValue="analytics" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="analytics">Analitika</TabsTrigger>
-              <TabsTrigger value="management">Kezelés</TabsTrigger>
-              <TabsTrigger value="settings">Beállítások</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 bg-cgi-muted">
+              <TabsTrigger value="analytics" className="text-cgi-surface-foreground">Analitika</TabsTrigger>
+              <TabsTrigger value="management" className="text-cgi-surface-foreground">Kezelés</TabsTrigger>
+              <TabsTrigger value="settings" className="text-cgi-surface-foreground">Beállítások</TabsTrigger>
             </TabsList>
             
             <TabsContent value="analytics" className="space-y-4">
-              <ChartCard title="Forgalom alakulása" />
+              <ChartCard title="Forgalom alakulása">
+                <div className="h-64 flex items-center justify-center text-cgi-muted-foreground">
+                  Chart placeholder - forgalom alakulása
+                </div>
+              </ChartCard>
             </TabsContent>
 
             <TabsContent value="management" className="space-y-4">
-              <Card className="cgi-card">
+              <Card className="cgi-card bg-cgi-surface border-cgi-muted">
                 <div className="cgi-card-header">
-                  <h3 className="cgi-card-title">Napi limitek</h3>
+                  <h3 className="cgi-card-title text-cgi-surface-foreground">Napi limitek</h3>
                 </div>
                 <div className="space-y-4">
-                  {capData.map((cap, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>{cap.label}</Label>
-                        <span className="text-sm text-cgi-muted-foreground">
-                          {cap.used} / {cap.limit}
-                        </span>
-                      </div>
-                      <CapProgressBar value={(cap.used / cap.limit) * 100} />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-cgi-surface-foreground">Napi limit</Label>
+                      <span className="text-sm text-cgi-muted-foreground">
+                        {capUsage.used} / {capUsage.limit}
+                      </span>
                     </div>
-                  ))}
+                    <CapProgressBar usage={capUsage} />
+                  </div>
                 </div>
               </Card>
             </TabsContent>
 
             <TabsContent value="settings" className="space-y-4">
-              <Card className="cgi-card">
+              <Card className="cgi-card bg-cgi-surface border-cgi-muted">
                 <div className="cgi-card-header">
-                  <h3 className="cgi-card-title">Beállítások</h3>
+                  <h3 className="cgi-card-title text-cgi-surface-foreground">Beállítások</h3>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="venue-name">Helyszín neve</Label>
+                    <Label htmlFor="venue-name" className="text-cgi-surface-foreground">Helyszín neve</Label>
                     <input
                       type="text"
                       id="venue-name"
-                      className="cgi-input"
+                      className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
                       value={venue.name}
                       readOnly
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="venue-address">Cím</Label>
+                    <Label htmlFor="venue-address" className="text-cgi-surface-foreground">Cím</Label>
                     <input
                       type="text"
                       id="venue-address"
-                      className="cgi-input"
+                      className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
                       value={venue.address}
                       readOnly
                     />
