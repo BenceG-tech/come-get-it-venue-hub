@@ -1,3 +1,4 @@
+
 import { DataProvider } from './index';
 import { sessionManager } from '@/auth/mockSession';
 
@@ -162,4 +163,6 @@ class LocalStorageProvider implements DataProvider {
   }
 }
 
-export const dataProvider = new LocalStorageProvider();
+// Export both named and default for compatibility
+export const localStorageProvider = new LocalStorageProvider();
+export default localStorageProvider;

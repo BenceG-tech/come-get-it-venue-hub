@@ -58,6 +58,11 @@ class MockSessionManager {
     localStorage.removeItem('cgi_admin_session');
   }
 
+  // Add clear() method that calls clearSession() for consistency
+  clear(): void {
+    this.clearSession();
+  }
+
   canAccessVenue(venueId: string): boolean {
     const session = this.getCurrentSession();
     if (!session) return false;

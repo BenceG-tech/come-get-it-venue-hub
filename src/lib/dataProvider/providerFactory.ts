@@ -2,7 +2,7 @@
 import type { DataProvider } from "./index";
 import { supabaseProvider } from "./supabaseProvider";
 import { runtimeConfig } from "@/config/runtime";
-import localStorageProvider from "@/lib/dataProvider/localStorageProvider";
+import localStorageProvider from "./localStorageProvider";
 
 /**
  * Returns the active DataProvider.
@@ -15,5 +15,5 @@ export function getDataProvider(): DataProvider {
     return supabaseProvider;
   }
   console.log("[providerFactory] Using localStorage provider (fallback)");
-  return localStorageProvider as unknown as DataProvider;
+  return localStorageProvider;
 }
