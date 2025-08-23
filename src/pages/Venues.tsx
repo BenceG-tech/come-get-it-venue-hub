@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,8 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Building, Plus, Search, Eye } from 'lucide-react';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
+import { VenueFormModal } from '@/components/VenueFormModal';
+import { useToast } from '@/hooks/use-toast';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { runtimeConfig } from '@/config/runtime';
+import type { Venue } from '@/lib/types';
 
 type VenueRow = {
   id: string;
@@ -32,7 +34,9 @@ export default function Venues() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [csvExporting, setCsvExporting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const dataProvider = getDataProvider();
+  const { toast } = useToast();
 
   useEffect(() => {
     loadVenues();
@@ -57,8 +61,50 @@ export default function Venues() {
     } catch (error) {
       console.error('Error loading venues:', error);
       setVenues([]);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült betölteni a helyszíneket.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateVenue = async (venueData: Partial<Venue>) => {
+    setIsCreating(true);
+    try {
+      // Transform the venue data for Supabase
+      const createData = {
+        name: venueData.name,
+        address: venueData.address,
+        description: venueData.description,
+        plan: venueData.plan || 'basic',
+        is_paused: venueData.is_paused || false,
+        phone_number: venueData.phone_number,
+        website_url: venueData.website_url,
+        // Note: owner_profile_id will be set by the backend based on auth.uid()
+      };
+
+      await dataProvider.create('venues', createData);
+      
+      toast({
+        title: "Siker",
+        description: "Helyszín sikeresen létrehozva!",
+      });
+
+      // Refresh the venues list
+      setPage(1);
+      await loadVenues();
+    } catch (error) {
+      console.error('Error creating venue:', error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült létrehozni a helyszínt.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -162,6 +208,15 @@ export default function Venues() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <VenueFormModal
+                onSave={handleCreateVenue}
+                trigger={
+                  <Button className="cgi-button-primary" disabled={isCreating}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isCreating ? 'Létrehozás...' : 'Új helyszín'}
+                  </Button>
+                }
+              />
               <Button variant="outline" className="cgi-button-secondary" onClick={() => setPage(1)}>
                 Frissítés
               </Button>
@@ -251,7 +306,7 @@ export default function Venues() {
             {venues.length === 0 && (
               <div className="text-center py-8 text-cgi-muted-foreground">
                 {runtimeConfig.useSupabase
-                  ? 'No venues yet'
+                  ? 'Még nincsenek helyszínek létrehozva.'
                   : 'Még nincsenek helyszínek létrehozva.'}
               </div>
             )}
