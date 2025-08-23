@@ -3,34 +3,27 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Clock, Gift, Star } from 'lucide-react';
+import { Search, MapPin, Gift, Star, Sparkles } from 'lucide-react';
 import { usePublicVenues } from '@/hooks/usePublicVenues';
+import PublicVenueCard from '@/components/PublicVenueCard';
 
 export default function PublicHome() {
   const [searchTerm, setSearchTerm] = useState('');
   const { venues, isLoading, error } = usePublicVenues(searchTerm);
-
-  const planBadgeColor = (plan: 'basic' | 'standard' | 'premium') => {
-    switch (plan) {
-      case 'premium':
-        return 'bg-cgi-secondary text-cgi-secondary-foreground';
-      case 'standard':
-        return 'bg-cgi-primary/10 text-cgi-primary border border-cgi-primary/30';
-      case 'basic':
-      default:
-        return 'bg-cgi-muted text-cgi-muted-foreground';
-    }
-  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-cgi-surface">
         <div className="cgi-container py-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-4">Come Get It</h1>
-            <p className="text-cgi-muted-foreground">Betöltés...</p>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Gift className="h-8 w-8 text-cgi-secondary animate-bounce" />
+              <h1 className="text-3xl font-bold text-cgi-surface-foreground">Come Get It</h1>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cgi-primary"></div>
+              <p className="text-cgi-muted-foreground">Betöltés...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -40,11 +33,14 @@ export default function PublicHome() {
   return (
     <div className="min-h-screen bg-cgi-surface">
       {/* Header */}
-      <header className="bg-cgi-surface border-b border-cgi-muted">
+      <header className="bg-cgi-surface border-b border-cgi-muted sticky top-0 z-50 backdrop-blur-sm bg-cgi-surface/95">
         <div className="cgi-container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Gift className="h-8 w-8 text-cgi-secondary" />
+              <div className="relative">
+                <Gift className="h-8 w-8 text-cgi-secondary" />
+                <Sparkles className="h-4 w-4 text-cgi-primary absolute -top-1 -right-1" />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-cgi-surface-foreground">Come Get It</h1>
                 <p className="text-sm text-cgi-muted-foreground">Fedezd fel az ingyenes italokat</p>
@@ -67,24 +63,46 @@ export default function PublicHome() {
       </header>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-cgi-primary/10 to-cgi-secondary/10 py-16">
-        <div className="cgi-container text-center">
-          <h2 className="text-4xl font-bold text-cgi-surface-foreground mb-4">
-            Ingyenes italok a kedvenc helyeidtől
-          </h2>
-          <p className="text-xl text-cgi-muted-foreground mb-8 max-w-2xl mx-auto">
-            Fedezd fel a környékbeli bárokat és éttermeket, és élvezd az ingyenes italokat különleges időablakokban.
-          </p>
-          
-          {/* Search Bar */}
-          <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-cgi-muted-foreground" />
-            <Input
-              placeholder="Keresés helyszín vagy név alapján..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="cgi-input pl-10 h-12 text-lg"
-            />
+      <section className="bg-gradient-to-br from-cgi-primary/10 via-cgi-secondary/10 to-cgi-primary/5 py-16 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+        <div className="cgi-container text-center relative">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-bold text-cgi-surface-foreground mb-4">
+              Ingyenes italok a
+              <span className="text-cgi-primary"> kedvenc helyeidtől</span>
+            </h2>
+            <p className="text-xl text-cgi-muted-foreground mb-8 max-w-2xl mx-auto">
+              Fedezd fel a környékbeli bárokat és éttermeket, és élvezd az ingyenes italokat különleges időablakokban.
+            </p>
+            
+            {/* Enhanced Search Bar */}
+            <div className="max-w-lg mx-auto relative mb-8">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cgi-muted-foreground" />
+                <Input
+                  placeholder="Keresés helyszín vagy név alapján..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="cgi-input pl-12 pr-4 h-14 text-lg shadow-lg border-0 ring-1 ring-cgi-muted/20 focus:ring-cgi-primary focus:ring-2"
+                />
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="flex items-center justify-center gap-8 text-sm text-cgi-muted-foreground">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-cgi-primary" />
+                <span>{venues.length} aktív helyszín</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Gift className="h-4 w-4 text-cgi-secondary" />
+                <span>Ingyenes italok</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-cgi-success" />
+                <span>Minőségi partnerek</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -93,82 +111,123 @@ export default function PublicHome() {
       <section className="py-12">
         <div className="cgi-container">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-2xl font-bold text-cgi-surface-foreground">
-              Elérhető helyszínek ({venues.length})
-            </h3>
+            <div>
+              <h3 className="text-2xl font-bold text-cgi-surface-foreground">
+                Elérhető helyszínek
+              </h3>
+              <p className="text-cgi-muted-foreground mt-1">
+                {venues.length} helyszín {searchTerm && `"${searchTerm}" keresésre`}
+              </p>
+            </div>
+            
+            {venues.length > 0 && (
+              <div className="text-sm text-cgi-muted-foreground">
+                Frissítve: most
+              </div>
+            )}
           </div>
 
           {error && (
             <div className="text-center py-8">
-              <p className="text-cgi-error">{error}</p>
+              <div className="bg-cgi-error/10 border border-cgi-error/20 rounded-lg p-6 max-w-md mx-auto">
+                <Gift className="h-12 w-12 text-cgi-error mx-auto mb-3" />
+                <p className="text-cgi-error font-medium">{error}</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4" 
+                  onClick={() => window.location.reload()}
+                >
+                  Újrapróbálás
+                </Button>
+              </div>
             </div>
           )}
 
           {!error && venues.length === 0 ? (
-            <div className="text-center py-12">
-              <Gift className="h-16 w-16 text-cgi-muted mx-auto mb-4" />
-              <h4 className="text-xl font-semibold text-cgi-surface-foreground mb-2">
-                Nincsenek elérhető helyszínek
-              </h4>
-              <p className="text-cgi-muted-foreground">
-                Próbálj meg egy másik keresési kifejezést.
-              </p>
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <Gift className="h-20 w-20 text-cgi-muted mx-auto mb-6 opacity-50" />
+                <h4 className="text-xl font-semibold text-cgi-surface-foreground mb-3">
+                  {searchTerm 
+                    ? `Nincs találat "${searchTerm}" keresésre` 
+                    : 'Nincsenek elérhető helyszínek'
+                  }
+                </h4>
+                <p className="text-cgi-muted-foreground mb-6">
+                  {searchTerm 
+                    ? 'Próbálj meg egy másik keresési kifejezést, vagy böngészd az összes helyszínt.'
+                    : 'Jelenleg nincsenek aktív partnerhelyszínek. Nézz vissza később!'
+                  }
+                </p>
+                {searchTerm && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSearchTerm('')}
+                    className="cgi-button-secondary"
+                  >
+                    Összes helyszín megjelenítése
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {venues.map((venue) => (
-                <Card key={venue.id} className="cgi-card overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer">
-                  <Link to={`/venue/${venue.id}`}>
-                    <div className="aspect-video bg-gradient-to-br from-cgi-primary/20 to-cgi-secondary/20 flex items-center justify-center">
-                      <Gift className="h-12 w-12 text-cgi-primary" />
-                    </div>
-                    
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="text-lg font-semibold text-cgi-surface-foreground line-clamp-1">
-                          {venue.name}
-                        </h4>
-                        <Badge className={`${planBadgeColor(venue.plan)} capitalize ml-2`}>
-                          {venue.plan}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-cgi-muted-foreground mb-3">
-                        <MapPin className="h-4 w-4" />
-                        <span className="text-sm line-clamp-1">{venue.address}</span>
-                      </div>
-                      
-                      {venue.description && (
-                        <p className="text-sm text-cgi-muted-foreground mb-4 line-clamp-2">
-                          {venue.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-cgi-success">
-                          <Star className="h-4 w-4" />
-                          <span className="text-sm font-medium">Ingyenes italok</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-cgi-muted-foreground">
-                          <Clock className="h-4 w-4" />
-                          <span className="text-sm">Nyitva</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </Card>
+                <PublicVenueCard key={venue.id} venue={venue} />
               ))}
             </div>
           )}
         </div>
       </section>
 
+      {/* Call to Action */}
+      {venues.length > 0 && (
+        <section className="bg-cgi-muted/20 py-12 mt-12">
+          <div className="cgi-container text-center">
+            <h3 className="text-2xl font-bold text-cgi-surface-foreground mb-4">
+              Készen állsz az ingyenes italokra?
+            </h3>
+            <p className="text-cgi-muted-foreground mb-6 max-w-2xl mx-auto">
+              Regisztrálj most, és kezd el felfedezni a legjobb helyeket a környékeden. 
+              Minden nap új lehetőségek várnak rád!
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <Link to="/login">
+                <Button size="lg" className="cgi-button-primary">
+                  <Gift className="h-5 w-5 mr-2" />
+                  Regisztrálás most
+                </Button>
+              </Link>
+              <Link to="/dashboard">
+                <Button variant="outline" size="lg" className="cgi-button-secondary">
+                  Partner lettél?
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Footer */}
-      <footer className="bg-cgi-muted/30 border-t border-cgi-muted py-8 mt-12">
-        <div className="cgi-container text-center">
-          <p className="text-cgi-muted-foreground">
-            © 2025 Come Get It. Minden jog fenntartva.
-          </p>
+      <footer className="bg-cgi-muted/30 border-t border-cgi-muted py-8">
+        <div className="cgi-container">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Gift className="h-6 w-6 text-cgi-secondary" />
+              <span className="text-cgi-surface-foreground font-medium">Come Get It</span>
+            </div>
+            <p className="text-cgi-muted-foreground text-sm">
+              © 2025 Come Get It. Minden jog fenntartva.
+            </p>
+            <div className="flex items-center gap-4 text-sm">
+              <Link to="/privacy" className="text-cgi-muted-foreground hover:text-cgi-primary">
+                Adatvédelem
+              </Link>
+              <Link to="/terms" className="text-cgi-muted-foreground hover:text-cgi-primary">
+                Felhasználási feltételek
+              </Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

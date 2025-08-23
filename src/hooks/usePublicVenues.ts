@@ -26,16 +26,28 @@ export function usePublicVenues(searchTerm?: string) {
       setError(null);
       
       try {
-        const allVenues = await dataProvider.getList<PublicVenue>('venues', {
-          search: searchTerm || undefined,
-          orderBy: 'created_at',
-          orderDir: 'desc',
-          limit: 50,
-        } as any);
+        let allVenues: PublicVenue[] = [];
         
-        // Filter active venues only
-        const activeVenues = allVenues.filter(venue => !venue.is_paused);
-        setVenues(activeVenues);
+        // Try to use the new public venues method if available
+        if ('getPublicVenues' in dataProvider && typeof dataProvider.getPublicVenues === 'function') {
+          allVenues = await dataProvider.getPublicVenues({
+            search: searchTerm || undefined,
+            limit: 50,
+          });
+        } else {
+          // Fallback to regular getList method
+          allVenues = await dataProvider.getList<PublicVenue>('venues', {
+            search: searchTerm || undefined,
+            orderBy: 'created_at',
+            orderDir: 'desc',
+            limit: 50,
+          } as any);
+          
+          // Filter active venues only in fallback mode
+          allVenues = allVenues.filter(venue => !venue.is_paused);
+        }
+        
+        setVenues(allVenues);
       } catch (err) {
         console.error('Error loading venues:', err);
         setError('Nem sikerült betölteni a helyszíneket');

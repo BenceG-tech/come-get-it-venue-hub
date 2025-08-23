@@ -28,6 +28,7 @@ function logSbError(where: string, err: any) {
 
 export const supabaseProvider: DataProvider & {
   getCount?: (resource: string, filters?: ListFilters) => Promise<number>;
+  getPublicVenues?: (filters?: ListFilters) => Promise<any[]>;
 } = {
   async getList<T>(resource: string, filters?: ListFilters): Promise<T[]> {
     console.log("[supabaseProvider] getList", resource, filters);
@@ -71,6 +72,46 @@ export const supabaseProvider: DataProvider & {
       throw error;
     }
     return (data as T[]) ?? [];
+  },
+
+  // New method for public venue access
+  async getPublicVenues(filters?: ListFilters): Promise<any[]> {
+    console.log("[supabaseProvider] getPublicVenues", filters);
+    
+    // Use RPC call for public venue access to bypass RLS
+    let query = supabase.rpc('get_public_venues', {
+      search_term: filters?.search || null,
+      limit_count: filters?.limit || 50
+    });
+
+    const { data, error } = await query;
+    if (error) {
+      // Fallback to regular query if RPC doesn't exist yet
+      console.warn("RPC get_public_venues not found, using fallback");
+      let fallbackQuery = supabase.from('venues').select(`
+        id, name, address, description, plan, phone_number, 
+        website_url, is_paused, created_at
+      `).eq('is_paused', false);
+
+      if (filters?.search && filters.search.trim().length > 0) {
+        const term = filters.search.trim();
+        fallbackQuery = fallbackQuery.or(`name.ilike.%${term}%,address.ilike.%${term}%`);
+      }
+
+      fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
+      
+      if (filters?.limit) {
+        fallbackQuery = fallbackQuery.limit(filters.limit);
+      }
+
+      const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+      if (fallbackError) {
+        logSbError("getPublicVenues fallback", fallbackError);
+        throw fallbackError;
+      }
+      return fallbackData ?? [];
+    }
+    return data ?? [];
   },
 
   async getOne<T>(resource: string, id: string): Promise<T> {
