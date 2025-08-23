@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +17,8 @@ import VenueDetail from "./pages/VenueDetail";
 import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
 import NotFound from "./pages/NotFound";
+import PublicHome from "./pages/PublicHome";
+import PublicVenueDetail from "./pages/PublicVenueDetail";
 
 const queryClient = new QueryClient();
 
@@ -34,9 +37,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Public routes */}
+          <Route path="/" element={<PublicHome />} />
+          <Route path="/venue/:id" element={<PublicVenueDetail />} />
           <Route path="/login" element={<Login />} />
           
+          {/* Protected admin/partner routes */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
