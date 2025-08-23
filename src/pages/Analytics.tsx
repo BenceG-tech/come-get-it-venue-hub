@@ -64,7 +64,11 @@ export default function Analytics() {
           </div>
 
           {/* Redemption Timeseries */}
-          <ChartCard title="Italbeváltások idősor" className="mb-8">
+          <ChartCard 
+            title="Italbeváltások idősor" 
+            className="mb-8"
+            tooltip="Ez a grafikon mutatja az italbeváltások számának alakulását az aktuális és az előző hét során. A folyamatos vonal az aktuális hetet, a szaggatott vonal az előző hetet jelöli."
+          >
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={redemption_timeseries.current_week}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--cgi-muted))" />
@@ -107,7 +111,10 @@ export default function Analytics() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* User Activity Pie Chart */}
-            <ChartCard title="Felhasználói aktivitás">
+            <ChartCard 
+              title="Felhasználói aktivitás"
+              tooltip="Ez a kördiagram az új és visszatérő felhasználók arányát mutatja. Az új felhasználók először használják a rendszert, míg a visszatérő felhasználók már korábban is aktívak voltak."
+            >
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -149,7 +156,10 @@ export default function Analytics() {
             </ChartCard>
 
             {/* Redesigned Hourly Heatmap */}
-            <ChartCard title="Óránkénti csúcsok hőtérképe">
+            <ChartCard 
+              title="Óránkénti csúcsok hőtérképe"
+              tooltip="Ez a hőtérkép a hét minden napjára és 24 órára lebontva mutatja az italbeváltások számát. A sötétebb színek magasabb aktivitást jeleznek. Kattintson egy cellára a részletes adatokért."
+            >
               <div className="space-y-4">
                 {/* Hour Labels */}
                 <div className="overflow-x-auto">
