@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, MapPin, Phone, Globe, Clock, Gift, Users, Calendar } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
+import { VenueImageGallery } from '@/components/VenueImageGallery';
 import type { Venue } from '@/lib/types';
 
 export default function PublicVenueDetail() {
@@ -156,12 +157,11 @@ export default function PublicVenueDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Hero Image */}
-            <Card className="cgi-card overflow-hidden">
-              <div className="aspect-video bg-gradient-to-br from-cgi-primary/20 to-cgi-secondary/20 flex items-center justify-center">
-                <Gift className="h-16 w-16 text-cgi-primary" />
-              </div>
-            </Card>
+            {/* Venue Images */}
+            <VenueImageGallery 
+              images={venue.images || []} 
+              venueName={venue.name} 
+            />
 
             {/* Free Drinks Section */}
             <Card className="cgi-card">
