@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,7 +16,7 @@ import { VenueFormModal } from '@/components/VenueFormModal';
 import { ChartCard } from '@/components/ChartCard';
 import { KPICard } from '@/components/KPICard';
 import ScheduleGrid from '@/components/ScheduleGrid';
-import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe } from 'lucide-react';
+import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { seedData } from '@/lib/mock/seed';
 import { 
@@ -32,9 +31,11 @@ import { Venue, FreeDrinkWindow } from '@/lib/types';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useToast } from '@/hooks/use-toast';
 import { runtimeConfig } from '@/config/runtime';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function VenueDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -139,6 +140,18 @@ export default function VenueDetail() {
       <Sidebar />
       <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
         <div className="cgi-container py-8">
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/venues')}
+              className="text-cgi-surface-foreground"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Vissza a helyszínekhez
+            </Button>
+          </div>
+
           <div className="mb-8 flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
@@ -275,11 +288,28 @@ export default function VenueDetail() {
               value="89" 
               icon={Users}
             />
-            <KPICard 
-              title="Aktív vendégek" 
-              value="42" 
-              icon={Building}
-            />
+            <div className="relative">
+              <KPICard 
+                title="Aktív vendégek" 
+                value="42" 
+                icon={Building}
+              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="absolute top-2 right-2 text-cgi-muted-foreground hover:text-cgi-surface-foreground"
+                      aria-label="Mit jelent az Aktív vendégek?"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-cgi-surface border-cgi-muted text-cgi-surface-foreground max-w-xs">
+                    Az elmúlt órában aktivitást mutató vendégek becsült száma (pl. beváltások, vásárlások vagy interakciók alapján).
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <KPICard 
               title="Következő akció" 
               value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}

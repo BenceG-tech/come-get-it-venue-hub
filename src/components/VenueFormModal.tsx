@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +14,7 @@ import { TimeRangeInput } from './TimeRangeInput';
 import { Badge } from '@/components/ui/badge';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
 import { Plus, Trash2 } from 'lucide-react';
+import { ImageUploadInput } from './ImageUploadInput';
 
 interface VenueFormModalProps {
   venue?: Venue;
@@ -123,6 +123,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     const newImage: VenueImage = {
       id: `img-${Date.now()}`,
       url: '',
+      label: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      images: [...(prev.images || []), newImage]
+    }));
+  };
+
+  // NEW: add a helper to append a freshly uploaded image
+  const addImageWithUrl = (url: string) => {
+    const newImage: VenueImage = {
+      id: `img-${Date.now()}`,
+      url,
       label: ''
     };
     setFormData(prev => ({
@@ -313,10 +326,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             <TabsContent value="images" className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-cgi-surface-foreground">Képek</Label>
-                <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Kép hozzáadása
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* NEW: Upload and auto-add as new image */}
+                  <ImageUploadInput
+                    buttonLabel="Kép feltöltése"
+                    onUploaded={(url) => addImageWithUrl(url)}
+                    variant="outline"
+                    size="sm"
+                  />
+                  <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Kép hozzáadása
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -338,12 +360,21 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
                       <div className="space-y-2">
                         <Label>URL</Label>
-                        <Input
-                          value={img.url}
-                          onChange={(e) => updateImage(img.id, { url: e.target.value })}
-                          className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                          placeholder="https://example.com/image.jpg"
-                        />
+                        {/* NEW: input + per-image uploader */}
+                        <div className="flex gap-2">
+                          <Input
+                            value={img.url}
+                            onChange={(e) => updateImage(img.id, { url: e.target.value })}
+                            className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
+                            placeholder="https://example.com/image.jpg"
+                          />
+                          <ImageUploadInput
+                            buttonLabel="Feltöltés"
+                            onUploaded={(url) => updateImage(img.id, { url })}
+                            variant="outline"
+                            size="sm"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-2">
@@ -369,7 +400,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
                 {!formData.images?.length && (
                   <div className="text-center py-8 text-cgi-muted-foreground">
-                    Még nincsenek képek hozzáadva. Kattints a "Kép hozzáadása" gombra.
+                    Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
                   </div>
                 )}
               </div>
