@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Receipt, 
@@ -12,7 +12,8 @@ import {
   Users,
   X,
   Building,
-  Factory
+  Factory,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -31,13 +32,29 @@ const navigation = [
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
+
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
 
   // Filter navigation based on user role
   const filteredNavigation = navigation.filter(item => {
     if (!session) return false;
     return item.roles.includes(session.user.role);
   });
+
+  const handleLogout = () => {
+    sessionManager.clearSession();
+    navigate('/login');
+  };
+
+  // Don't render sidebar if no session
+  if (!session) {
+    return null;
+  }
 
   return (
     <>
@@ -72,7 +89,8 @@ export function Sidebar() {
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-4">
             {filteredNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = location.pathname === item.href || 
+                              (item.href === '/venues' && location.pathname.startsWith('/venues'));
               const Icon = item.icon;
               
               return (
@@ -80,7 +98,6 @@ export function Sidebar() {
                   key={item.name}
                   to={item.href}
                   className={`cgi-nav-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setIsOpen(false)}
                 >
                   <Icon className="h-5 w-5" />
                   {item.name}
@@ -90,25 +107,35 @@ export function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-cgi-muted p-4">
+          <div className="border-t border-cgi-muted p-4 space-y-4">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
                 <span className="text-xs font-medium text-cgi-secondary">
-                  {session?.user.name.split(' ').map(n => n[0]).join('') || 'U'}
+                  {session.user.name.split(' ').map(n => n[0]).join('')}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-cgi-surface-foreground truncate">
-                  {session?.user.name || 'User'}
+                  {session.user.name}
                 </p>
                 <p className="text-xs text-cgi-muted-foreground truncate">
-                  {session?.user.email || 'user@example.com'}
+                  {session.user.email}
                 </p>
                 <p className="text-xs text-cgi-muted-foreground capitalize">
-                  {session?.user.role.replace('_', ' ') || 'Role'}
+                  {session.user.role.replace('_', ' ')}
                 </p>
               </div>
             </div>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="w-full justify-start cgi-button-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Kijelentkezés
+            </Button>
           </div>
         </div>
       </div>

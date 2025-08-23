@@ -1,5 +1,5 @@
 
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { sessionManager } from '@/auth/mockSession';
 
 interface RouteGuardProps {
@@ -16,10 +16,15 @@ export function RouteGuard({
   fallback = '/login' 
 }: RouteGuardProps) {
   const session = sessionManager.getCurrentSession();
+  const location = useLocation();
 
   // Check if user is logged in
   if (!session) {
-    return <Navigate to={fallback} replace />;
+    // If trying to access root path, redirect to login
+    if (location.pathname === '/') {
+      return <Navigate to="/login" replace />;
+    }
+    return <Navigate to={fallback} replace state={{ from: location }} />;
   }
 
   // Check role requirements

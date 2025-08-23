@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { RouteGuard } from "@/components/RouteGuard";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Redemptions from "./pages/Redemptions";
@@ -18,6 +19,14 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <RouteGuard fallback="/login">
+      {children}
+    </RouteGuard>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -25,17 +34,63 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/redemptions" element={<Redemptions />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/rewards" element={<Rewards />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/venues" element={<Venues />} />
-          <Route path="/venues/:id" element={<VenueDetail />} />
-          <Route path="/brands" element={<Brands />} />
-          <Route path="/settings" element={<Settings />} />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/redemptions" element={
+            <ProtectedRoute>
+              <Redemptions />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/transactions" element={
+            <ProtectedRoute>
+              <Transactions />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/rewards" element={
+            <ProtectedRoute>
+              <Rewards />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/venues" element={
+            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+              <Venues />
+            </RouteGuard>
+          } />
+          
+          <Route path="/venues/:id" element={
+            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+              <VenueDetail />
+            </RouteGuard>
+          } />
+          
+          <Route path="/brands" element={
+            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+              <Brands />
+            </RouteGuard>
+          } />
+          
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
