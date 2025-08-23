@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,26 +21,10 @@ export default function PublicVenueDetail() {
       
       setIsLoading(true);
       try {
-        console.log('[PublicVenueDetail] Loading venue with ID:', id);
         const venueData = await dataProvider.getOne<Venue>('venues', id);
-        console.log('[PublicVenueDetail] Loaded venue data:', venueData);
-        console.log('[PublicVenueDetail] Venue images array:', venueData.images);
-        console.log('[PublicVenueDetail] Number of images:', venueData.images?.length || 0);
-        
-        if (venueData.images?.length) {
-          venueData.images.forEach((img, index) => {
-            console.log(`[PublicVenueDetail] Image ${index}:`, {
-              id: img.id,
-              url: img.url,
-              label: img.label,
-              isCover: img.isCover
-            });
-          });
-        }
-        
         setVenue(venueData);
       } catch (error) {
-        console.error('[PublicVenueDetail] Error loading venue:', error);
+        console.error('Error loading venue:', error);
       } finally {
         setIsLoading(false);
       }
