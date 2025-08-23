@@ -62,7 +62,7 @@ class LocalStorageProvider implements DataProvider {
     const items = this.getStorageData<T>(resource);
     const newItem = {
       ...data,
-      id: data.id || this.generateId(),
+      id: (data as any).id || this.generateId(),
     } as T;
     
     items.push(newItem);

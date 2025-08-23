@@ -28,8 +28,8 @@ export default function Settings() {
     }
   };
 
-  const getTierIcon = (tier: string) => {
-    switch (tier) {
+  const getTierIcon = (plan: string) => {
+    switch (plan) {
       case 'basic': return Shield;
       case 'standard': return Star;
       case 'premium': return Crown;
@@ -37,8 +37,8 @@ export default function Settings() {
     }
   };
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
+  const getTierColor = (plan: string) => {
+    switch (plan) {
       case 'basic': return 'cgi-badge-info';
       case 'standard': return 'cgi-badge-warning';
       case 'premium': return 'cgi-badge-success';
@@ -46,7 +46,7 @@ export default function Settings() {
     }
   };
 
-  const TierIcon = getTierIcon(venue.tier);
+  const TierIcon = getTierIcon(venue.plan);
 
   return (
     <div className="cgi-page flex">
@@ -100,17 +100,17 @@ export default function Settings() {
             <Card className="cgi-card">
               <div className="cgi-card-header">
                 <h3 className="cgi-card-title">Csomagszint</h3>
-                <Badge className={`${getTierColor(venue.tier)} flex items-center gap-1`}>
+                <Badge className={`${getTierColor(venue.plan)} flex items-center gap-1`}>
                   <TierIcon className="h-3 w-3" />
-                  {venue.tier.charAt(0).toUpperCase() + venue.tier.slice(1)}
+                  {venue.plan.charAt(0).toUpperCase() + venue.plan.slice(1)}
                 </Badge>
               </div>
               
               <div className="text-cgi-muted-foreground">
                 Jelenlegi csomagja: <strong className="text-cgi-surface-foreground">
-                  {venue.tier === 'basic' && 'Alap'}
-                  {venue.tier === 'standard' && 'Normál'}
-                  {venue.tier === 'premium' && 'Prémium'}
+                  {venue.plan === 'basic' && 'Alap'}
+                  {venue.plan === 'standard' && 'Normál'}
+                  {venue.plan === 'premium' && 'Prémium'}
                 </strong>
                 <br />
                 A csomag frissítéséhez lépjen kapcsolatba ügyfélszolgálatunkkal.

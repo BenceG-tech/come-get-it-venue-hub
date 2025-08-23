@@ -1,4 +1,3 @@
-
 import { 
   KPIData, 
   TrendData, 
@@ -15,14 +14,24 @@ export const mockUser: User = {
   id: 'user-1',
   email: 'admin@venue.com',
   role: 'venue_owner',
-  venue_id: 'venue-1'
+  name: 'Admin User',
+  venue_ids: ['venue-1']
 };
 
 export const mockVenue: Venue = {
   id: 'venue-1',
   name: 'Trendy Bar & Lounge',
   address: '1234 Váci út, Budapest, 1052',
-  tier: 'premium',
+  description: 'Trendy cocktail bar a belvárosban',
+  tags: ['cocktail', 'downtown', 'premium'],
+  plan: 'premium',
+  is_paused: false,
+  drinks: [],
+  freeDrinkWindows: [],
+  caps: {
+    daily: 100,
+    onExhaust: 'close'
+  },
   api_key: 'cgi_live_abc123...',
   notifications: {
     email: true,
@@ -65,7 +74,8 @@ export const mockRedemptions: Redemption[] = [
     drink: 'Mojito',
     value: 890,
     location: 'Bar Counter',
-    user_type: 'returning'
+    user_type: 'returning',
+    venue_id: 'venue-1'
   },
   {
     id: 'red-2',
@@ -75,7 +85,8 @@ export const mockRedemptions: Redemption[] = [
     drink: 'Whiskey Sour',
     value: 950,
     location: 'VIP Section',
-    user_type: 'new'
+    user_type: 'new',
+    venue_id: 'venue-1'
   },
   {
     id: 'red-3',
@@ -85,7 +96,8 @@ export const mockRedemptions: Redemption[] = [
     drink: 'Negroni',
     value: 1200,
     location: 'Terrace',
-    user_type: 'returning'
+    user_type: 'returning',
+    venue_id: 'venue-1'
   },
   {
     id: 'red-4',
@@ -95,7 +107,8 @@ export const mockRedemptions: Redemption[] = [
     drink: 'Moscow Mule',
     value: 750,
     location: 'Bar Counter',
-    user_type: 'new'
+    user_type: 'new',
+    venue_id: 'venue-1'
   },
   {
     id: 'red-5',
@@ -105,7 +118,8 @@ export const mockRedemptions: Redemption[] = [
     drink: 'Old Fashioned',
     value: 1100,
     location: 'Lounge Area',
-    user_type: 'returning'
+    user_type: 'returning',
+    venue_id: 'venue-1'
   }
 ];
 
@@ -115,35 +129,40 @@ export const mockTransactions: Transaction[] = [
     timestamp: '2024-08-23T14:32:00Z',
     amount: 890,
     items: { mojito: 1, extra_lime: 1 },
-    points: 89
+    points: 89,
+    venue_id: 'venue-1'
   },
   {
     id: 'txn-2',
     timestamp: '2024-08-23T14:28:00Z',
     amount: 950,
     items: { whiskey_sour: 1, premium_whiskey: true },
-    points: 95
+    points: 95,
+    venue_id: 'venue-1'
   },
   {
     id: 'txn-3',
     timestamp: '2024-08-23T14:15:00Z',
     amount: 1200,
     items: { negroni: 1, artisan_gin: true },
-    points: 120
+    points: 120,
+    venue_id: 'venue-1'
   },
   {
     id: 'txn-4',
     timestamp: '2024-08-23T13:45:00Z',
     amount: 750,
     items: { moscow_mule: 1 },
-    points: 75
+    points: 75,
+    venue_id: 'venue-1'
   },
   {
     id: 'txn-5',
     timestamp: '2024-08-23T13:22:00Z',
     amount: 1100,
     items: { old_fashioned: 1, premium_bourbon: true },
-    points: 110
+    points: 110,
+    venue_id: 'venue-1'
   }
 ];
 
@@ -154,7 +173,8 @@ export const mockRewards: Reward[] = [
     points_required: 500,
     valid_until: '2024-12-31',
     active: true,
-    description: 'Egy ingyenes klasszikus mojito'
+    description: 'Egy ingyenes klasszikus mojito',
+    venue_id: 'venue-1'
   },
   {
     id: 'rew-2',
@@ -162,7 +182,8 @@ export const mockRewards: Reward[] = [
     points_required: 300,
     valid_until: '2024-11-30',
     active: true,
-    description: 'Húsz százalék kedvezmény minden prémium italból'
+    description: 'Húsz százalék kedvezmény minden prémium italból',
+    venue_id: 'venue-1'
   },
   {
     id: 'rew-3',
@@ -170,7 +191,8 @@ export const mockRewards: Reward[] = [
     points_required: 1000,
     valid_until: '2024-10-31',
     active: true,
-    description: 'Ingyenes VIP asztal foglalás egy estére'
+    description: 'Ingyenes VIP asztal foglalás egy estére',
+    venue_id: 'venue-1'
   },
   {
     id: 'rew-4',
@@ -178,7 +200,8 @@ export const mockRewards: Reward[] = [
     points_required: 400,
     valid_until: '2024-09-30',
     active: false,
-    description: 'Válogatott tapas tál két személyre'
+    description: 'Válogatott tapas tál két személyre',
+    venue_id: 'venue-1'
   }
 ];
 

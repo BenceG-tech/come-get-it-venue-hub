@@ -1,421 +1,253 @@
-
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Building, ArrowLeft, Clock, Users, TrendingUp, AlertTriangle } from 'lucide-react';
-import { RouteGuard } from '@/components/RouteGuard';
-import { FeatureGate } from '@/components/FeatureGate';
 import { CapProgressBar } from '@/components/CapProgressBar';
-import { Venue } from '@/lib/types';
+import { TagInput } from '@/components/TagInput';
+import { DrinkSelector } from '@/components/DrinkSelector';
+import { TimeRangeInput } from '@/components/TimeRangeInput';
+import { VenueFormModal } from '@/components/VenueFormModal';
+import { ChartCard } from '@/components/ChartCard';
+import { KPICard } from '@/components/KPICard';
+import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play } from 'lucide-react';
 import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
-import { sessionManager } from '@/auth/mockSession';
-import { getActiveFreeDrinkStatus, getNextActiveWindow, calculateCapUsage, formatCurrency } from '@/lib/businessLogic';
+import { seedData } from '@/lib/mock/seed';
+import { 
+  getActiveFreeDrinkStatus, 
+  getNextActiveWindow, 
+  calculateCapUsage,
+  formatCurrency 
+} from '@/lib/businessLogic';
+import { Venue, FreeDrinkWindow } from '@/lib/types';
+
+interface CapData {
+  label: string;
+  used: number;
+  limit: number;
+}
 
 export default function VenueDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isToggling, setIsToggling] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [activeFreeDrinkStatus, setActiveFreeDrinkStatus] = useState({ isActive: false });
+  const [nextWindow, setNextWindow] = useState<FreeDrinkWindow | null>(null);
+  const [capData, setCapData] = useState<CapData[]>([]);
 
   useEffect(() => {
-    if (id) {
-      loadVenue(id);
-    }
+    const loadVenue = async () => {
+      setIsLoading(true);
+      try {
+        if (!id) throw new Error("Venue ID is missing");
+        const venueData = await dataProvider.getOne<Venue>('venues', id);
+        setVenue(venueData);
+        setIsPaused(venueData.is_paused);
+      } catch (error) {
+        console.error("Failed to load venue:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadVenue();
+    seedData(); // Ensure mock data is seeded
   }, [id]);
 
-  const loadVenue = async (venueId: string) => {
+  useEffect(() => {
+    if (venue) {
+      setActiveFreeDrinkStatus(getActiveFreeDrinkStatus(venue.freeDrinkWindows));
+      setNextWindow(getNextActiveWindow(venue.freeDrinkWindows));
+
+      // Prepare cap usage data
+      const dailyCap = calculateCapUsage(venue.caps.daily, 50);
+      const hourlyCap = calculateCapUsage(venue.caps.hourly, 10);
+
+      setCapData([
+        { label: 'Napi limit', used: dailyCap.used, limit: dailyCap.limit },
+        { label: 'Óránkénti limit', used: hourlyCap.used, limit: hourlyCap.limit },
+      ]);
+    }
+  }, [venue]);
+
+  const handlePauseToggle = async () => {
+    if (!venue) return;
+
+    const updatedVenue = { ...venue, is_paused: !isPaused };
+
     try {
-      const venueData = await dataProvider.getOne<Venue>('venues', venueId);
-      setVenue(venueData);
+      await dataProvider.update<Venue>('venues', venue.id, { is_paused: !isPaused });
+      setVenue(updatedVenue);
+      setIsPaused(!isPaused);
     } catch (error) {
-      console.error('Error loading venue:', error);
-      navigate('/venues');
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to update venue pause status:", error);
     }
   };
 
-  const toggleFreeDrink = async () => {
+  const handleVenueSave = async (updates: Partial<Venue>) => {
     if (!venue) return;
-    
-    setIsToggling(true);
+
     try {
-      const updatedVenue = await dataProvider.update<Venue>('venues', venue.id, {
-        is_paused: !venue.is_paused
-      });
+      const updatedVenue = { ...venue, ...updates };
+      await dataProvider.update<Venue>('venues', venue.id, updates);
       setVenue(updatedVenue);
     } catch (error) {
-      console.error('Error toggling free drink:', error);
-    } finally {
-      setIsToggling(false);
+      console.error("Failed to update venue:", error);
     }
-  };
-
-  const canEdit = () => {
-    if (!venue) return false;
-    return sessionManager.canEditVenue(venue.id);
   };
 
   if (isLoading) {
-    return (
-      <RouteGuard>
-        <div className="cgi-page">
-          <div className="animate-pulse">Betöltés...</div>
-        </div>
-      </RouteGuard>
-    );
+    return <div>Loading...</div>;
   }
 
   if (!venue) {
-    return (
-      <RouteGuard>
-        <div className="cgi-page">
-          <div className="text-center py-8">
-            <p className="text-cgi-muted-foreground">Helyszín nem található.</p>
-            <Button onClick={() => navigate('/venues')} className="mt-4 cgi-button-primary">
-              Vissza a helyszínekhez
-            </Button>
-          </div>
-        </div>
-      </RouteGuard>
-    );
+    return <div>Venue not found</div>;
   }
 
-  const now = new Date();
-  const freeDrinkStatus = getActiveFreeDrinkStatus(venue, now);
-  const nextWindow = getNextActiveWindow(venue, now);
-  const todayRedemptions = Math.floor(Math.random() * (venue.caps.daily || 50));
-  const capUsage = calculateCapUsage(venue, todayRedemptions);
-
-  const getPlanBadgeColor = (plan: string) => {
-    switch (plan) {
-      case 'premium': return 'bg-cgi-secondary text-cgi-secondary-foreground';
-      case 'standard': return 'bg-blue-500 text-white';
-      case 'basic': return 'bg-gray-500 text-white';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
-
   return (
-    <RouteGuard>
-      <div className="cgi-page">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={() => navigate('/venues')}
-              variant="ghost"
-              size="sm"
-              className="cgi-button-ghost"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Vissza
-            </Button>
-            <div className="flex items-center gap-3">
-              <Building className="h-8 w-8 text-cgi-secondary" />
-              <div>
-                <h1 className="text-2xl font-bold text-cgi-surface-foreground">{venue.name}</h1>
-                <p className="text-cgi-muted-foreground">{venue.address}</p>
+    <div className="cgi-page flex">
+      <Sidebar />
+      <main className="flex-1 lg:ml-0 min-h-screen">
+        <div className="cgi-container py-8">
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
+              <p className="text-cgi-muted-foreground">
+                {venue.address}
+                {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}
+              </p>
+              <div className="flex gap-2 mt-2">
+                {venue.tags.map(tag => (
+                  <Badge key={tag} className="cgi-badge">{tag}</Badge>
+                ))}
               </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <VenueFormModal venue={venue} onSave={handleVenueSave}>
+                <Button variant="outline" className="cgi-button-secondary">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Szerkesztés
+                </Button>
+              </VenueFormModal>
+              
+              <Button 
+                variant={isPaused ? 'default' : 'destructive'} 
+                className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
+                onClick={handlePauseToggle}
+              >
+                {isPaused ? (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Folytatás
+                  </>
+                ) : (
+                  <>
+                    <Pause className="h-4 w-4 mr-2" />
+                    Szüneteltetés
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
-          {/* Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Free Drink Status */}
-            <Card className="p-6 cgi-card">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-cgi-surface-foreground">Ingyenes Ital Státusz</h3>
-                  {canEdit() && (
-                    <Switch
-                      checked={!venue.is_paused}
-                      onCheckedChange={toggleFreeDrink}
-                      disabled={isToggling}
-                    />
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  {venue.is_paused ? (
-                    <Badge className="bg-red-500 text-white">Szüneteltetve</Badge>
-                  ) : freeDrinkStatus.isActive ? (
-                    <Badge className="bg-green-500 text-white">Aktív most</Badge>
-                  ) : (
-                    <Badge className="bg-gray-500 text-white">Jelenleg inaktív</Badge>
-                  )}
-                  
-                  {nextWindow && !venue.is_paused && (
-                    <div className="text-sm text-cgi-muted-foreground">
-                      <Clock className="h-4 w-4 inline mr-1" />
-                      Következő: {nextWindow.start} - {nextWindow.end}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            {/* Today's Stats */}
-            <Card className="p-6 cgi-card">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-cgi-surface-foreground">Ma</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-cgi-muted-foreground">Beváltások</span>
-                    <span className="font-bold text-lg">{todayRedemptions}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-cgi-muted-foreground">Forgalom</span>
-                    <span className="font-bold text-lg">{formatCurrency(todayRedemptions * 850)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-cgi-muted-foreground">Aktív felhasználók</span>
-                    <span className="font-bold text-lg">{Math.floor(todayRedemptions * 0.8)}</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Cap Status */}
-            <Card className="p-6 cgi-card">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-cgi-surface-foreground">Kapacitás</h3>
-                <CapProgressBar usage={capUsage} label="Napi limit" />
-                
-                {capUsage.pct >= 90 && venue.caps.onExhaust === 'show_alt_offer' && venue.caps.altOfferText && (
-                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-cgi-surface-foreground">Alternatív ajánlat</p>
-                        <p className="text-sm text-cgi-muted-foreground">{venue.caps.altOfferText}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <KPICard 
+              title="Mai forgalom" 
+              value={formatCurrency(123456)} 
+              icon={TrendingUp} 
+              helpText="A mai napon eddig realizált forgalom"
+            />
+            <KPICard 
+              title="Mai ingyenes italok" 
+              value="89" 
+              icon={Users} 
+              helpText="A mai napon eddig felhasznált ingyenes italok száma"
+            />
+            <KPICard 
+              title="Aktív vendégek" 
+              value="42" 
+              icon={Building} 
+              helpText="Jelenleg a helyszínen tartózkodó aktív vendégek száma"
+            />
+            <KPICard 
+              title="Következő akció" 
+              value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}
+              icon={Clock} 
+              helpText="A következő ingyenes ital akció időpontja"
+            />
           </div>
 
-          {/* Main Content Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Áttekintés</TabsTrigger>
-              <TabsTrigger value="drinks">Italok</TabsTrigger>
-              <TabsTrigger value="schedule">Időbeosztás</TabsTrigger>
-              <TabsTrigger value="caps">Limitek</TabsTrigger>
-              <TabsTrigger value="meta">Meta</TabsTrigger>
+          <Tabs defaultValue="analytics" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="analytics">Analitika</TabsTrigger>
+              <TabsTrigger value="management">Kezelés</TabsTrigger>
+              <TabsTrigger value="settings">Beállítások</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="p-6 cgi-card">
-                  <h3 className="font-semibold text-cgi-surface-foreground mb-4">Heti trend</h3>
-                  <div className="space-y-3">
-                    {['Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap'].map((day, index) => {
-                      const value = Math.floor(Math.random() * 100);
-                      return (
-                        <div key={day} className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>{day}</span>
-                            <span>{value} beváltás</span>
-                          </div>
-                          <Progress value={value} className="h-2" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-
-                <FeatureGate requiredPlans={['standard', 'premium']} venue={venue}>
-                  <Card className="p-6 cgi-card">
-                    <h3 className="font-semibold text-cgi-surface-foreground mb-4">Felhasználói aktivitás</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-cgi-muted-foreground">Új felhasználók</span>
-                        <span className="font-bold">34</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-cgi-muted-foreground">Visszatérő</span>
-                        <span className="font-bold">55</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-cgi-muted-foreground">Átlag. látogatás</span>
-                        <span className="font-bold">2.3x/hét</span>
-                      </div>
-                    </div>
-                  </Card>
-                </FeatureGate>
-              </div>
+            
+            <TabsContent value="analytics" className="space-y-4">
+              <ChartCard title="Forgalom alakulása" />
             </TabsContent>
 
-            <TabsContent value="drinks" className="space-y-4">
-              <Card className="p-6 cgi-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-cgi-surface-foreground">Italok ({venue.drinks.length})</h3>
-                  {canEdit() && (
-                    <Button size="sm" className="cgi-button-primary">Szerkesztés</Button>
-                  )}
+            <TabsContent value="management" className="space-y-4">
+              <Card className="cgi-card">
+                <div className="cgi-card-header">
+                  <h3 className="cgi-card-title">Napi limitek</h3>
                 </div>
-                
-                <div className="space-y-3">
-                  {venue.drinks.map((drink) => (
-                    <div key={drink.id} className="flex items-center justify-between p-3 bg-cgi-muted/10 rounded-lg">
-                      <div>
-                        <span className="font-medium">{drink.drinkName}</span>
-                        {drink.category && (
-                          <Badge variant="outline" className="ml-2 text-xs">{drink.category}</Badge>
-                        )}
-                        {drink.is_free_drink && (
-                          <Badge className="ml-2 text-xs bg-green-500 text-white">Ingyenes</Badge>
-                        )}
-                        {drink.is_sponsored && (
-                          <Badge className="ml-2 text-xs bg-blue-500 text-white">Szponzorált</Badge>
-                        )}
+                <div className="space-y-4">
+                  {capData.map((cap, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>{cap.label}</Label>
+                        <span className="text-sm text-cgi-muted-foreground">
+                          {cap.used} / {cap.limit}
+                        </span>
                       </div>
-                      {drink.abv && (
-                        <span className="text-sm text-cgi-muted-foreground">{drink.abv}%</span>
-                      )}
+                      <CapProgressBar value={(cap.used / cap.limit) * 100} />
                     </div>
                   ))}
                 </div>
               </Card>
             </TabsContent>
 
-            <TabsContent value="schedule" className="space-y-4">
-              <Card className="p-6 cgi-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-cgi-surface-foreground">Ingyenes ital időablakok</h3>
-                  {canEdit() && (
-                    <Button size="sm" className="cgi-button-primary">Szerkesztés</Button>
-                  )}
+            <TabsContent value="settings" className="space-y-4">
+              <Card className="cgi-card">
+                <div className="cgi-card-header">
+                  <h3 className="cgi-card-title">Beállítások</h3>
                 </div>
-                
                 <div className="space-y-4">
-                  {venue.freeDrinkWindows.map((window) => (
-                    <div key={window.id} className="p-4 bg-cgi-muted/10 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{window.start} - {window.end}</span>
-                        <Badge variant="outline" className="text-xs">{window.timezone}</Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {window.days.map(day => {
-                          const dayNames = ['', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap'];
-                          return (
-                            <Badge key={day} variant="secondary" className="text-xs">
-                              {dayNames[day]}
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="caps" className="space-y-4">
-              <Card className="p-6 cgi-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-cgi-surface-foreground">Limitek és szabályok</h3>
-                  {canEdit() && (
-                    <Button size="sm" className="cgi-button-primary">Szerkesztés</Button>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-cgi-muted-foreground">Napi limit:</span>
-                      <span className="font-medium">{venue.caps.daily || 'Nincs'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-cgi-muted-foreground">Óránkénti limit:</span>
-                      <span className="font-medium">{venue.caps.hourly || 'Nincs'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-cgi-muted-foreground">Havi limit:</span>
-                      <span className="font-medium">{venue.caps.monthly || 'Nincs'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-cgi-muted-foreground">Felhasználónkénti napi:</span>
-                      <span className="font-medium">{venue.caps.perUserDaily || 'Nincs'}</span>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-name">Helyszín neve</Label>
+                    <input
+                      type="text"
+                      id="venue-name"
+                      className="cgi-input"
+                      value={venue.name}
+                      readOnly
+                    />
                   </div>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-cgi-muted-foreground">Elfogyás esetén:</span>
-                      <Badge variant="outline" className="ml-2">
-                        {venue.caps.onExhaust === 'close' && 'Bezárás'}
-                        {venue.caps.onExhaust === 'show_alt_offer' && 'Alt. ajánlat'}
-                        {venue.caps.onExhaust === 'do_nothing' && 'Folytatás'}
-                      </Badge>
-                    </div>
-                    {venue.caps.altOfferText && (
-                      <div className="p-3 bg-cgi-muted/10 rounded-lg">
-                        <p className="text-sm font-medium">Alternatív ajánlat:</p>
-                        <p className="text-sm text-cgi-muted-foreground">{venue.caps.altOfferText}</p>
-                      </div>
-                    )}
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-address">Cím</Label>
+                    <input
+                      type="text"
+                      id="venue-address"
+                      className="cgi-input"
+                      value={venue.address}
+                      readOnly
+                    />
                   </div>
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="meta" className="space-y-4">
-              <Card className="p-6 cgi-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-cgi-surface-foreground">Meta információk</h3>
-                  {canEdit() && (
-                    <Button size="sm" className="cgi-button-primary">Szerkesztés</Button>
-                  )}
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-cgi-surface-foreground font-medium">Csomag</Label>
-                    <Badge className={`ml-2 ${getPlanBadgeColor(venue.plan)} capitalize`}>
-                      {venue.plan}
-                    </Badge>
-                  </div>
-                  
-                  {venue.description && (
-                    <div>
-                      <Label className="text-cgi-surface-foreground font-medium">Leírás</Label>
-                      <p className="text-cgi-muted-foreground mt-1">{venue.description}</p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <Label className="text-cgi-surface-foreground font-medium">Tag-ek</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {venue.tags.map(tag => (
-                        <Badge key={tag} variant="outline">{tag}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {venue.api_key && (
-                    <div>
-                      <Label className="text-cgi-surface-foreground font-medium">API Kulcs</Label>
-                      <code className="block mt-1 p-2 bg-cgi-muted/10 rounded text-sm font-mono">
-                        {venue.api_key}
-                      </code>
-                    </div>
-                  )}
                 </div>
               </Card>
             </TabsContent>
           </Tabs>
         </div>
-      </div>
-    </RouteGuard>
+      </main>
+    </div>
   );
 }

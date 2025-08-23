@@ -13,16 +13,18 @@ interface RewardFormModalProps {
   reward?: Reward;
   onSubmit: (reward: Omit<Reward, 'id'>) => void;
   trigger?: React.ReactNode;
+  venueId?: string;
 }
 
-export function RewardFormModal({ reward, onSubmit, trigger }: RewardFormModalProps) {
+export function RewardFormModal({ reward, onSubmit, trigger, venueId = 'venue-1' }: RewardFormModalProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: reward?.name || '',
     points_required: reward?.points_required || 0,
     valid_until: reward?.valid_until || '',
     active: reward?.active ?? true,
-    description: reward?.description || ''
+    description: reward?.description || '',
+    venue_id: reward?.venue_id || venueId
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,7 +37,8 @@ export function RewardFormModal({ reward, onSubmit, trigger }: RewardFormModalPr
         points_required: 0,
         valid_until: '',
         active: true,
-        description: ''
+        description: '',
+        venue_id: venueId
       });
     }
   };
