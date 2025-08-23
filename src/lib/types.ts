@@ -14,23 +14,27 @@ export interface Session {
   venues: string[]; // venue IDs this user can access
 }
 
-export interface Venue {
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+export interface DayHours {
+  open: string | null;   // "10:00" | null (closed)
+  close: string | null;  // "23:00" | null
+}
+
+export interface BusinessHours {
+  // 1..7 (Monday=1) → daily hours
+  byDay: Record<number, DayHours>;
+  specialDates?: Array<{ date: string; open: string | null; close: string | null }>; // "2025-08-20"
+}
+
+export interface VenueImage {
   id: string;
-  name: string;
-  address: string;
-  description?: string;
-  tags: string[];
-  plan: 'basic' | 'standard' | 'premium';
-  is_paused: boolean;
-  drinks: VenueDrink[];
-  freeDrinkWindows: FreeDrinkWindow[];
-  caps: RedemptionCap;
-  api_key?: string;
-  notifications: {
-    email: boolean;
-    push: boolean;
-    weekly_reports: boolean;
-  };
+  url: string;
+  label?: string;
+  isCover?: boolean;
 }
 
 export interface VenueDrink {
@@ -41,6 +45,12 @@ export interface VenueDrink {
   is_sponsored: boolean;
   brand_id?: string;
   is_free_drink: boolean;
+  // NEW detailed fields
+  description?: string;
+  ingredients?: string[];               // ["Whisky", "Lemonade", "Lemon"]
+  preparation_instructions?: string;    // "Mix, serve over ice..."
+  image_url?: string;
+  serving_style?: string;               // "over ice", "neat", etc.
 }
 
 export interface FreeDrinkWindow {
@@ -58,6 +68,34 @@ export interface RedemptionCap {
   perUserDaily?: number;
   onExhaust: 'close' | 'show_alt_offer' | 'do_nothing';
   altOfferText?: string;
+}
+
+interface VenueNotifications {
+  email: boolean;
+  push: boolean;
+  weekly_reports: boolean;
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  description?: string;
+  tags: string[];
+  plan: 'basic' | 'standard' | 'premium';
+  is_paused: boolean;
+  drinks: VenueDrink[];
+  freeDrinkWindows: FreeDrinkWindow[];
+  caps: RedemptionCap;
+  api_key?: string;
+  notifications: VenueNotifications;
+
+  // NEW fields
+  business_hours?: BusinessHours;
+  phone_number?: string;
+  website_url?: string;
+  images?: VenueImage[];
+  coordinates?: Coordinates;            // for maps
 }
 
 export interface Brand {

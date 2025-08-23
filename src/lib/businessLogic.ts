@@ -1,5 +1,37 @@
 
-import { Venue, FreeDrinkWindow, ActiveFreeDrinkStatus, CapUsage } from './types';
+import { Venue, FreeDrinkWindow, ActiveFreeDrinkStatus, CapUsage, BusinessHours } from './types';
+
+const dayIndexISO = (d: Date) => {
+  // Monday=1 ... Sunday=7
+  const k = d.getDay(); // 0..6, Sunday=0
+  return k === 0 ? 7 : k;
+};
+
+export function isVenueOpenNow(venue: Venue, now: Date): boolean {
+  const bh = venue.business_hours;
+  if (!bh) return false;
+  const day = dayIndexISO(now);
+
+  // specialDates take precedence
+  const iso = now.toISOString().slice(0,10);
+  const special = bh.specialDates?.find(s => s.date === iso);
+  const open = special?.open ?? bh.byDay[day]?.open ?? null;
+  const close = special?.close ?? bh.byDay[day]?.close ?? null;
+  if (!open || !close) return false;
+
+  const cur = now.toTimeString().slice(0,5); // "HH:MM"
+  return open <= cur && cur <= close;
+}
+
+export function getClosingTimeToday(venue: Venue, now: Date): string | null {
+  const bh = venue.business_hours;
+  if (!bh) return null;
+  const day = dayIndexISO(now);
+  const iso = now.toISOString().slice(0,10);
+  const special = bh.specialDates?.find(s => s.date === iso);
+  const close = special?.close ?? bh.byDay[day]?.close ?? null;
+  return close || null;
+}
 
 export function isWindowActive(window: FreeDrinkWindow, now: Date): boolean {
   const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.

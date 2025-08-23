@@ -37,6 +37,26 @@ export const mockVenue: Venue = {
     email: true,
     push: false,
     weekly_reports: true
+  },
+  phone_number: '+36 1 234 5678',
+  website_url: 'https://trendybar.hu',
+  images: [
+    { id: 'img-1', url: 'https://picsum.photos/800/400?1', isCover: true, label: 'Front' },
+    { id: 'img-2', url: 'https://picsum.photos/800/400?2', label: 'Interior' },
+    { id: 'img-3', url: 'https://picsum.photos/800/400?3', label: 'Bar Area' }
+  ],
+  coordinates: { lat: 47.4979, lng: 19.0402 },
+  business_hours: {
+    byDay: {
+      1: { open: '12:00', close: '23:00' },
+      2: { open: '12:00', close: '23:00' },
+      3: { open: '12:00', close: '23:00' },
+      4: { open: '12:00', close: '23:00' },
+      5: { open: '12:00', close: '23:30' },
+      6: { open: '12:00', close: '23:30' },
+      7: { open: '12:00', close: '22:00' },
+    },
+    specialDates: []
   }
 };
 

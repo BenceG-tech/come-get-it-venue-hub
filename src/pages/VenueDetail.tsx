@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
@@ -16,14 +16,17 @@ import { TimeRangeInput } from '@/components/TimeRangeInput';
 import { VenueFormModal } from '@/components/VenueFormModal';
 import { ChartCard } from '@/components/ChartCard';
 import { KPICard } from '@/components/KPICard';
-import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play } from 'lucide-react';
+import ScheduleGrid from '@/components/ScheduleGrid';
+import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe } from 'lucide-react';
 import { dataProvider } from '@/lib/dataProvider/localStorageProvider';
 import { seedData } from '@/lib/mock/seed';
 import { 
   getActiveFreeDrinkStatus, 
   getNextActiveWindow, 
   calculateCapUsage,
-  formatCurrency 
+  formatCurrency,
+  isVenueOpenNow,
+  getClosingTimeToday
 } from '@/lib/businessLogic';
 import { Venue, FreeDrinkWindow } from '@/lib/types';
 
@@ -51,6 +54,15 @@ export default function VenueDetail() {
     loadVenue();
     seedData(); // Ensure mock data is seeded
   }, [id]);
+
+  // Business logic calculations
+  const now = useMemo(() => new Date(), []);
+  const openNow = useMemo(() => venue ? isVenueOpenNow(venue, now) : false, [venue, now]);
+  const closesAt = useMemo(() => venue ? getClosingTimeToday(venue, now) : null, [venue, now]);
+  const activeFreeDrinkStatus = useMemo(() => venue ? getActiveFreeDrinkStatus(venue, now) : { isActive: false }, [venue, now]);
+  const nextWindow = useMemo(() => venue ? getNextActiveWindow(venue, now) : null, [venue, now]);
+  const mockRedemptionCount = 50; // This should come from actual data
+  const capUsage = useMemo(() => venue ? calculateCapUsage(venue, mockRedemptionCount) : { used: 0, limit: 0, pct: 0 }, [venue, mockRedemptionCount]);
 
   const handlePauseToggle = async () => {
     if (!venue) return;
@@ -104,15 +116,6 @@ export default function VenueDetail() {
     );
   }
 
-  // Fix: Pass complete venue object and current date to business logic functions
-  const now = new Date();
-  const activeFreeDrinkStatus = getActiveFreeDrinkStatus(venue, now);
-  const nextWindow = getNextActiveWindow(venue, now);
-  
-  // Fix: Calculate cap usage with proper venue object and mock redemption count
-  const mockRedemptionCount = 50; // This should come from actual data
-  const capUsage = calculateCapUsage(venue, mockRedemptionCount);
-
   return (
     <div className="cgi-page flex bg-cgi-surface">
       <Sidebar />
@@ -125,6 +128,47 @@ export default function VenueDetail() {
                 {venue.address}
                 {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}
               </p>
+              
+              {/* Open/Closed Status */}
+              <div className="mt-1 text-sm text-cgi-muted-foreground">
+                {openNow ? (
+                  <span className="text-green-600">Nyitva • Zárás {closesAt ?? '—'}</span>
+                ) : (
+                  <span className="text-red-600">Zárva</span>
+                )}
+              </div>
+
+              {/* Contact Info */}
+              <div className="flex gap-4 mt-2 text-sm text-cgi-muted-foreground">
+                {venue.phone_number && (
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    <span>{venue.phone_number}</span>
+                  </div>
+                )}
+                {venue.website_url && (
+                  <a href={venue.website_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-cgi-primary">
+                    <Globe className="h-4 w-4" />
+                    <span>Weboldal</span>
+                  </a>
+                )}
+              </div>
+
+              {/* Map Link */}
+              {venue.coordinates && (
+                <div className="mt-2">
+                  <a
+                    className="text-sm underline text-cgi-secondary flex items-center gap-1"
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${venue.coordinates.lat},${venue.coordinates.lng}`}
+                    target="_blank" 
+                    rel="noreferrer"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Útvonalterv
+                  </a>
+                </div>
+              )}
+
               <div className="flex gap-2 mt-2">
                 {venue.tags.map(tag => (
                   <Badge key={tag} className="cgi-badge bg-cgi-secondary text-cgi-secondary-foreground">{tag}</Badge>
@@ -145,6 +189,15 @@ export default function VenueDetail() {
               />
               
               <Button 
+                variant="outline" 
+                size="sm"
+                className="cgi-button-secondary"
+                onClick={() => {/* Future: open VenueFormModal in suggestion mode */}}
+              >
+                Javasolj módosítást
+              </Button>
+              
+              <Button 
                 variant={isPaused ? 'default' : 'destructive'} 
                 className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
                 onClick={handlePauseToggle}
@@ -163,6 +216,35 @@ export default function VenueDetail() {
               </Button>
             </div>
           </div>
+
+          {/* Image Gallery */}
+          {venue.images?.length ? (
+            <Card className="cgi-card mb-6">
+              <div className="space-y-3">
+                <img
+                  src={venue.images.find(i => i.isCover)?.url || venue.images[0].url}
+                  alt={venue.name}
+                  className="w-full h-48 object-cover rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/800x400?text=No+Image';
+                  }}
+                />
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {venue.images.map(img => (
+                    <img 
+                      key={img.id} 
+                      src={img.url} 
+                      alt={img.label || 'image'} 
+                      className="h-16 w-24 object-cover rounded-md border border-cgi-muted cursor-pointer hover:opacity-80" 
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/96x64?text=No+Image';
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </Card>
+          ) : null}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <KPICard 
@@ -217,6 +299,15 @@ export default function VenueDetail() {
                     </div>
                     <CapProgressBar usage={capUsage} />
                   </div>
+                </div>
+              </Card>
+
+              <Card className="cgi-card bg-cgi-surface border-cgi-muted">
+                <div className="cgi-card-header">
+                  <h3 className="cgi-card-title text-cgi-surface-foreground">Ingyenes ital időablakok</h3>
+                </div>
+                <div className="p-4">
+                  <ScheduleGrid windows={venue.freeDrinkWindows || []} />
                 </div>
               </Card>
             </TabsContent>

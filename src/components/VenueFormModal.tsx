@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { TagInput } from './TagInput';
 import { DrinkSelector } from './DrinkSelector';
 import { TimeRangeInput } from './TimeRangeInput';
 import { Badge } from '@/components/ui/badge';
-import { Venue, FreeDrinkWindow, RedemptionCap } from '@/lib/types';
+import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface VenueFormModalProps {
@@ -49,6 +50,23 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       email: true,
       push: false,
       weekly_reports: true
+    },
+    // NEW fields
+    phone_number: venue?.phone_number || '',
+    website_url: venue?.website_url || '',
+    images: venue?.images || [],
+    coordinates: venue?.coordinates || { lat: 0, lng: 0 },
+    business_hours: venue?.business_hours || {
+      byDay: {
+        1: { open: '09:00', close: '22:00' },
+        2: { open: '09:00', close: '22:00' },
+        3: { open: '09:00', close: '22:00' },
+        4: { open: '09:00', close: '22:00' },
+        5: { open: '09:00', close: '23:00' },
+        6: { open: '10:00', close: '23:00' },
+        7: { open: '10:00', close: '21:00' },
+      },
+      specialDates: []
     }
   });
 
@@ -101,6 +119,44 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }));
   };
 
+  const addImage = () => {
+    const newImage: VenueImage = {
+      id: `img-${Date.now()}`,
+      url: '',
+      label: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      images: [...(prev.images || []), newImage]
+    }));
+  };
+
+  const removeImage = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.filter(img => img.id !== id) || []
+    }));
+  };
+
+  const updateImage = (id: string, updates: Partial<VenueImage>) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.map(img => 
+        img.id === id ? { ...img, ...updates } : img
+      ) || []
+    }));
+  };
+
+  const setCoverImage = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.map(img => ({
+        ...img,
+        isCover: img.id === id
+      })) || []
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
@@ -112,7 +168,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px] bg-cgi-surface border-cgi-muted max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] bg-cgi-surface border-cgi-muted max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-cgi-surface-foreground">
             {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
@@ -120,8 +176,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-cgi-muted">
+            <TabsList className="grid w-full grid-cols-6 bg-cgi-muted">
               <TabsTrigger value="basic" className="text-cgi-surface-foreground">Alapok</TabsTrigger>
+              <TabsTrigger value="contact" className="text-cgi-surface-foreground">Kapcsolat</TabsTrigger>
+              <TabsTrigger value="images" className="text-cgi-surface-foreground">Képek</TabsTrigger>
               <TabsTrigger value="drinks" className="text-cgi-surface-foreground">Italok</TabsTrigger>
               <TabsTrigger value="schedule" className="text-cgi-surface-foreground">Időbeosztás</TabsTrigger>
               <TabsTrigger value="caps" className="text-cgi-surface-foreground">Limitek</TabsTrigger>
@@ -191,6 +249,129 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_paused: checked }))}
                 />
                 <Label className="text-cgi-surface-foreground">Szüneteltetve</Label>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contact" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-cgi-surface-foreground">Telefonszám</Label>
+                  <Input
+                    value={formData.phone_number || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
+                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                    placeholder="+36 1 234 5678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-cgi-surface-foreground">Weboldal</Label>
+                  <Input
+                    value={formData.website_url || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, website_url: e.target.value }))}
+                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                    placeholder="https://example.com"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-cgi-surface-foreground">Szélesség (lat)</Label>
+                  <Input
+                    value={formData.coordinates?.lat ?? ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev, 
+                      coordinates: { 
+                        ...(prev.coordinates || { lat: 0, lng: 0 }), 
+                        lat: Number(e.target.value) || 0 
+                      }
+                    }))}
+                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                    inputMode="decimal"
+                    placeholder="47.4979"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-cgi-surface-foreground">Hosszúság (lng)</Label>
+                  <Input
+                    value={formData.coordinates?.lng ?? ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev, 
+                      coordinates: { 
+                        ...(prev.coordinates || { lat: 0, lng: 0 }), 
+                        lng: Number(e.target.value) || 0 
+                      }
+                    }))}
+                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                    inputMode="decimal"
+                    placeholder="19.0402"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="images" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-cgi-surface-foreground">Képek</Label>
+                <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Kép hozzáadása
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.images?.map((img) => (
+                  <Card key={img.id} className="p-4 cgi-card bg-cgi-surface border-cgi-muted">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-cgi-surface-foreground">Kép</h4>
+                        <Button
+                          type="button"
+                          onClick={() => removeImage(img.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>URL</Label>
+                        <Input
+                          value={img.url}
+                          onChange={(e) => updateImage(img.id, { url: e.target.value })}
+                          className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                          placeholder="https://example.com/image.jpg"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Címke</Label>
+                        <Input
+                          value={img.label || ''}
+                          onChange={(e) => updateImage(img.id, { label: e.target.value })}
+                          className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                          placeholder="pl. Beltér, Terasz"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={!!img.isCover}
+                          onCheckedChange={() => setCoverImage(img.id)}
+                        />
+                        <Label className="text-cgi-surface-foreground">Főkép</Label>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+
+                {!formData.images?.length && (
+                  <div className="text-center py-8 text-cgi-muted-foreground">
+                    Még nincsenek képek hozzáadva. Kattints a "Kép hozzáadása" gombra.
+                  </div>
+                )}
               </div>
             </TabsContent>
 
