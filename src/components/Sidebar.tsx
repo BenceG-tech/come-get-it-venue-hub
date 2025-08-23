@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
@@ -13,10 +14,17 @@ import {
   Building,
   Factory,
   LogOut,
-  TrendingUp
+  TrendingUp,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
@@ -30,21 +38,28 @@ const navigation = [
   { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'] },
 ];
 
+const roleLabels = {
+  'cgi_admin': 'Admin Dashboard',
+  'venue_owner': 'Venue Owner előnézet',
+  'venue_staff': 'Staff előnézet'
+};
+
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
+  const effectiveRole = sessionManager.getEffectiveRole();
 
   // Close mobile sidebar when route changes
   useEffect(() => {
     setIsOpen(false);
   }, [location.pathname]);
 
-  // Filter navigation based on user role
+  // Filter navigation based on effective role
   const filteredNavigation = navigation.filter(item => {
-    if (!session) return false;
-    return item.roles.includes(session.user.role);
+    if (!effectiveRole) return false;
+    return item.roles.includes(effectiveRole);
   });
 
   const handleLogout = () => {
@@ -52,10 +67,18 @@ export function Sidebar() {
     navigate('/login');
   };
 
+  const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff') => {
+    sessionManager.setPreviewRole(role === 'cgi_admin' ? null : role);
+    // Refresh the current page to show the new dashboard
+    window.location.reload();
+  };
+
   // Don't render sidebar if no session
-  if (!session) {
+  if (!session || !effectiveRole) {
     return null;
   }
+
+  const isAdmin = session.user.role === 'cgi_admin';
 
   return (
     <>
@@ -109,6 +132,44 @@ export function Sidebar() {
 
           {/* Footer */}
           <div className="border-t border-cgi-muted p-4 space-y-4">
+            {/* Role Preview Dropdown - Only for admins */}
+            {isAdmin && (
+              <div className="mb-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-between text-xs cgi-button-secondary"
+                    >
+                      <span>{roleLabels[effectiveRole]}</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 bg-cgi-surface border-cgi-muted">
+                    <DropdownMenuItem 
+                      onClick={() => handleRoleChange('cgi_admin')}
+                      className="text-cgi-surface-foreground hover:bg-cgi-muted/50"
+                    >
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleRoleChange('venue_owner')}
+                      className="text-cgi-surface-foreground hover:bg-cgi-muted/50"
+                    >
+                      Venue Owner előnézet
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleRoleChange('venue_staff')}
+                      className="text-cgi-surface-foreground hover:bg-cgi-muted/50"
+                    >
+                      Staff előnézet
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
                 <span className="text-xs font-medium text-cgi-secondary">

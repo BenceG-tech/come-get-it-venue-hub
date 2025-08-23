@@ -27,6 +27,7 @@ export const DEMO_USERS: User[] = [
 
 class MockSessionManager {
   private currentSession: Session | null = null;
+  private previewRole: 'cgi_admin' | 'venue_owner' | 'venue_staff' | null = null;
 
   getCurrentSession(): Session | null {
     if (!this.currentSession) {
@@ -55,12 +56,42 @@ class MockSessionManager {
 
   clearSession(): void {
     this.currentSession = null;
+    this.previewRole = null;
     localStorage.removeItem('cgi_admin_session');
   }
 
   // Add clear() method that calls clearSession() for consistency
   clear(): void {
     this.clearSession();
+  }
+
+  // Preview role methods
+  setPreviewRole(role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | null): void {
+    const session = this.getCurrentSession();
+    if (session && session.user.role === 'cgi_admin') {
+      this.previewRole = role;
+    }
+  }
+
+  getPreviewRole(): 'cgi_admin' | 'venue_owner' | 'venue_staff' | null {
+    return this.previewRole;
+  }
+
+  getEffectiveRole(): 'cgi_admin' | 'venue_owner' | 'venue_staff' | null {
+    const session = this.getCurrentSession();
+    if (!session) return null;
+    
+    // Only admins can use preview mode
+    if (session.user.role === 'cgi_admin' && this.previewRole) {
+      return this.previewRole;
+    }
+    
+    return session.user.role;
+  }
+
+  isInPreviewMode(): boolean {
+    const session = this.getCurrentSession();
+    return !!(session && session.user.role === 'cgi_admin' && this.previewRole && this.previewRole !== 'cgi_admin');
   }
 
   canAccessVenue(venueId: string): boolean {
