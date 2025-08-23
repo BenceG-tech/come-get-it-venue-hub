@@ -15,6 +15,17 @@ type ListFilters = {
   offset?: number;
 };
 
+function logSbError(where: string, err: any) {
+  const meta = (err && (err as any).cause) || {};
+  console.error("[SupabaseWeb]", where, {
+    message: err?.message,
+    code: (err as any)?.code || meta?.code,
+    details: (err as any)?.details || meta?.details,
+    hint: (err as any)?.hint || meta?.hint,
+    status: (err as any)?.status || meta?.status,
+  });
+}
+
 export const supabaseProvider: DataProvider & {
   getCount?: (resource: string, filters?: ListFilters) => Promise<number>;
 } = {
@@ -55,7 +66,10 @@ export const supabaseProvider: DataProvider & {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      logSbError("getList", error);
+      throw error;
+    }
     return (data as T[]) ?? [];
   },
 
@@ -66,18 +80,39 @@ export const supabaseProvider: DataProvider & {
       .select("*")
       .eq("id", id)
       .single();
-    if (error) throw error;
+    if (error) {
+      logSbError("getOne", error);
+      throw error;
+    }
     return data as T;
   },
 
   async create<T>(resource: string, data: Partial<T>): Promise<T> {
     console.log("[supabaseProvider] create", resource, data);
+
+    // Inject owner_profile_id for venues (also enforced by DB trigger)
+    let payload = data as any;
+    if (resource === "venues") {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData?.user) {
+        const err = authError ?? new Error("Please log in to create a venue");
+        logSbError("create(auth.getUser)", err);
+        throw err;
+      }
+      if (!payload.owner_profile_id) {
+        payload = { ...payload, owner_profile_id: authData.user.id };
+      }
+    }
+
     const { data: rows, error } = await supabase
       .from(resource)
-      .insert(data as any)
+      .insert(payload as any)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      logSbError("create", error);
+      throw error;
+    }
     return rows as T;
   },
 
@@ -89,20 +124,29 @@ export const supabaseProvider: DataProvider & {
       .eq("id", id)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      logSbError("update", error);
+      throw error;
+    }
     return row as T;
   },
 
   async remove(resource: string, id: string): Promise<void> {
     console.log("[supabaseProvider] remove", resource, id);
     const { error } = await supabase.from(resource).delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      logSbError("remove", error);
+      throw error;
+    }
   },
 
   async upsertMany<T>(resource: string, data: T[]): Promise<T[]> {
     console.log("[supabaseProvider] upsertMany", resource, data?.length);
     const { data: rows, error } = await supabase.from(resource).upsert(data as any).select();
-    if (error) throw error;
+    if (error) {
+      logSbError("upsertMany", error);
+      throw error;
+    }
     return (rows as T[]) ?? [];
   },
 
@@ -125,7 +169,10 @@ export const supabaseProvider: DataProvider & {
     }
 
     const { count, error } = await query;
-    if (error) throw error;
+    if (error) {
+      logSbError("getCount", error);
+      throw error;
+    }
     return count ?? 0;
   },
 };

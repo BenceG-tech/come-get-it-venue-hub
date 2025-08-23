@@ -5,8 +5,18 @@ import { createClient } from '@supabase/supabase-js';
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-const SUPABASE_URL = "https://nrxfiblssxwzeziomlvc.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeGZpYmxzc3h3emV6aW9tbHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5NzE3MDgsImV4cCI6MjA3MTU0NzcwOH0.o-32YtJt1xhyLCKJbwscIyUxSgoB_n5vILJhJk5jxG8";
+// Prefer environment variables; fall back to existing constants for safety in development.
+const SUPABASE_URL =
+  (import.meta as any)?.env?.VITE_SUPABASE_URL ||
+  "https://nrxfiblssxwzeziomlvc.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeGZpYmxzc3h3emV6aW9tbHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5NzE3MDgsImV4cCI6MjA3MTU0NzcwOH0.o-32YtJt1xhyLCKJbwscIyUxSgoB_n5vILJhJk5jxG8";
+
+console.log("[SupabaseWeb] client init", {
+  url: SUPABASE_URL,
+  hasKey: Boolean(SUPABASE_PUBLISHABLE_KEY),
+});
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
