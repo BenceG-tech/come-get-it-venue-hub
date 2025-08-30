@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { DataProvider } from "./index";
 
@@ -38,10 +39,15 @@ const VENUE_COLUMNS = new Set([
   "image_url",
   "hero_image_url",
   "tags",
+  "opening_hours", // added to support business_hours -> opening_hours mapping
 ]);
 
 function pickVenueColumns(payload: any) {
   const out: any = {};
+  // Map UI "business_hours" to DB "opening_hours" if present
+  if (payload && payload.business_hours && !payload.opening_hours) {
+    out.opening_hours = payload.business_hours;
+  }
   Object.keys(payload || {}).forEach((k) => {
     if (VENUE_COLUMNS.has(k)) out[k] = (payload as any)[k];
   });
@@ -208,7 +214,11 @@ export const supabaseProvider: DataProvider & {
 
       // Attach images
       const images = await fetchVenueImages(id);
-      const enriched = { ...(row as any), images };
+
+      // Map DB opening_hours -> UI business_hours
+      const business_hours = (row as any)?.opening_hours ?? undefined;
+
+      const enriched = { ...(row as any), images, business_hours };
       return enriched as T;
     }
 
@@ -242,6 +252,8 @@ export const supabaseProvider: DataProvider & {
 
       // Extract images from payload; store only supported columns in venues
       const images = Array.isArray(payload.images) ? payload.images : undefined;
+
+      // Ensure opening_hours is set from business_hours for DB
       const insertPayload = pickVenueColumns(payload);
 
       const { data: row, error } = await supabase
@@ -256,17 +268,19 @@ export const supabaseProvider: DataProvider & {
 
       // If images provided, insert them into venue_images
       if (images && images.length > 0) {
-        await replaceVenueImages(row.id, images);
+        await replaceVenueImages((row as any).id, images);
       }
 
-      // Return venue with images
-      const enriched = { ...(row as any), images: images ? await fetchVenueImages(row.id) : [] };
+      // Return venue with images and UI business_hours
+      const finalImages = images ? await fetchVenueImages((row as any).id) : [];
+      const business_hours = (row as any)?.opening_hours ?? insertPayload?.opening_hours ?? undefined;
+      const enriched = { ...(row as any), images: finalImages, business_hours };
       return enriched as T;
     }
 
     const { data: rows, error } = await supabase
       .from(resource)
-      .insert(payload as any)
+      .insert((data as any))
       .select()
       .single();
     if (error) {
@@ -282,6 +296,8 @@ export const supabaseProvider: DataProvider & {
     if (resource === "venues") {
       const payload = data as any;
       const images = Array.isArray(payload.images) ? payload.images : undefined;
+
+      // Ensure opening_hours is set from business_hours for DB
       const updatePayload = pickVenueColumns(payload);
 
       // Update the venue row (only supported columns)
@@ -301,9 +317,10 @@ export const supabaseProvider: DataProvider & {
         await replaceVenueImages(id, images);
       }
 
-      // Return updated venue with images
+      // Return updated venue with images and UI business_hours
       const finalImages = await fetchVenueImages(id);
-      const enriched = { ...(row as any), images: finalImages };
+      const business_hours = (row as any)?.opening_hours ?? updatePayload?.opening_hours ?? undefined;
+      const enriched = { ...(row as any), images: finalImages, business_hours };
       return enriched as T;
     }
 

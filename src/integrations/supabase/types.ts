@@ -481,9 +481,11 @@ export type Database = {
           image_url: string | null
           is_paused: boolean
           name: string
+          opening_hours: Json | null
           owner_profile_id: string
           phone_number: string | null
           plan: Database["public"]["Enums"]["venue_plan"]
+          tags: string[] | null
           updated_at: string
           website_url: string | null
         }
@@ -496,9 +498,11 @@ export type Database = {
           image_url?: string | null
           is_paused?: boolean
           name: string
+          opening_hours?: Json | null
           owner_profile_id: string
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          tags?: string[] | null
           updated_at?: string
           website_url?: string | null
         }
@@ -511,9 +515,11 @@ export type Database = {
           image_url?: string | null
           is_paused?: boolean
           name?: string
+          opening_hours?: Json | null
           owner_profile_id?: string
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          tags?: string[] | null
           updated_at?: string
           website_url?: string | null
         }
@@ -552,6 +558,10 @@ export type Database = {
       }
       is_admin: {
         Args: { user_id?: string }
+        Returns: boolean
+      }
+      validate_opening_hours: {
+        Args: { hours: Json }
         Returns: boolean
       }
     }
