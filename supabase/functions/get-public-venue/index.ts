@@ -8,6 +8,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -19,7 +20,18 @@ serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const venueId = url.searchParams.get('id')
+
+    // Support both GET (query param) and POST (JSON body) styles for passing the venue ID
+    let venueId = url.searchParams.get('id')
+
+    if (!venueId && (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH')) {
+      try {
+        const body = await req.json()
+        venueId = body?.id || body?.venueId || body?.venue_id || null
+      } catch (_e) {
+        // No valid JSON body; will fall through to missing ID handling
+      }
+    }
 
     if (!venueId) {
       return new Response(
@@ -31,6 +43,8 @@ serve(async (req) => {
       )
     }
 
+    console.log('[get-public-venue] Fetching venue', { method: req.method, venueId })
+
     // Fetch venue with all related data using service role to bypass RLS
     const { data: venue, error: venueError } = await supabaseClient
       .from('venues')
@@ -41,9 +55,13 @@ serve(async (req) => {
       `)
       .eq('id', venueId)
       .eq('is_paused', false)
-      .single()
+      .maybeSingle()
 
-    if (venueError || !venue) {
+    if (venueError) {
+      console.error('[get-public-venue] venueError', venueError)
+    }
+
+    if (!venue) {
       return new Response(
         JSON.stringify({ error: 'Venue not found' }),
         { 
@@ -54,11 +72,15 @@ serve(async (req) => {
     }
 
     // Fetch venue images
-    const { data: images } = await supabaseClient
+    const { data: images, error: imgsErr } = await supabaseClient
       .from('venue_images')
-      .select('id, url, label, is_cover')
+      .select('id, url, label, is_cover, created_at')
       .eq('venue_id', venueId)
       .order('created_at', { ascending: true })
+
+    if (imgsErr) {
+      console.warn('[get-public-venue] images fetch warning', imgsErr)
+    }
 
     // Add images to venue object
     const venueWithImages = {
@@ -83,7 +105,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 
-        status: 500, 
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     )
