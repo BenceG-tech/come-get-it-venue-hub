@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { DataProvider } from "./index";
 
@@ -113,6 +112,7 @@ async function replaceVenueImages(venueId: string, images: any[]) {
 export const supabaseProvider: DataProvider & {
   getCount?: (resource: string, filters?: ListFilters) => Promise<number>;
   getPublicVenues?: (filters?: ListFilters) => Promise<any[]>;
+  getPublicVenue?: (id: string) => Promise<any>;
 } = {
   async getList<T>(resource: string, filters?: ListFilters): Promise<T[]> {
     console.log("[supabaseProvider] getList", resource, filters);
@@ -196,6 +196,53 @@ export const supabaseProvider: DataProvider & {
       return fallbackData ?? [];
     }
     return data ?? [];
+  },
+
+  // New method for fetching a single public venue
+  async getPublicVenue(id: string): Promise<any> {
+    console.log("[supabaseProvider] getPublicVenue", id);
+    
+    try {
+      // Use edge function for public venue access
+      const { data, error } = await supabase.functions.invoke('get-public-venue', {
+        body: { id }
+      });
+
+      if (error) {
+        console.warn("Edge function failed, using fallback:", error);
+        // Fallback to direct database query
+        const { data: venue, error: venueError } = await supabase
+          .from('venues')
+          .select(`
+            id, name, address, description, plan, phone_number, 
+            website_url, image_url, hero_image_url, is_paused, 
+            created_at, tags, opening_hours
+          `)
+          .eq('id', id)
+          .eq('is_paused', false)
+          .single();
+
+        if (venueError) {
+          logSbError("getPublicVenue fallback", venueError);
+          throw venueError;
+        }
+
+        // Fetch images separately
+        const images = await fetchVenueImages(id);
+        
+        // Map opening_hours to business_hours for UI compatibility
+        const business_hours = venue?.opening_hours ?? undefined;
+        
+        return { ...venue, images, business_hours };
+      }
+
+      // Map opening_hours to business_hours for UI compatibility
+      const business_hours = data?.opening_hours ?? undefined;
+      return { ...data, business_hours };
+    } catch (err) {
+      logSbError("getPublicVenue", err);
+      throw err;
+    }
   },
 
   async getOne<T>(resource: string, id: string): Promise<T> {

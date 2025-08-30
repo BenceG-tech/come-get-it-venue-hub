@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, Phone, Globe, Clock, Gift, Users, Calendar, CreditCard } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Globe, Clock, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { VenueImageGallery } from '@/components/VenueImageGallery';
 import DrinkRedemptionCard from '@/components/DrinkRedemptionCard';
@@ -14,6 +15,7 @@ export default function PublicVenueDetail() {
   const { id } = useParams<{ id: string }>();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
   const dataProvider = getDataProvider();
 
@@ -22,11 +24,21 @@ export default function PublicVenueDetail() {
       if (!id) return;
       
       setIsLoading(true);
+      setError(null);
+      
       try {
-        const venueData = await dataProvider.getOne<Venue>('venues', id);
+        // Use the new getPublicVenue method if available
+        let venueData;
+        if ('getPublicVenue' in dataProvider && typeof dataProvider.getPublicVenue === 'function') {
+          venueData = await dataProvider.getPublicVenue(id);
+        } else {
+          // Fallback to regular getOne method
+          venueData = await dataProvider.getOne<Venue>('venues', id);
+        }
         setVenue(venueData);
       } catch (error) {
         console.error('Error loading venue:', error);
+        setError('Nem sikerült betölteni a helyszín adatait');
       } finally {
         setIsLoading(false);
       }
@@ -39,19 +51,21 @@ export default function PublicVenueDetail() {
     return (
       <div className="min-h-screen bg-cgi-surface">
         <div className="cgi-container py-8">
-          <div className="text-cgi-surface-foreground">Betöltés...</div>
+          <div className="flex items-center justify-center">
+            <div className="text-cgi-surface-foreground">Betöltés...</div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!venue) {
+  if (error || !venue) {
     return (
       <div className="min-h-screen bg-cgi-surface">
         <div className="cgi-container py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-cgi-surface-foreground mb-4">
-              Helyszín nem található
+              {error || 'Helyszín nem található'}
             </h1>
             <Link to="/">
               <Button className="cgi-button-primary">
@@ -287,7 +301,7 @@ export default function PublicVenueDetail() {
             <Card className="cgi-card">
               <div className="cgi-card-header">
                 <h3 className="cgi-card-title flex items-center gap-2">
-                  <Users className="h-5 w-5" />
+                  <Clock className="h-5 w-5" />
                   Statisztikák
                 </h3>
               </div>
