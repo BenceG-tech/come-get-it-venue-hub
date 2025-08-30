@@ -167,6 +167,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          image_url: string | null
           name: string
           points_required: number
           updated_at: string
@@ -178,6 +179,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           name: string
           points_required: number
           updated_at?: string
@@ -189,6 +191,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           points_required?: number
           updated_at?: string
@@ -322,7 +325,9 @@ export type Database = {
           address: string
           created_at: string
           description: string | null
+          hero_image_url: string | null
           id: string
+          image_url: string | null
           is_paused: boolean
           name: string
           owner_profile_id: string
@@ -335,7 +340,9 @@ export type Database = {
           address: string
           created_at?: string
           description?: string | null
+          hero_image_url?: string | null
           id?: string
+          image_url?: string | null
           is_paused?: boolean
           name: string
           owner_profile_id: string
@@ -348,7 +355,9 @@ export type Database = {
           address?: string
           created_at?: string
           description?: string | null
+          hero_image_url?: string | null
           id?: string
+          image_url?: string | null
           is_paused?: boolean
           name?: string
           owner_profile_id?: string

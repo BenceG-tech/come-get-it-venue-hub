@@ -11,6 +11,9 @@ interface PublicVenue {
   phone_number?: string;
   website_url?: string;
   is_paused: boolean;
+  // New fields for image handling
+  image_url?: string;
+  hero_image_url?: string;
 }
 
 export function usePublicVenues(searchTerm?: string) {

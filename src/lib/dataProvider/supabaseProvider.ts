@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { DataProvider } from "./index";
 
@@ -36,6 +35,9 @@ const VENUE_COLUMNS = new Set([
   "phone_number",
   "website_url",
   "owner_profile_id",
+  // Added to allow writing image URLs
+  "image_url",
+  "hero_image_url",
 ]);
 
 function pickVenueColumns(payload: any) {
@@ -166,7 +168,7 @@ export const supabaseProvider: DataProvider & {
       console.warn("RPC get_public_venues not found, using fallback");
       let fallbackQuery = supabase.from('venues').select(`
         id, name, address, description, plan, phone_number, 
-        website_url, is_paused, created_at
+        website_url, image_url, hero_image_url, is_paused, created_at
       `).eq('is_paused', false);
 
       if (filters?.search && filters.search.trim().length > 0) {

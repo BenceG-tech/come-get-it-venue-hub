@@ -96,6 +96,10 @@ export interface Venue {
   website_url?: string;
   images?: VenueImage[];
   coordinates?: Coordinates;            // for maps
+
+  // Added for mobile/consumer compatibility
+  image_url?: string;       // card/list image
+  hero_image_url?: string;  // detail header image
 }
 
 export interface Brand {
@@ -167,6 +171,9 @@ export interface Reward {
   active: boolean;
   description?: string;
   venue_id: string;
+
+  // Already present, retained for completeness
+  image_url?: string;
 }
 
 export interface AnalyticsData {
