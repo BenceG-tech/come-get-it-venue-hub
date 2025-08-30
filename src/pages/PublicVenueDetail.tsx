@@ -1,18 +1,20 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, Phone, Globe, Clock, Gift, Users, Calendar } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Globe, Clock, Gift, Users, Calendar, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { VenueImageGallery } from '@/components/VenueImageGallery';
+import DrinkRedemptionCard from '@/components/DrinkRedemptionCard';
+import CardLinkingModal from '@/components/CardLinkingModal';
 import type { Venue } from '@/lib/types';
 
 export default function PublicVenueDetail() {
   const { id } = useParams<{ id: string }>();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCardModal, setShowCardModal] = useState(false);
   const dataProvider = getDataProvider();
 
   useEffect(() => {
@@ -101,6 +103,14 @@ export default function PublicVenueDetail() {
             </Link>
             
             <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => setShowCardModal(true)}
+                variant="outline" 
+                className="cgi-button-secondary"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Kártyák
+              </Button>
               <Link to="/login">
                 <Button variant="outline" className="cgi-button-secondary">
                   Bejelentkezés
@@ -178,46 +188,40 @@ export default function PublicVenueDetail() {
             />
 
             {/* Free Drinks Section */}
-            <Card className="cgi-card">
-              <div className="cgi-card-header">
-                <h3 className="cgi-card-title flex items-center gap-2">
-                  <Gift className="h-5 w-5 text-cgi-secondary" />
-                  Ingyenes Italok
-                </h3>
-              </div>
-              <div className="space-y-4">
-                <div className="bg-cgi-success/10 border border-cgi-success/20 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="h-2 w-2 bg-cgi-success rounded-full"></div>
-                    <span className="font-medium text-cgi-success">Aktív ajánlat</span>
-                  </div>
-                  <h4 className="font-semibold text-cgi-surface-foreground mb-1">
-                    Napi Happy Hour
-                  </h4>
-                  <p className="text-sm text-cgi-muted-foreground mb-3">
-                    Válassz kedvenc italod az alábbi opcióból minden nap 14:00-16:00 között.
-                  </p>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      <span>14:00 - 16:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Hétfő - Vasárnap</span>
-                    </div>
-                  </div>
-                </div>
+            <DrinkRedemptionCard
+              offer={{
+                id: 'daily-happy-hour',
+                name: 'Napi Happy Hour',
+                description: 'Válassz kedvenc italod minden nap 14:00-16:00 között.',
+                isActive: true,
+                availableUntil: '16:00',
+                remainingRedemptions: 25,
+                maxRedemptions: 50
+              }}
+              onRedeem={async (offerId) => {
+                console.log('Redeeming offer:', offerId);
+                // This would typically call an API to redeem the offer
+              }}
+              isAuthenticated={false}
+            />
 
-                <div className="text-center">
-                  <Button className="cgi-button-primary" size="lg">
-                    <Gift className="h-5 w-5 mr-2" />
-                    Ital beváltása
-                  </Button>
-                  <p className="text-xs text-cgi-muted-foreground mt-2">
-                    Bejelentkezés szükséges a beváltáshoz
-                  </p>
-                </div>
+            {/* Card Linking CTA */}
+            <Card className="cgi-card bg-gradient-to-r from-cgi-primary/10 to-cgi-secondary/10 border-cgi-primary/20">
+              <div className="p-6 text-center">
+                <CreditCard className="h-12 w-12 mx-auto mb-4 text-cgi-primary" />
+                <h3 className="text-lg font-semibold text-cgi-surface-foreground mb-2">
+                  Automatikus pontgyűjtés
+                </h3>
+                <p className="text-cgi-muted-foreground mb-4">
+                  Kapcsold össze a bankkártyádat és automatikusan gyűjts pontokat minden vásárláskor.
+                </p>
+                <Button 
+                  onClick={() => setShowCardModal(true)}
+                  className="cgi-button-primary"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Kártya összekapcsolása
+                </Button>
               </div>
             </Card>
           </div>
@@ -304,8 +308,16 @@ export default function PublicVenueDetail() {
             </Card>
           </div>
         </div>
+
+        {/* Card Linking Modal */}
+        <CardLinkingModal
+          isOpen={showCardModal}
+          onClose={() => setShowCardModal(false)}
+          onSuccess={() => {
+            console.log('Card linked successfully');
+          }}
+        />
       </div>
     </div>
   );
 }
-

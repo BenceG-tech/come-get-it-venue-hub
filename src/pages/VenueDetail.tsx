@@ -16,7 +16,9 @@ import { VenueFormModal } from '@/components/VenueFormModal';
 import { ChartCard } from '@/components/ChartCard';
 import { KPICard } from '@/components/KPICard';
 import ScheduleGrid from '@/components/ScheduleGrid';
-import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info } from 'lucide-react';
+import BusinessHoursEditor from '@/components/BusinessHoursEditor';
+import VenueLocationManager from '@/components/VenueLocationManager';
+import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { seedData } from '@/lib/mock/seed';
 import { 
@@ -27,7 +29,7 @@ import {
   isVenueOpenNow,
   getClosingTimeToday
 } from '@/lib/businessLogic';
-import { Venue, FreeDrinkWindow } from '@/lib/types';
+import { Venue, FreeDrinkWindow, BusinessHours } from '@/lib/types';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useToast } from '@/hooks/use-toast';
 import { runtimeConfig } from '@/config/runtime';
@@ -106,6 +108,19 @@ export default function VenueDetail() {
     } catch (error: any) {
       console.error("Failed to update venue:", error);
       toast({ title: "Hiba", description: String(error?.message || error), variant: "destructive" as any });
+    }
+  };
+
+  const handleBusinessHoursSave = async (businessHours: BusinessHours) => {
+    if (!venue) return;
+    
+    try {
+      const updates = { business_hours: businessHours };
+      await dataProvider.update<Venue>('venues', venue.id, updates);
+      setVenue(prev => prev ? { ...prev, business_hours: businessHours } : null);
+    } catch (error: any) {
+      console.error("Failed to update business hours:", error);
+      throw error;
     }
   };
 
@@ -318,9 +333,10 @@ export default function VenueDetail() {
           </div>
 
           <Tabs defaultValue="analytics" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-cgi-muted">
+            <TabsList className="grid w-full grid-cols-4 bg-cgi-muted">
               <TabsTrigger value="analytics" className="text-cgi-surface-foreground">Analitika</TabsTrigger>
               <TabsTrigger value="management" className="text-cgi-surface-foreground">Kezelés</TabsTrigger>
+              <TabsTrigger value="integration" className="text-cgi-surface-foreground">Integráció</TabsTrigger>
               <TabsTrigger value="settings" className="text-cgi-surface-foreground">Beállítások</TabsTrigger>
             </TabsList>
             
@@ -360,34 +376,91 @@ export default function VenueDetail() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="integration" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']}>
+                  <VenueLocationManager 
+                    venue={venue}
+                    onUpdate={() => {
+                      // Optionally reload venue data
+                      console.log('Venue locations updated');
+                    }}
+                  />
+                </FeatureGate>
+                
+                <Card className="cgi-card">
+                  <div className="cgi-card-header">
+                    <h3 className="cgi-card-title flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Fidel Integráció Állapota
+                    </h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-cgi-success/10 rounded-lg border border-cgi-success/20">
+                      <div>
+                        <div className="font-medium text-cgi-success">Webhook aktív</div>
+                        <div className="text-sm text-cgi-muted-foreground">
+                          A Fidel tranzakciók automatikusan feldolgozásra kerülnek
+                        </div>
+                      </div>
+                      <Badge className="bg-cgi-success/20 text-cgi-success">
+                        Működik
+                      </Badge>
+                    </div>
+                    
+                    <div className="text-sm text-cgi-muted-foreground">
+                      <p className="mb-2">
+                        <strong>Webhook URL:</strong><br />
+                        <code className="bg-cgi-muted px-2 py-1 rounded text-xs">
+                          https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/fidel-webhook
+                        </code>
+                      </p>
+                      <p>
+                        Ezt az URL-t használd a Fidel Dashboard-ban a webhook beállításánál.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </TabsContent>
+
             <TabsContent value="settings" className="space-y-4">
-              <Card className="cgi-card bg-cgi-surface border-cgi-muted">
-                <div className="cgi-card-header">
-                  <h3 className="cgi-card-title text-cgi-surface-foreground">Beállítások</h3>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="venue-name" className="text-cgi-surface-foreground">Helyszín neve</Label>
-                    <input
-                      type="text"
-                      id="venue-name"
-                      className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                      value={venue.name}
-                      readOnly
-                    />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']}>
+                  <BusinessHoursEditor
+                    initialHours={venue.business_hours}
+                    onSave={handleBusinessHoursSave}
+                  />
+                </FeatureGate>
+                
+                <Card className="cgi-card bg-cgi-surface border-cgi-muted">
+                  <div className="cgi-card-header">
+                    <h3 className="cgi-card-title text-cgi-surface-foreground">Alapbeállítások</h3>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="venue-address" className="text-cgi-surface-foreground">Cím</Label>
-                    <input
-                      type="text"
-                      id="venue-address"
-                      className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                      value={venue.address}
-                      readOnly
-                    />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="venue-name" className="text-cgi-surface-foreground">Helyszín neve</Label>
+                      <input
+                        type="text"
+                        id="venue-name"
+                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                        value={venue.name}
+                        readOnly
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="venue-address" className="text-cgi-surface-foreground">Cím</Label>
+                      <input
+                        type="text"
+                        id="venue-address"
+                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                        value={venue.address}
+                        readOnly
+                      />
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
