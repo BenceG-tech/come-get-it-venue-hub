@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -142,8 +141,8 @@ export default function PublicVenueDetail() {
             )}
           </div>
 
-          {/* Tags */}
-          {venue.tags.length > 0 && (
+          {/* Tags - Fixed with proper null check */}
+          {venue.tags && venue.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {venue.tags.map(tag => (
                 <Badge key={tag} className="cgi-badge bg-cgi-secondary/10 text-cgi-secondary border border-cgi-secondary/20">
