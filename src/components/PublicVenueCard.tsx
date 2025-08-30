@@ -13,6 +13,9 @@ interface PublicVenue {
   phone_number?: string;
   website_url?: string;
   is_paused: boolean;
+  // New optional image fields from public RPC
+  image_url?: string;
+  hero_image_url?: string;
 }
 
 interface PublicVenueCardProps {
@@ -35,8 +38,19 @@ export default function PublicVenueCard({ venue }: PublicVenueCardProps) {
   return (
     <Card className="cgi-card overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group">
       <Link to={`/venue/${venue.id}`}>
-        <div className="aspect-video bg-gradient-to-br from-cgi-primary/20 to-cgi-secondary/20 flex items-center justify-center group-hover:from-cgi-primary/30 group-hover:to-cgi-secondary/30 transition-all duration-200">
-          <Gift className="h-12 w-12 text-cgi-primary" />
+        <div className="aspect-video relative overflow-hidden bg-gradient-to-br from-cgi-primary/20 to-cgi-secondary/20 group-hover:from-cgi-primary/30 group-hover:to-cgi-secondary/30 transition-all duration-200">
+          {venue.image_url ? (
+            <img
+              src={venue.image_url}
+              alt={venue.name}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Gift className="h-12 w-12 text-cgi-primary" />
+            </div>
+          )}
         </div>
         
         <div className="p-6">
@@ -90,3 +104,4 @@ export default function PublicVenueCard({ venue }: PublicVenueCardProps) {
     </Card>
   );
 }
+

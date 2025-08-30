@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,20 @@ export default function PublicVenueDetail() {
         return 'bg-cgi-muted text-cgi-muted-foreground';
     }
   };
+
+  // Build gallery images with fallback to hero/image_url if images array is empty
+  const hasDbImages = Array.isArray(venue.images) && venue.images.length > 0;
+  const syntheticImages = !hasDbImages && (venue.hero_image_url || venue.image_url)
+    ? [
+        {
+          id: 'cover',
+          url: (venue.hero_image_url || venue.image_url) as string,
+          label: 'Borítókép',
+          isCover: true,
+        },
+      ]
+    : [];
+  const galleryImages = hasDbImages ? (venue.images as NonNullable<Venue['images']>) : syntheticImages;
 
   return (
     <div className="min-h-screen bg-cgi-surface">
@@ -158,7 +173,7 @@ export default function PublicVenueDetail() {
           <div className="lg:col-span-2 space-y-6">
             {/* Venue Images */}
             <VenueImageGallery 
-              images={venue.images || []} 
+              images={galleryImages} 
               venueName={venue.name} 
             />
 
@@ -293,3 +308,4 @@ export default function PublicVenueDetail() {
     </div>
   );
 }
+
