@@ -58,6 +58,71 @@ export type Database = {
           },
         ]
       }
+      fidel_transactions: {
+        Row: {
+          amount: number
+          auth_code: string | null
+          cleared: boolean
+          created_at: string
+          currency: string
+          fidel_card_id: string
+          fidel_location_id: string | null
+          fidel_transaction_id: string
+          id: string
+          merchant_name: string | null
+          points_awarded: number | null
+          processed_at: string | null
+          raw_payload: Json
+          transaction_date: string
+          user_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          amount: number
+          auth_code?: string | null
+          cleared?: boolean
+          created_at?: string
+          currency?: string
+          fidel_card_id: string
+          fidel_location_id?: string | null
+          fidel_transaction_id: string
+          id?: string
+          merchant_name?: string | null
+          points_awarded?: number | null
+          processed_at?: string | null
+          raw_payload: Json
+          transaction_date: string
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          amount?: number
+          auth_code?: string | null
+          cleared?: boolean
+          created_at?: string
+          currency?: string
+          fidel_card_id?: string
+          fidel_location_id?: string | null
+          fidel_transaction_id?: string
+          id?: string
+          merchant_name?: string | null
+          points_awarded?: number | null
+          processed_at?: string | null
+          raw_payload?: Json
+          transaction_date?: string
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fidel_transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       free_drink_windows: {
         Row: {
           created_at: string
@@ -98,6 +163,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      linked_cards: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          fidel_card_id: string
+          id: string
+          is_active: boolean
+          last_four: string | null
+          program_id: string
+          scheme: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          fidel_card_id: string
+          id?: string
+          is_active?: boolean
+          last_four?: string | null
+          program_id: string
+          scheme?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          fidel_card_id?: string
+          id?: string
+          is_active?: boolean
+          last_four?: string | null
+          program_id?: string
+          scheme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -212,27 +316,33 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          fidel_transaction_id: string | null
           id: string
           items: Json
           points: number
+          processing_status: string | null
           timestamp: string
           venue_id: string
         }
         Insert: {
           amount: number
           created_at?: string
+          fidel_transaction_id?: string | null
           id?: string
           items?: Json
           points?: number
+          processing_status?: string | null
           timestamp?: string
           venue_id: string
         }
         Update: {
           amount?: number
           created_at?: string
+          fidel_transaction_id?: string | null
           id?: string
           items?: Json
           points?: number
+          processing_status?: string | null
           timestamp?: string
           venue_id?: string
         }
@@ -274,6 +384,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "venue_images_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_locations: {
+        Row: {
+          created_at: string
+          fidel_brand_id: string | null
+          fidel_location_id: string
+          id: string
+          scheme: string
+          status: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          fidel_brand_id?: string | null
+          fidel_location_id: string
+          id?: string
+          scheme: string
+          status?: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          fidel_brand_id?: string | null
+          fidel_location_id?: string
+          id?: string
+          scheme?: string
+          status?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_locations_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
