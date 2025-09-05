@@ -11,9 +11,16 @@ interface PublicVenue {
   phone_number?: string;
   website_url?: string;
   is_paused: boolean;
-  // New fields for image handling
+  // Image handling fields
   image_url?: string;
   hero_image_url?: string;
+  // Rork app required fields
+  participates_in_points?: boolean;
+  distance?: number;
+  google_maps_url?: string;
+  category?: string;
+  price_tier?: number;
+  rating?: number;
 }
 
 export function usePublicVenues(searchTerm?: string) {

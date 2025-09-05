@@ -13,9 +13,16 @@ interface PublicVenue {
   phone_number?: string;
   website_url?: string;
   is_paused: boolean;
-  // New optional image fields from public RPC
+  // Image fields
   image_url?: string;
   hero_image_url?: string;
+  // Rork app required fields
+  participates_in_points?: boolean;
+  distance?: number;
+  google_maps_url?: string;
+  category?: string;
+  price_tier?: number;
+  rating?: number;
 }
 
 interface PublicVenueCardProps {
