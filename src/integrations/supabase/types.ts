@@ -476,6 +476,7 @@ export type Database = {
           address: string
           created_at: string
           description: string | null
+          distance: number | null
           hero_image_url: string | null
           id: string
           image_url: string | null
@@ -493,6 +494,7 @@ export type Database = {
           address: string
           created_at?: string
           description?: string | null
+          distance?: number | null
           hero_image_url?: string | null
           id?: string
           image_url?: string | null
@@ -510,6 +512,7 @@ export type Database = {
           address?: string
           created_at?: string
           description?: string | null
+          distance?: number | null
           hero_image_url?: string | null
           id?: string
           image_url?: string | null
