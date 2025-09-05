@@ -544,7 +544,9 @@ export type Database = {
           address: string
           created_at: string
           description: string
+          hero_image_url: string
           id: string
+          image_url: string
           is_paused: boolean
           name: string
           phone_number: string
