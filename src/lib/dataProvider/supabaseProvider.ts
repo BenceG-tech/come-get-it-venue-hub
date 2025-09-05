@@ -174,8 +174,9 @@ export const supabaseProvider: DataProvider & {
       console.warn("RPC get_public_venues not found, using fallback");
       let fallbackQuery = supabase.from('venues').select(`
         id, name, address, description, plan, phone_number, 
-        website_url, image_url, hero_image_url, is_paused, created_at, tags
-      `).eq('is_paused', false);
+        website_url, image_url, hero_image_url, is_paused, created_at, tags,
+        participates_in_points, distance
+       `).eq('is_paused', false);
 
       if (filters?.search && filters.search.trim().length > 0) {
         const term = filters.search.trim();
@@ -216,7 +217,7 @@ export const supabaseProvider: DataProvider & {
           .select(`
             id, name, address, description, plan, phone_number, 
             website_url, image_url, hero_image_url, is_paused, 
-            created_at, tags, opening_hours
+            created_at, tags, opening_hours, participates_in_points, distance
           `)
           .eq('id', id)
           .eq('is_paused', false)
