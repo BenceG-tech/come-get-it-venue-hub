@@ -18,6 +18,7 @@ interface PublicVenue {
   hero_image_url?: string;
   // Rork app required fields
   participates_in_points?: boolean;
+  points_per_visit?: number;
   distance?: number;
   google_maps_url?: string;
   category?: string;

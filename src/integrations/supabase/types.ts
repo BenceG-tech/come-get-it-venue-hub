@@ -489,6 +489,7 @@ export type Database = {
           participates_in_points: boolean
           phone_number: string | null
           plan: Database["public"]["Enums"]["venue_plan"]
+          points_per_visit: number
           price_tier: number | null
           rating: number | null
           tags: string[] | null
@@ -512,6 +513,7 @@ export type Database = {
           participates_in_points?: boolean
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          points_per_visit?: number
           price_tier?: number | null
           rating?: number | null
           tags?: string[] | null
@@ -535,6 +537,7 @@ export type Database = {
           participates_in_points?: boolean
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          points_per_visit?: number
           price_tier?: number | null
           rating?: number | null
           tags?: string[] | null
@@ -573,6 +576,7 @@ export type Database = {
           participates_in_points: boolean
           phone_number: string
           plan: Database["public"]["Enums"]["venue_plan"]
+          points_per_visit: number
           price_tier: number
           rating: number
           website_url: string
