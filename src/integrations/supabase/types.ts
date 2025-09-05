@@ -474,9 +474,11 @@ export type Database = {
       venues: {
         Row: {
           address: string
+          category: string | null
           created_at: string
           description: string | null
           distance: number | null
+          google_maps_url: string | null
           hero_image_url: string | null
           id: string
           image_url: string | null
@@ -484,17 +486,22 @@ export type Database = {
           name: string
           opening_hours: Json | null
           owner_profile_id: string
+          participates_in_points: boolean
           phone_number: string | null
           plan: Database["public"]["Enums"]["venue_plan"]
+          price_tier: number | null
+          rating: number | null
           tags: string[] | null
           updated_at: string
           website_url: string | null
         }
         Insert: {
           address: string
+          category?: string | null
           created_at?: string
           description?: string | null
           distance?: number | null
+          google_maps_url?: string | null
           hero_image_url?: string | null
           id?: string
           image_url?: string | null
@@ -502,17 +509,22 @@ export type Database = {
           name: string
           opening_hours?: Json | null
           owner_profile_id: string
+          participates_in_points?: boolean
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          price_tier?: number | null
+          rating?: number | null
           tags?: string[] | null
           updated_at?: string
           website_url?: string | null
         }
         Update: {
           address?: string
+          category?: string | null
           created_at?: string
           description?: string | null
           distance?: number | null
+          google_maps_url?: string | null
           hero_image_url?: string | null
           id?: string
           image_url?: string | null
@@ -520,8 +532,11 @@ export type Database = {
           name?: string
           opening_hours?: Json | null
           owner_profile_id?: string
+          participates_in_points?: boolean
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
+          price_tier?: number | null
+          rating?: number | null
           tags?: string[] | null
           updated_at?: string
           website_url?: string | null
@@ -545,15 +560,21 @@ export type Database = {
         Args: { limit_count?: number; search_term?: string }
         Returns: {
           address: string
+          category: string
           created_at: string
           description: string
+          distance: number
+          google_maps_url: string
           hero_image_url: string
           id: string
           image_url: string
           is_paused: boolean
           name: string
+          participates_in_points: boolean
           phone_number: string
           plan: Database["public"]["Enums"]["venue_plan"]
+          price_tier: number
+          rating: number
           website_url: string
         }[]
       }

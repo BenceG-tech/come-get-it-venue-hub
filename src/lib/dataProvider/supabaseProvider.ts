@@ -175,7 +175,7 @@ export const supabaseProvider: DataProvider & {
       let fallbackQuery = supabase.from('venues').select(`
         id, name, address, description, plan, phone_number, 
         website_url, image_url, hero_image_url, is_paused, created_at, tags,
-        participates_in_points, distance
+        participates_in_points, distance, google_maps_url, category, price_tier, rating
        `).eq('is_paused', false);
 
       if (filters?.search && filters.search.trim().length > 0) {
@@ -217,7 +217,8 @@ export const supabaseProvider: DataProvider & {
           .select(`
             id, name, address, description, plan, phone_number, 
             website_url, image_url, hero_image_url, is_paused, 
-            created_at, tags, opening_hours, participates_in_points, distance
+            created_at, tags, opening_hours, participates_in_points, distance,
+            google_maps_url, category, price_tier, rating
           `)
           .eq('id', id)
           .eq('is_paused', false)

@@ -51,7 +51,8 @@ serve(async (req) => {
       .select(`
         id, name, address, description, plan, phone_number, 
         website_url, image_url, hero_image_url, is_paused, 
-        created_at, tags, opening_hours, participates_in_points, distance
+        created_at, tags, opening_hours, participates_in_points, distance,
+        google_maps_url, category, price_tier, rating
       `)
       .eq('id', venueId)
       .eq('is_paused', false)
