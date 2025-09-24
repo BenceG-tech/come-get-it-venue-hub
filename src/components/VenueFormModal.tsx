@@ -10,8 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector } from './EnhancedDrinkSelector';
-import { TimeRangeInput } from './TimeRangeInput';
-import { Badge } from '@/components/ui/badge';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { ImageUploadInput } from './ImageUploadInput';
@@ -21,16 +19,6 @@ interface VenueFormModalProps {
   onSave: (venue: Partial<Venue>) => void;
   trigger?: React.ReactNode;
 }
-
-const DAYS = [
-  { value: 1, label: 'Hétfő' },
-  { value: 2, label: 'Kedd' },
-  { value: 3, label: 'Szerda' },
-  { value: 4, label: 'Csütörtök' },
-  { value: 5, label: 'Péntek' },
-  { value: 6, label: 'Szombat' },
-  { value: 7, label: 'Vasárnap' },
-];
 
 export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) {
   const [open, setOpen] = useState(false);
@@ -69,50 +57,6 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       specialDates: []
     }
   });
-
-  const addFreeDrinkWindow = () => {
-    const newWindow: FreeDrinkWindow = {
-      id: crypto.randomUUID(),
-      venue_id: '', // Will be set when venue is saved
-      days: [1, 2, 3, 4, 5], // Default: weekdays
-      start: '14:00',
-      end: '16:00',
-      timezone: 'Europe/Budapest'
-    };
-    };
-    
-    setFormData(prev => ({
-      ...prev,
-      freeDrinkWindows: [...(prev.freeDrinkWindows || []), newWindow]
-    }));
-  };
-
-  const removeFreeDrinkWindow = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      freeDrinkWindows: prev.freeDrinkWindows?.filter(w => w.id !== id) || []
-    }));
-  };
-
-  const updateFreeDrinkWindow = (id: string, updates: Partial<FreeDrinkWindow>) => {
-    setFormData(prev => ({
-      ...prev,
-      freeDrinkWindows: prev.freeDrinkWindows?.map(w => 
-        w.id === id ? { ...w, ...updates } : w
-      ) || []
-    }));
-  };
-
-  const toggleDay = (windowId: string, day: number) => {
-    const window = formData.freeDrinkWindows?.find(w => w.id === windowId);
-    if (!window) return;
-
-    const days = window.days.includes(day)
-      ? window.days.filter(d => d !== day)
-      : [...window.days, day].sort();
-
-    updateFreeDrinkWindow(windowId, { days });
-  };
 
   const updateCaps = (updates: Partial<RedemptionCap>) => {
     setFormData(prev => ({
