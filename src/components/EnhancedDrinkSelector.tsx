@@ -179,7 +179,9 @@ export function EnhancedDrinkSelector({
                         checked={drink.is_free_drink}
                         onCheckedChange={(checked) => updateDrink(drink.id, { is_free_drink: !!checked })}
                       />
-                      <span className="text-sm text-cgi-muted-foreground">Ingyenes</span>
+                      <span className="text-sm text-cgi-muted-foreground">
+                        Ingyenes {drink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
@@ -188,8 +190,10 @@ export function EnhancedDrinkSelector({
                       onClick={() => setExpandedDrink(expandedDrink === drink.id ? null : drink.id)}
                       variant="outline"
                       size="sm"
+                      className={drink.is_free_drink && getDrinkWindows(drink.id).length === 0 ? "border-orange-500 text-orange-600" : ""}
                     >
                       {expandedDrink === drink.id ? 'Bezár' : 'Részletek'}
+                      {drink.is_free_drink && getDrinkWindows(drink.id).length === 0 && <Clock className="ml-1 h-3 w-3" />}
                     </Button>
                     <Button
                       type="button"
@@ -229,25 +233,40 @@ export function EnhancedDrinkSelector({
 
                     {/* Time windows for this drink */}
                     {drink.is_free_drink && (
-                      <div className="space-y-3">
+                      <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-center justify-between">
-                          <Label className="text-cgi-surface-foreground">Ingyenes ital időablakok</Label>
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4 text-blue-600" />
+                            <Label className="text-cgi-surface-foreground font-medium">Ingyenes ital időablakok</Label>
+                            {getDrinkWindows(drink.id).length === 0 && (
+                              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                                Időablak szükséges!
+                              </span>
+                            )}
+                          </div>
                           <Button
                             type="button"
                             onClick={() => addTimeWindow(drink.id)}
                             size="sm"
                             variant="outline"
+                            className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
                           >
-                            <Clock className="h-4 w-4 mr-1" />
+                            <Plus className="h-4 w-4 mr-1" />
                             Időablak hozzáadása
                           </Button>
                         </div>
                         
-                        {getDrinkWindows(drink.id).map((window) => (
-                          <Card key={window.id} className="p-3 bg-cgi-surface-secondary">
+                        {getDrinkWindows(drink.id).length === 0 && (
+                          <div className="text-sm text-orange-700 bg-orange-50 p-3 rounded border border-orange-200">
+                            <strong>Figyelem:</strong> Az ingyenes italhoz legalább egy időablakot be kell állítani, hogy megjelenjen a vendégeknek.
+                          </div>
+                        )}
+                        
+                        {getDrinkWindows(drink.id).map((window, index) => (
+                          <Card key={window.id} className="p-3 bg-white border border-blue-200">
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
-                                <Label className="text-sm">Időablak</Label>
+                                <Label className="text-sm font-medium">Időablak #{index + 1}</Label>
                                 <Button
                                   type="button"
                                   onClick={() => removeTimeWindow(window.id)}
