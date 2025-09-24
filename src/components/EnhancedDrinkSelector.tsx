@@ -58,12 +58,14 @@ export function EnhancedDrinkSelector({
   });
 
   const [expandedDrink, setExpandedDrink] = useState<string | null>(null);
+  const [newWindows, setNewWindows] = useState<FreeDrinkWindow[]>([]);
 
   const addDrink = () => {
     if (!newDrink.drinkName?.trim()) return;
 
+    const drinkId = crypto.randomUUID();
     const drink: VenueDrink = {
-      id: crypto.randomUUID(),
+      id: drinkId,
       venue_id: '', // Will be set when venue is saved
       drinkName: newDrink.drinkName,
       category: newDrink.category || undefined,
@@ -78,6 +80,18 @@ export function EnhancedDrinkSelector({
     };
 
     onChange([...drinks, drink]);
+    
+    // Add time windows for the new drink if it's a free drink
+    if (newDrink.is_free_drink && newWindows.length > 0) {
+      const mappedWindows = newWindows.map(window => ({
+        ...window,
+        drink_id: drinkId,
+        venue_id: ''
+      }));
+      onFreeDrinkWindowsChange([...freeDrinkWindows, ...mappedWindows]);
+    }
+    
+    // Reset form
     setNewDrink({
       drinkName: '',
       category: '',
@@ -89,6 +103,10 @@ export function EnhancedDrinkSelector({
       serving_style: '',
       image_url: ''
     });
+    setNewWindows([]);
+    
+    // Optionally expand the newly added drink
+    setExpandedDrink(drinkId);
   };
 
   const removeDrink = (id: string) => {
@@ -139,6 +157,49 @@ export function EnhancedDrinkSelector({
 
   const getDrinkWindows = (drinkId: string) => {
     return freeDrinkWindows.filter(window => window.drink_id === drinkId);
+  };
+
+  // New drink time window handlers
+  const addNewTimeWindow = () => {
+    const newWindow: FreeDrinkWindow = {
+      id: crypto.randomUUID(),
+      venue_id: '',
+      drink_id: '', // Will be set when drink is added
+      days: [1, 2, 3, 4, 5], // Default: weekdays
+      start: '14:00',
+      end: '16:00',
+      timezone: 'Europe/Budapest'
+    };
+    setNewWindows([...newWindows, newWindow]);
+  };
+
+  const removeNewTimeWindow = (windowId: string) => {
+    setNewWindows(newWindows.filter(w => w.id !== windowId));
+  };
+
+  const updateNewTimeWindow = (windowId: string, updates: Partial<FreeDrinkWindow>) => {
+    setNewWindows(newWindows.map(window =>
+      window.id === windowId ? { ...window, ...updates } : window
+    ));
+  };
+
+  const toggleNewDay = (windowId: string, day: number) => {
+    const window = newWindows.find(w => w.id === windowId);
+    if (!window) return;
+
+    const newDays = window.days.includes(day)
+      ? window.days.filter(d => d !== day)
+      : [...window.days, day].sort();
+
+    updateNewTimeWindow(windowId, { days: newDays });
+  };
+
+  // Auto-add a default time window when marking as free drink
+  const handleFreeDrinkToggle = (checked: boolean) => {
+    setNewDrink({ ...newDrink, is_free_drink: checked });
+    if (checked && newWindows.length === 0) {
+      addNewTimeWindow();
+    }
   };
 
   return (
@@ -347,9 +408,11 @@ export function EnhancedDrinkSelector({
               <div className="flex items-center space-x-2">
                 <Checkbox
                   checked={newDrink.is_free_drink || false}
-                  onCheckedChange={(checked) => setNewDrink({ ...newDrink, is_free_drink: !!checked })}
+                  onCheckedChange={handleFreeDrinkToggle}
                 />
-                <span className="text-sm text-cgi-muted-foreground">Ingyenes</span>
+                <span className="text-sm text-cgi-muted-foreground">
+                  Ingyenes {newDrink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
+                </span>
               </div>
             </div>
 
@@ -358,6 +421,85 @@ export function EnhancedDrinkSelector({
               onChange={(url) => setNewDrink({ ...newDrink, image_url: url })}
               placeholder="Ital képe (opcionális)"
             />
+
+            {/* Time windows for new free drink */}
+            {newDrink.is_free_drink && (
+              <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                    <Label className="text-cgi-surface-foreground font-medium">Ingyenes ital időablakok</Label>
+                    {newWindows.length === 0 && (
+                      <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                        Időablak szükséges!
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={addNewTimeWindow}
+                    size="sm"
+                    variant="outline"
+                    className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Időablak hozzáadása
+                  </Button>
+                </div>
+                
+                {newWindows.length === 0 && (
+                  <div className="text-sm text-orange-700 bg-orange-50 p-3 rounded border border-orange-200">
+                    <strong>Figyelem:</strong> Az ingyenes italhoz legalább egy időablakot be kell állítani, hogy megjelenjen a vendégeknek.
+                  </div>
+                )}
+                
+                {newWindows.map((window, index) => (
+                  <Card key={window.id} className="p-3 bg-white border border-blue-200">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Időablak #{index + 1}</Label>
+                        <Button
+                          type="button"
+                          onClick={() => removeNewTimeWindow(window.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+
+                      <TimeRangeInput
+                        startTime={window.start}
+                        endTime={window.end}
+                        onStartTimeChange={(time) => updateNewTimeWindow(window.id, { start: time })}
+                        onEndTimeChange={(time) => updateNewTimeWindow(window.id, { end: time })}
+                        startLabel="Kezdés"
+                        endLabel="Befejezés"
+                      />
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Napok</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {DAYS.map((day) => (
+                            <Button
+                              key={day.value}
+                              type="button"
+                              onClick={() => toggleNewDay(window.id, day.value)}
+                              variant={window.days.includes(day.value) ? "default" : "outline"}
+                              size="sm"
+                              className="text-xs"
+                            >
+                              {day.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             <div className="flex justify-end">
               <Button
