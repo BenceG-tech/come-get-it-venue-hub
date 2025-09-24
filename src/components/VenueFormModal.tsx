@@ -22,6 +22,8 @@ interface VenueFormModalProps {
 
 export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) {
   const [open, setOpen] = useState(false);
+  const [drinksTouched, setDrinksTouched] = useState(false);
+  const [windowsTouched, setWindowsTouched] = useState(false);
   const [formData, setFormData] = useState<Partial<Venue>>({
     name: venue?.name || '',
     address: venue?.address || '',
@@ -138,6 +140,14 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       image_url: coverImage?.url || null,
       hero_image_url: coverImage?.url || null,
     };
+    
+    // Only include drinks/windows if they were actually modified
+    if (!drinksTouched) {
+      delete finalFormData.drinks;
+    }
+    if (!windowsTouched) {
+      delete finalFormData.freeDrinkWindows;
+    }
     
     onSave(finalFormData);
     setOpen(false);
@@ -376,8 +386,14 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               <EnhancedDrinkSelector
                 drinks={formData.drinks || []}
                 freeDrinkWindows={formData.freeDrinkWindows || []}
-                onChange={(drinks) => setFormData(prev => ({ ...prev, drinks }))}
-                onFreeDrinkWindowsChange={(windows) => setFormData(prev => ({ ...prev, freeDrinkWindows: windows }))}
+                onChange={(drinks) => {
+                  setDrinksTouched(true);
+                  setFormData(prev => ({ ...prev, drinks }));
+                }}
+                onFreeDrinkWindowsChange={(windows) => {
+                  setWindowsTouched(true);
+                  setFormData(prev => ({ ...prev, freeDrinkWindows: windows }));
+                }}
               />
             </TabsContent>
 

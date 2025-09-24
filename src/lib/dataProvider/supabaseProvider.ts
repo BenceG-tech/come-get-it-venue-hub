@@ -162,6 +162,11 @@ async function fetchFreeDrinkWindows(venueId: string) {
 }
 
 async function replaceVenueDrinks(venueId: string, drinks: any[]) {
+  // Early return if no drinks provided - don't delete existing ones
+  if (!drinks || drinks.length === 0) {
+    return fetchVenueDrinks(venueId);
+  }
+
   // Delete all drinks for this venue
   const { error: delErr } = await supabase
     .from("venue_drinks")
@@ -171,8 +176,6 @@ async function replaceVenueDrinks(venueId: string, drinks: any[]) {
     logSbError("replaceVenueDrinks(delete)", delErr);
     throw delErr;
   }
-
-  if (!drinks || drinks.length === 0) return [];
 
   const rows = drinks.map((drink: any) => ({
     id: drink.id,
@@ -202,6 +205,11 @@ async function replaceVenueDrinks(venueId: string, drinks: any[]) {
 }
 
 async function replaceFreeDrinkWindows(venueId: string, windows: any[]) {
+  // Early return if no windows provided - don't delete existing ones
+  if (!windows || windows.length === 0) {
+    return fetchFreeDrinkWindows(venueId);
+  }
+
   // Delete all windows for this venue
   const { error: delErr } = await supabase
     .from("free_drink_windows")
@@ -211,8 +219,6 @@ async function replaceFreeDrinkWindows(venueId: string, windows: any[]) {
     logSbError("replaceFreeDrinkWindows(delete)", delErr);
     throw delErr;
   }
-
-  if (!windows || windows.length === 0) return [];
 
   const rows = windows.map((window: any) => ({
     id: window.id,
