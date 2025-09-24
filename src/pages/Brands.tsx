@@ -69,8 +69,8 @@ export default function Brands() {
     {
       key: 'name',
       label: 'Márka',
-      priority: 1,
-      render: (brand) => (
+      priority: 'high',
+      render: (_, brand) => (
         <div className="flex items-center gap-3">
           {brand.logoUrl ? (
             <img 
@@ -95,10 +95,10 @@ export default function Brands() {
       )
     },
     {
-      key: 'contact',
+      key: 'contactName',
       label: 'Kapcsolattartó',
-      priority: 2,
-      render: (brand) => (
+      priority: 'high',
+      render: (_, brand) => (
         brand.contactName ? (
           <div>
             <p className="font-medium">{brand.contactName}</p>
@@ -112,26 +112,26 @@ export default function Brands() {
       )
     },
     {
-      key: 'campaigns',
+      key: 'id',
       label: 'Aktív kampányok',
-      priority: 3,
-      render: (brand) => (
+      priority: 'medium',
+      render: (_, brand) => (
         <span className="font-bold text-lg">{getActiveCampaignsCount(brand.id)}</span>
       )
     },
     {
-      key: 'lastActivation',
+      key: 'id',
       label: 'Utolsó aktiváció',
-      priority: 4,
-      render: (brand) => (
+      priority: 'low',
+      render: (_, brand) => (
         <span className="text-cgi-muted-foreground">{getLastCampaignDate(brand.id)}</span>
       )
     },
     {
-      key: 'actions',
+      key: 'id',
       label: 'Műveletek',
-      priority: 5,
-      render: (brand) => (
+      priority: 'low',
+      render: (_, brand) => (
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="cgi-button-ghost">
             <Edit className="h-4 w-4" />

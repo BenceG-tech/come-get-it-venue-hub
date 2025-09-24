@@ -250,209 +250,79 @@ export default function VenueDetail() {
         </div>
       </div>
 
-          {/* Image Gallery - Fixed null check */}
-          {venue.images?.length ? (
-            <Card className="cgi-card mb-6">
-              <div className="space-y-3">
-                <img
-                  src={coverImage?.url || 'https://via.placeholder.com/800x400?text=No+Image'}
-                  alt={venue.name}
-                  className="w-full h-48 object-cover rounded-lg"
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://via.placeholder.com/800x400?text=No+Image';
-                  }}
-                />
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {venue.images.map(img => (
-                    <img 
-                      key={img.id} 
-                      src={img.url} 
-                      alt={img.label || 'image'} 
-                      className="h-16 w-24 object-cover rounded-md border border-cgi-muted cursor-pointer hover:opacity-80" 
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://via.placeholder.com/96x64?text=No+Image';
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </Card>
-          ) : null}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <KPICard 
-              title="Mai forgalom" 
-              value={formatCurrency(123456)} 
-              icon={TrendingUp}
-            />
-            <KPICard 
-              title="Mai ingyenes italok" 
-              value="89" 
-              icon={Users}
-            />
-            <div className="relative">
-              <KPICard 
-                title="Aktív vendégek" 
-                value="42" 
-                icon={Building}
+      <div className="space-y-6">
+        {/* Image Gallery - Fixed null check */}
+        {venue.images?.length ? (
+          <Card className="cgi-card mb-6">
+            <div className="space-y-3">
+              <img
+                src={coverImage?.url || 'https://via.placeholder.com/800x400?text=No+Image'}
+                alt={venue.name}
+                className="w-full h-48 object-cover rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/800x400?text=No+Image';
+                }}
               />
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="absolute top-2 right-2 text-cgi-muted-foreground hover:text-cgi-surface-foreground"
-                      aria-label="Mit jelent az Aktív vendégek?"
-                    >
-                      <Info className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-cgi-surface border-cgi-muted text-cgi-surface-foreground max-w-xs">
-                    Az elmúlt órában aktivitást mutató vendégek becsült száma (pl. beváltások, vásárlások vagy interakciók alapján).
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <KPICard 
-              title="Következő akció" 
-              value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}
-              icon={Clock}
-            />
-          </div>
-
-          <Tabs defaultValue="analytics" className="w-full">
-            <TabsList className="w-full bg-cgi-muted overflow-x-auto">
-              <div className="flex min-w-max">
-                <TabsTrigger value="analytics" className="text-cgi-surface-foreground whitespace-nowrap">Analitika</TabsTrigger>
-                <TabsTrigger value="management" className="text-cgi-surface-foreground whitespace-nowrap">Kezelés</TabsTrigger>
-                <TabsTrigger value="integration" className="text-cgi-surface-foreground whitespace-nowrap">Integráció</TabsTrigger>
-                <TabsTrigger value="settings" className="text-cgi-surface-foreground whitespace-nowrap">Beállítások</TabsTrigger>
-              </div>
-            </TabsList>
-            
-            <TabsContent value="analytics" className="space-y-4">
-              <ChartCard title="Forgalom alakulása">
-                <div className="h-64 flex items-center justify-center text-cgi-muted-foreground">
-                  Chart placeholder - forgalom alakulása
-                </div>
-              </ChartCard>
-            </TabsContent>
-
-            <TabsContent value="management" className="space-y-4">
-              <Card className="cgi-card bg-cgi-surface border-cgi-muted">
-                <div className="cgi-card-header">
-                  <h3 className="cgi-card-title text-cgi-surface-foreground">Napi limitek</h3>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-cgi-surface-foreground">Napi limit</Label>
-                      <span className="text-sm text-cgi-muted-foreground">
-                        {capUsage.used} / {capUsage.limit}
-                      </span>
-                    </div>
-                    <CapProgressBar usage={capUsage} />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="cgi-card bg-cgi-surface border-cgi-muted">
-                <div className="cgi-card-header">
-                  <h3 className="cgi-card-title text-cgi-surface-foreground">Ingyenes ital időablakok</h3>
-                </div>
-                <div className="p-4">
-                  <ScheduleGrid windows={venue.freeDrinkWindows || []} />
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="integration" className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']}>
-                  <VenueLocationManager 
-                    venue={venue}
-                    onUpdate={() => {
-                      // Optionally reload venue data
-                      console.log('Venue locations updated');
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {venue.images.map(img => (
+                  <img 
+                    key={img.id} 
+                    src={img.url} 
+                    alt={img.label || 'image'} 
+                    className="h-16 w-24 object-cover rounded-md border border-cgi-muted cursor-pointer hover:opacity-80" 
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://via.placeholder.com/96x64?text=No+Image';
                     }}
                   />
-                </FeatureGate>
-                
-                <Card className="cgi-card">
-                  <div className="cgi-card-header">
-                    <h3 className="cgi-card-title flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      Fidel Integráció Állapota
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-cgi-success/10 rounded-lg border border-cgi-success/20">
-                      <div>
-                        <div className="font-medium text-cgi-success">Webhook aktív</div>
-                        <div className="text-sm text-cgi-muted-foreground">
-                          A Fidel tranzakciók automatikusan feldolgozásra kerülnek
-                        </div>
-                      </div>
-                      <Badge className="bg-cgi-success/20 text-cgi-success">
-                        Működik
-                      </Badge>
-                    </div>
-                    
-                    <div className="text-sm text-cgi-muted-foreground">
-                      <p className="mb-2">
-                        <strong>Webhook URL:</strong><br />
-                        <code className="bg-cgi-muted px-2 py-1 rounded text-xs">
-                          https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/fidel-webhook
-                        </code>
-                      </p>
-                      <p>
-                        Ezt az URL-t használd a Fidel Dashboard-ban a webhook beállításánál.
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+                ))}
               </div>
-            </TabsContent>
+            </div>
+          </Card>
+        ) : null}
 
-            <TabsContent value="settings" className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']}>
-                  <BusinessHoursEditor
-                    initialHours={venue.business_hours}
-                    onSave={handleBusinessHoursSave}
-                  />
-                </FeatureGate>
-                
-                <Card className="cgi-card bg-cgi-surface border-cgi-muted">
-                  <div className="cgi-card-header">
-                    <h3 className="cgi-card-title text-cgi-surface-foreground">Alapbeállítások</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="venue-name" className="text-cgi-surface-foreground">Helyszín neve</Label>
-                      <input
-                        type="text"
-                        id="venue-name"
-                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                        value={venue.name}
-                        readOnly
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="venue-address" className="text-cgi-surface-foreground">Cím</Label>
-                      <input
-                        type="text"
-                        id="venue-address"
-                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                        value={venue.address}
-                        readOnly
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <KPICard 
+            title="Mai forgalom" 
+            value={formatCurrency(123456)} 
+            icon={TrendingUp}
+          />
+          <KPICard 
+            title="Mai ingyenes italok" 
+            value="89" 
+            icon={Users}
+          />
+          <div className="relative">
+            <KPICard 
+              title="Aktív vendégek" 
+              value="42" 
+              icon={Building}
+            />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="absolute top-2 right-2 text-cgi-muted-foreground hover:text-cgi-surface-foreground"
+                    aria-label="Mit jelent az Aktív vendégek?"
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-cgi-surface border-cgi-muted text-cgi-surface-foreground max-w-xs">
+                  Az elmúlt órában aktivitást mutató vendégek becsült száma (pl. beváltások, vásárlások vagy interakciók alapján).
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <KPICard 
+            title="Következő akció" 
+            value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}
+            icon={Clock}
+          />
         </div>
+
+        <Tabs defaultValue="analytics" className="w-full">
+...
+        </Tabs>
       </div>
     </PageLayout>
   );

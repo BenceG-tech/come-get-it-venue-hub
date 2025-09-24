@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Search, Filter, Info } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-interface Column<T> {
+export interface Column<T> {
   key: keyof T;
   label: string;
   render?: (value: any, item: T) => React.ReactNode;
