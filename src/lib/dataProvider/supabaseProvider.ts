@@ -198,7 +198,7 @@ async function replaceVenueDrinks(venueId: string, drinks: any[]) {
     .select();
   if (insErr) {
     logSbError("replaceVenueDrinks(insert)", insErr);
-    throw insErr;
+    throw new Error(`Failed to save drinks: ${insErr.message || insErr}`);
   }
 
   return fetchVenueDrinks(venueId);
@@ -236,7 +236,7 @@ async function replaceFreeDrinkWindows(venueId: string, windows: any[]) {
     .select();
   if (insErr) {
     logSbError("replaceFreeDrinkWindows(insert)", insErr);
-    throw insErr;
+    throw new Error(`Failed to save drink windows: ${insErr.message || insErr}`);
   }
 
   return fetchFreeDrinkWindows(venueId);
