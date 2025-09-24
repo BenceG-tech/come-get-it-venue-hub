@@ -17,4 +17,6 @@ export type Resource =
   | 'campaigns' 
   | 'redemptions' 
   | 'transactions' 
-  | 'rewards';
+  | 'rewards'
+  | 'venue_drinks'
+  | 'free_drink_windows';

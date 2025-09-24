@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TagInput } from './TagInput';
-import { DrinkSelector } from './DrinkSelector';
+import { EnhancedDrinkSelector } from './EnhancedDrinkSelector';
 import { TimeRangeInput } from './TimeRangeInput';
 import { Badge } from '@/components/ui/badge';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
@@ -73,6 +73,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const addFreeDrinkWindow = () => {
     const newWindow: FreeDrinkWindow = {
       id: `window-${Date.now()}`,
+      venue_id: '', // Will be set when venue is saved
       days: [1, 2, 3, 4, 5], // Default: weekdays
       start: '14:00',
       end: '16:00',
@@ -407,9 +408,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             </TabsContent>
 
             <TabsContent value="drinks" className="space-y-4">
-              <DrinkSelector
+              <EnhancedDrinkSelector
                 drinks={formData.drinks || []}
+                freeDrinkWindows={formData.freeDrinkWindows || []}
                 onChange={(drinks) => setFormData(prev => ({ ...prev, drinks }))}
+                onFreeDrinkWindowsChange={(windows) => setFormData(prev => ({ ...prev, freeDrinkWindows: windows }))}
               />
             </TabsContent>
 

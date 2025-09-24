@@ -127,6 +127,7 @@ export type Database = {
         Row: {
           created_at: string
           days: number[]
+          drink_id: string | null
           end_time: string
           id: string
           start_time: string
@@ -137,6 +138,7 @@ export type Database = {
         Insert: {
           created_at?: string
           days: number[]
+          drink_id?: string | null
           end_time: string
           id?: string
           start_time: string
@@ -147,6 +149,7 @@ export type Database = {
         Update: {
           created_at?: string
           days?: number[]
+          drink_id?: string | null
           end_time?: string
           id?: string
           start_time?: string
@@ -155,6 +158,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "free_drink_windows_drink_id_fkey"
+            columns: ["drink_id"]
+            isOneToOne: false
+            referencedRelation: "venue_drinks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "free_drink_windows_venue_id_fkey"
             columns: ["venue_id"]
@@ -349,6 +359,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_drinks: {
+        Row: {
+          abv: number | null
+          brand_id: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          drink_name: string
+          id: string
+          image_url: string | null
+          ingredients: string[] | null
+          is_free_drink: boolean
+          is_sponsored: boolean
+          preparation_instructions: string | null
+          serving_style: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          abv?: number | null
+          brand_id?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          drink_name: string
+          id?: string
+          image_url?: string | null
+          ingredients?: string[] | null
+          is_free_drink?: boolean
+          is_sponsored?: boolean
+          preparation_instructions?: string | null
+          serving_style?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          abv?: number | null
+          brand_id?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          drink_name?: string
+          id?: string
+          image_url?: string | null
+          ingredients?: string[] | null
+          is_free_drink?: boolean
+          is_sponsored?: boolean
+          preparation_instructions?: string | null
+          serving_style?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_drinks_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"

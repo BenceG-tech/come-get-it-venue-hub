@@ -33,6 +33,7 @@ export async function seedData() {
       drinks: [
         {
           id: 'drink-1',
+          venue_id: 'venue-1',
           drinkName: 'Mojito',
           category: 'cocktail',
           abv: 12,
@@ -41,6 +42,7 @@ export async function seedData() {
         },
         {
           id: 'drink-2',
+          venue_id: 'venue-1',
           drinkName: 'Whiskey Sour',
           category: 'cocktail',
           abv: 15,
@@ -52,6 +54,7 @@ export async function seedData() {
       freeDrinkWindows: [
         {
           id: 'window-1',
+          venue_id: 'venue-1',
           days: [1, 2, 3, 4, 5], // Monday-Friday
           start: '14:00',
           end: '16:00',
@@ -59,6 +62,7 @@ export async function seedData() {
         },
         {
           id: 'window-2',
+          venue_id: 'venue-1',
           days: [6, 7], // Weekend
           start: '12:00',
           end: '14:00',
@@ -90,6 +94,7 @@ export async function seedData() {
       drinks: [
         {
           id: 'drink-3',
+          venue_id: 'venue-2',
           drinkName: 'Beer',
           category: 'beer',
           abv: 5,
@@ -100,6 +105,7 @@ export async function seedData() {
       freeDrinkWindows: [
         {
           id: 'window-3',
+          venue_id: 'venue-2',
           days: [1, 2, 3, 4, 5],
           start: '17:00',
           end: '19:00',
@@ -128,6 +134,7 @@ export async function seedData() {
       drinks: [
         {
           id: 'drink-4',
+          venue_id: 'venue-3',
           drinkName: 'Cappuccino',
           category: 'coffee',
           abv: 0,
@@ -138,6 +145,7 @@ export async function seedData() {
       freeDrinkWindows: [
         {
           id: 'window-4',
+          venue_id: 'venue-3',
           days: [1, 2, 3, 4, 5],
           start: '08:00',
           end: '10:00',
@@ -188,6 +196,7 @@ export async function seedData() {
       windows: [
         {
           id: 'campaign-window-1',
+          venue_id: 'venue-1',
           days: [6, 7],
           start: '18:00',
           end: '20:00',

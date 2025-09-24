@@ -39,6 +39,7 @@ export interface VenueImage {
 
 export interface VenueDrink {
   id: string;
+  venue_id: string;
   drinkName: string;
   category?: string;
   abv?: number;
@@ -51,14 +52,20 @@ export interface VenueDrink {
   preparation_instructions?: string;    // "Mix, serve over ice..."
   image_url?: string;
   serving_style?: string;               // "over ice", "neat", etc.
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface FreeDrinkWindow {
   id: string;
+  venue_id: string;
+  drink_id?: string; // Now optional - can be venue-wide or drink-specific
   days: number[]; // 1-7 (Monday-Sunday)
   start: string; // "14:00"
   end: string; // "16:00"
   timezone: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface RedemptionCap {

@@ -39,6 +39,7 @@ export function DrinkSelector({ drinks, onChange }: DrinkSelectorProps) {
 
     const drink: VenueDrink = {
       id: `drink-${Date.now()}`,
+      venue_id: '', // Will be set when venue is saved
       drinkName: newDrink.drinkName,
       category: newDrink.category || undefined,
       abv: newDrink.abv || undefined,
