@@ -62,6 +62,11 @@ export function EnhancedDrinkSelector({
 
   const addDrink = () => {
     if (!newDrink.drinkName?.trim()) return;
+    
+    // Validation: Free drinks must have at least one time window
+    if (newDrink.is_free_drink && newWindows.length === 0) {
+      return; // Button should be disabled, but extra safety check
+    }
 
     const drinkId = crypto.randomUUID();
     const drink: VenueDrink = {
@@ -166,8 +171,8 @@ export function EnhancedDrinkSelector({
       venue_id: '',
       drink_id: '', // Will be set when drink is added
       days: [1, 2, 3, 4, 5], // Default: weekdays
-      start: '14:00',
-      end: '16:00',
+      start: '10:00',
+      end: '14:00',
       timezone: 'Europe/Budapest'
     };
     setNewWindows([...newWindows, newWindow]);
@@ -422,7 +427,7 @@ export function EnhancedDrinkSelector({
               placeholder="Ital képe (opcionális)"
             />
 
-            {/* Time windows for new free drink */}
+            {/* Time windows for new free drink - moved directly under checkbox */}
             {newDrink.is_free_drink && (
               <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
@@ -506,7 +511,7 @@ export function EnhancedDrinkSelector({
                 type="button"
                 onClick={addDrink}
                 className="cgi-button-primary"
-                disabled={!newDrink.drinkName?.trim()}
+                disabled={!newDrink.drinkName?.trim() || (newDrink.is_free_drink && newWindows.length === 0)}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Ital hozzáadása

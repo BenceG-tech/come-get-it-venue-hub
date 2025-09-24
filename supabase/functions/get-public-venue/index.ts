@@ -83,7 +83,35 @@ serve(async (req) => {
       console.warn('[get-public-venue] images fetch warning', imgsErr)
     }
 
-    // Add images to venue object
+    // Fetch venue drinks
+    const { data: drinks, error: drinksErr } = await supabaseClient
+      .from('venue_drinks')
+      .select(`
+        id, drink_name, category, is_free_drink, is_sponsored, 
+        brand_id, description, ingredients, image_url, 
+        serving_style, abv
+      `)
+      .eq('venue_id', venueId)
+      .order('created_at', { ascending: true })
+
+    if (drinksErr) {
+      console.warn('[get-public-venue] drinks fetch warning', drinksErr)
+    }
+
+    // Fetch free drink windows
+    const { data: freeDrinkWindows, error: windowsErr } = await supabaseClient
+      .from('free_drink_windows')
+      .select(`
+        id, drink_id, days, start_time, end_time, timezone
+      `)
+      .eq('venue_id', venueId)
+      .order('created_at', { ascending: true })
+
+    if (windowsErr) {
+      console.warn('[get-public-venue] windows fetch warning', windowsErr)
+    }
+
+    // Add images, drinks, and windows to venue object
     const venueWithImages = {
       ...venue,
       images: (images || []).map(img => ({
@@ -91,6 +119,27 @@ serve(async (req) => {
         url: img.url,
         label: img.label || '',
         isCover: !!img.is_cover
+      })),
+      drinks: (drinks || []).map(drink => ({
+        id: drink.id,
+        drinkName: drink.drink_name,
+        category: drink.category,
+        is_free_drink: drink.is_free_drink,
+        is_sponsored: drink.is_sponsored,
+        brand_id: drink.brand_id,
+        description: drink.description,
+        ingredients: drink.ingredients,
+        image_url: drink.image_url,
+        serving_style: drink.serving_style,
+        abv: drink.abv
+      })),
+      freeDrinkWindows: (freeDrinkWindows || []).map(window => ({
+        id: window.id,
+        drink_id: window.drink_id,
+        days: window.days,
+        start: window.start_time,
+        end: window.end_time,
+        timezone: window.timezone
       }))
     }
 

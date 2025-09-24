@@ -118,6 +118,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation: Check that every free drink has at least one time window
+    const freeDrinks = formData.drinks?.filter(d => d.is_free_drink) || [];
+    for (const drink of freeDrinks) {
+      const drinkWindows = formData.freeDrinkWindows?.filter(w => w.drink_id === drink.id) || [];
+      if (drinkWindows.length === 0) {
+        // Show error toast - you'll need to import useToast
+        console.error(`Free drink "${drink.drinkName}" has no time windows configured`);
+        alert(`Hiba: Az ingyenes ital "${drink.drinkName}" nem rendelkezik időablakokkal. Adj hozzá legalább egy időablakot.`);
+        return;
+      }
+    }
+    
     onSave(formData);
     setOpen(false);
   };

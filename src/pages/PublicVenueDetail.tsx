@@ -11,6 +11,8 @@ import DrinkRedemptionCard from '@/components/DrinkRedemptionCard';
 import CardLinkingModal from '@/components/CardLinkingModal';
 import type { Venue } from '@/lib/types';
 
+import { isWindowActive } from '@/lib/businessLogic';
+
 export default function PublicVenueDetail() {
   const { id } = useParams<{ id: string }>();
   const [venue, setVenue] = useState<Venue | null>(null);
@@ -201,14 +203,23 @@ export default function PublicVenueDetail() {
               venueName={venue.name} 
             />
 
-            {/* Free Drinks Section */}
-            {venue.drinks && venue.drinks.filter(d => d.is_free_drink).length > 0 && (
+            {/* Free Drinks Section - Only show currently active ones */}
+            {venue.drinks && venue.drinks.filter(d => {
+              if (!d.is_free_drink) return false;
+              const drinkWindows = venue.freeDrinkWindows?.filter(w => w.drink_id === d.id) || [];
+              return drinkWindows.some(w => isWindowActive(w, new Date()));
+            }).length > 0 && (
               <Card className="cgi-card">
                 <div className="cgi-card-header">
                   <h3 className="cgi-card-title">Ingyenes italok</h3>
+                  <p className="text-sm text-cgi-muted-foreground">Jelenleg elérhető italok</p>
                 </div>
                 <div className="space-y-4">
-                  {venue.drinks.filter(d => d.is_free_drink).map(drink => {
+                  {venue.drinks.filter(d => {
+                    if (!d.is_free_drink) return false;
+                    const drinkWindows = venue.freeDrinkWindows?.filter(w => w.drink_id === d.id) || [];
+                    return drinkWindows.some(w => isWindowActive(w, new Date()));
+                  }).map(drink => {
                     const drinkWindows = venue.freeDrinkWindows?.filter(w => w.drink_id === drink.id) || [];
                     const formatTimeWindows = (windows: any[]) => {
                       if (!windows.length) return 'Nincs megadva időablak';
