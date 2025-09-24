@@ -39,6 +39,9 @@ const VENUE_COLUMNS = new Set([
   "hero_image_url",
   "tags",
   "opening_hours", // added to support business_hours -> opening_hours mapping
+  "coordinates",
+  "caps",
+  "notifications",
 ]);
 
 function pickVenueColumns(payload: any) {

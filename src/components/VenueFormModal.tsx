@@ -131,7 +131,15 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       }
     }
     
-    onSave(formData);
+    // Extract cover image URL and set it to both image_url and hero_image_url
+    const coverImage = formData.images?.find(img => img.isCover);
+    const finalFormData = {
+      ...formData,
+      image_url: coverImage?.url || null,
+      hero_image_url: coverImage?.url || null,
+    };
+    
+    onSave(finalFormData);
     setOpen(false);
   };
 

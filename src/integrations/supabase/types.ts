@@ -546,7 +546,9 @@ export type Database = {
       venues: {
         Row: {
           address: string
+          caps: Json | null
           category: string | null
+          coordinates: Json | null
           created_at: string
           description: string | null
           distance: number | null
@@ -556,6 +558,7 @@ export type Database = {
           image_url: string | null
           is_paused: boolean
           name: string
+          notifications: Json | null
           opening_hours: Json | null
           owner_profile_id: string
           participates_in_points: boolean
@@ -570,7 +573,9 @@ export type Database = {
         }
         Insert: {
           address: string
+          caps?: Json | null
           category?: string | null
+          coordinates?: Json | null
           created_at?: string
           description?: string | null
           distance?: number | null
@@ -580,6 +585,7 @@ export type Database = {
           image_url?: string | null
           is_paused?: boolean
           name: string
+          notifications?: Json | null
           opening_hours?: Json | null
           owner_profile_id: string
           participates_in_points?: boolean
@@ -594,7 +600,9 @@ export type Database = {
         }
         Update: {
           address?: string
+          caps?: Json | null
           category?: string | null
+          coordinates?: Json | null
           created_at?: string
           description?: string | null
           distance?: number | null
@@ -604,6 +612,7 @@ export type Database = {
           image_url?: string | null
           is_paused?: boolean
           name?: string
+          notifications?: Json | null
           opening_hours?: Json | null
           owner_profile_id?: string
           participates_in_points?: boolean
