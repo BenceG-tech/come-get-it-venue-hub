@@ -189,28 +189,30 @@ export default function VenueLocationManager({ venue, onUpdate }: VenueLocationM
         {locations.length > 0 ? (
           <div className="space-y-3">
             {locations.map((location) => (
-              <div key={location.id} className="flex items-center justify-between p-3 bg-cgi-muted/10 rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-cgi-surface-foreground">
-                      {location.fidel_location_id}
-                    </span>
-                    {getStatusBadge(location.status)}
+              <div key={location.id} className="p-3 bg-cgi-muted/10 rounded-lg space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                      <span className="font-medium text-cgi-surface-foreground break-all">
+                        {location.fidel_location_id}
+                      </span>
+                      {getStatusBadge(location.status)}
+                    </div>
+                    <div className="text-sm text-cgi-muted-foreground">
+                      Rendszer: {location.scheme.toUpperCase()}
+                      {location.fidel_brand_id && ` • Brand: ${location.fidel_brand_id}`}
+                    </div>
                   </div>
-                  <div className="text-sm text-cgi-muted-foreground">
-                    Rendszer: {location.scheme.toUpperCase()}
-                    {location.fidel_brand_id && ` • Brand: ${location.fidel_brand_id}`}
-                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveLocation(location.id)}
+                    className="text-cgi-error hover:text-cgi-error self-end sm:self-auto"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveLocation(location.id)}
-                  className="text-cgi-error hover:text-cgi-error"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             ))}
           </div>
@@ -282,7 +284,7 @@ export default function VenueLocationManager({ venue, onUpdate }: VenueLocationM
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={() => {
                   setShowAddForm(false);

@@ -56,11 +56,13 @@ export default function Analytics() {
       <Sidebar />
       <main className="flex-1 lg:ml-0 min-h-screen">
         <div className="cgi-container py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Analitika</h1>
-            <p className="text-cgi-muted-foreground">
-              Részletes jelentések és elemzések a helyszín teljesítményéről
-            </p>
+          <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Analitika</h1>
+              <p className="text-cgi-muted-foreground">
+                Részletes jelentések és elemzések a helyszín teljesítményéről
+              </p>
+            </div>
           </div>
 
           {/* Redemption Timeseries */}

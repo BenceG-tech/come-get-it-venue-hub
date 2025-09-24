@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Sidebar } from '@/components/Sidebar';
+import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -126,142 +126,129 @@ export default function VenueDetail() {
 
   if (isLoading) {
     return (
-      <div className="cgi-page flex bg-cgi-surface">
-        <Sidebar />
-        <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
-          <div className="cgi-container py-8">
-            <div className="text-cgi-surface-foreground">Loading...</div>
-          </div>
-        </main>
-      </div>
+      <PageLayout>
+        <div className="text-cgi-surface-foreground">Loading...</div>
+      </PageLayout>
     );
   }
 
   if (!venue) {
     return (
-      <div className="cgi-page flex bg-cgi-surface">
-        <Sidebar />
-        <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
-          <div className="cgi-container py-8">
-            <div className="text-cgi-surface-foreground">Venue not found</div>
-          </div>
-        </main>
-      </div>
+      <PageLayout>
+        <div className="text-cgi-surface-foreground">Venue not found</div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="cgi-page flex bg-cgi-surface">
-      <Sidebar />
-      <main className="flex-1 lg:ml-0 min-h-screen bg-cgi-surface">
-        <div className="cgi-container py-8">
-          <div className="mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/venues')}
-              className="text-cgi-surface-foreground"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Vissza a helyszínekhez
-            </Button>
+    <PageLayout>
+      <div className="mb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/venues')}
+          className="text-cgi-surface-foreground"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Vissza a helyszínekhez
+        </Button>
+      </div>
+
+      <div className="mb-8 flex flex-col lg:flex-row items-start justify-between gap-4">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
+          <p className="text-cgi-muted-foreground">
+            {venue.address}
+            {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}
+          </p>
+          
+          {/* Open/Closed Status */}
+          <div className="mt-1 text-sm text-cgi-muted-foreground">
+            {openNow ? (
+              <span className="text-green-600">Nyitva • Zárás {closesAt ?? '—'}</span>
+            ) : (
+              <span className="text-red-600">Zárva</span>
+            )}
           </div>
 
-          <div className="mb-8 flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
-              <p className="text-cgi-muted-foreground">
-                {venue.address}
-                {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}
-              </p>
-              
-              {/* Open/Closed Status */}
-              <div className="mt-1 text-sm text-cgi-muted-foreground">
-                {openNow ? (
-                  <span className="text-green-600">Nyitva • Zárás {closesAt ?? '—'}</span>
-                ) : (
-                  <span className="text-red-600">Zárva</span>
-                )}
+          {/* Contact Info */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 text-sm text-cgi-muted-foreground">
+            {venue.phone_number && (
+              <div className="flex items-center gap-1">
+                <Phone className="h-4 w-4" />
+                <span>{venue.phone_number}</span>
               </div>
+            )}
+            {venue.website_url && (
+              <a href={venue.website_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-cgi-primary">
+                <Globe className="h-4 w-4" />
+                <span>Weboldal</span>
+              </a>
+            )}
+          </div>
 
-              {/* Contact Info */}
-              <div className="flex gap-4 mt-2 text-sm text-cgi-muted-foreground">
-                {venue.phone_number && (
-                  <div className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    <span>{venue.phone_number}</span>
-                  </div>
-                )}
-                {venue.website_url && (
-                  <a href={venue.website_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-cgi-primary">
-                    <Globe className="h-4 w-4" />
-                    <span>Weboldal</span>
-                  </a>
-                )}
-              </div>
-
-              {/* Map Link */}
-              {venue.coordinates && (
-                <div className="mt-2">
-                  <a
-                    className="text-sm underline text-cgi-secondary flex items-center gap-1"
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${venue.coordinates.lat},${venue.coordinates.lng}`}
-                    target="_blank" 
-                    rel="noreferrer"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    Útvonalterv
-                  </a>
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-2">
-                {venue.tags?.map(tag => (
-                  <Badge key={tag} className="cgi-badge bg-cgi-secondary text-cgi-secondary-foreground">{tag}</Badge>
-                )) || []}
-              </div>
+          {/* Map Link */}
+          {venue.coordinates && (
+            <div className="mt-2">
+              <a
+                className="text-sm underline text-cgi-secondary flex items-center gap-1"
+                href={`https://www.google.com/maps/dir/?api=1&destination=${venue.coordinates.lat},${venue.coordinates.lng}`}
+                target="_blank" 
+                rel="noreferrer"
+              >
+                <MapPin className="h-4 w-4" />
+                Útvonalterv
+              </a>
             </div>
+          )}
 
-            <div className="flex items-start gap-4">
-              <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}>
-                <VenueFormModal 
-                  venue={venue} 
-                  onSave={handleVenueSave}
-                  trigger={
-                    <Button variant="outline" className="cgi-button-secondary">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Szerkesztés
-                    </Button>
-                  }
-                />
-              </FeatureGate>
-              
-              <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={
-                <Button variant="outline" size="sm" className="cgi-button-secondary" disabled>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {venue.tags?.map(tag => (
+              <Badge key={tag} className="cgi-badge bg-cgi-secondary text-cgi-secondary-foreground">{tag}</Badge>
+            )) || []}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start gap-4 w-full lg:w-auto">
+          <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}>
+            <VenueFormModal 
+              venue={venue} 
+              onSave={handleVenueSave}
+              trigger={
+                <Button variant="outline" className="cgi-button-secondary">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Szerkesztés
+                </Button>
+              }
+            />
+          </FeatureGate>
+          
+          <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={
+            <Button variant="outline" size="sm" className="cgi-button-secondary" disabled>
+              <Pause className="h-4 w-4 mr-2" />
+              Szüneteltetés
+            </Button>
+          }>
+            <Button 
+              variant={isPaused ? 'default' : 'destructive'} 
+              className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
+              onClick={handlePauseToggle}
+            >
+              {isPaused ? (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Folytatás
+                </>
+              ) : (
+                <>
                   <Pause className="h-4 w-4 mr-2" />
                   Szüneteltetés
-                </Button>
-              }>
-                <Button 
-                  variant={isPaused ? 'default' : 'destructive'} 
-                  className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
-                  onClick={handlePauseToggle}
-                >
-                  {isPaused ? (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Folytatás
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="h-4 w-4 mr-2" />
-                      Szüneteltetés
-                    </>
-                  )}
-                </Button>
-              </FeatureGate>
-            </div>
-          </div>
+                </>
+              )}
+            </Button>
+          </FeatureGate>
+        </div>
+      </div>
 
           {/* Image Gallery - Fixed null check */}
           {venue.images?.length ? (
@@ -333,11 +320,13 @@ export default function VenueDetail() {
           </div>
 
           <Tabs defaultValue="analytics" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-cgi-muted">
-              <TabsTrigger value="analytics" className="text-cgi-surface-foreground">Analitika</TabsTrigger>
-              <TabsTrigger value="management" className="text-cgi-surface-foreground">Kezelés</TabsTrigger>
-              <TabsTrigger value="integration" className="text-cgi-surface-foreground">Integráció</TabsTrigger>
-              <TabsTrigger value="settings" className="text-cgi-surface-foreground">Beállítások</TabsTrigger>
+            <TabsList className="w-full bg-cgi-muted overflow-x-auto">
+              <div className="flex min-w-max">
+                <TabsTrigger value="analytics" className="text-cgi-surface-foreground whitespace-nowrap">Analitika</TabsTrigger>
+                <TabsTrigger value="management" className="text-cgi-surface-foreground whitespace-nowrap">Kezelés</TabsTrigger>
+                <TabsTrigger value="integration" className="text-cgi-surface-foreground whitespace-nowrap">Integráció</TabsTrigger>
+                <TabsTrigger value="settings" className="text-cgi-surface-foreground whitespace-nowrap">Beállítások</TabsTrigger>
+              </div>
             </TabsList>
             
             <TabsContent value="analytics" className="space-y-4">
@@ -464,7 +453,7 @@ export default function VenueDetail() {
             </TabsContent>
           </Tabs>
         </div>
-      </main>
-    </div>
+      </PageLayout>
+    </PageLayout>
   );
 }

@@ -120,35 +120,41 @@ export default function BusinessHoursEditor({ initialHours, onSave }: BusinessHo
 
       <div className="space-y-4">
         {DAYS.map(day => (
-          <div key={day.key} className="flex items-center justify-between p-3 bg-cgi-muted/10 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={isOpen(day.key)}
-                onCheckedChange={(open) => toggleDay(day.key, open)}
-              />
-              <Label className="font-medium text-cgi-surface-foreground min-w-[80px]">
-                {day.label}
-              </Label>
+          <div key={day.key} className="p-3 bg-cgi-muted/10 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={isOpen(day.key)}
+                  onCheckedChange={(open) => toggleDay(day.key, open)}
+                />
+                <Label className="font-medium text-cgi-surface-foreground min-w-[80px]">
+                  {day.label}
+                </Label>
+              </div>
+              
+              {!isOpen(day.key) && (
+                <span className="text-cgi-muted-foreground font-medium">Zárva</span>
+              )}
             </div>
             
-            {isOpen(day.key) ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  type="time"
-                  value={hours.byDay[day.key]?.open || ''}
-                  onChange={(e) => updateDayTime(day.key, 'open', e.target.value)}
-                  className="w-32 cgi-input"
-                />
-                <span className="text-cgi-muted-foreground">-</span>
-                <Input
-                  type="time"
-                  value={hours.byDay[day.key]?.close || ''}
-                  onChange={(e) => updateDayTime(day.key, 'close', e.target.value)}
-                  className="w-32 cgi-input"
-                />
+            {isOpen(day.key) && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 sm:justify-end">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Input
+                    type="time"
+                    value={hours.byDay[day.key]?.open || ''}
+                    onChange={(e) => updateDayTime(day.key, 'open', e.target.value)}
+                    className="flex-1 sm:w-32 cgi-input"
+                  />
+                  <span className="text-cgi-muted-foreground">-</span>
+                  <Input
+                    type="time"
+                    value={hours.byDay[day.key]?.close || ''}
+                    onChange={(e) => updateDayTime(day.key, 'close', e.target.value)}
+                    className="flex-1 sm:w-32 cgi-input"
+                  />
+                </div>
               </div>
-            ) : (
-              <span className="text-cgi-muted-foreground font-medium">Zárva</span>
             )}
           </div>
         ))}

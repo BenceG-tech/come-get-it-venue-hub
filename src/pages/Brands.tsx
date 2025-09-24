@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, Column } from '@/components/DataTable';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Factory, Plus, Search, Edit, Users } from 'lucide-react';
@@ -65,6 +65,85 @@ export default function Brands() {
     return '2024-08-15';
   };
 
+  const columns: Column<Brand>[] = [
+    {
+      key: 'name',
+      label: 'Márka',
+      priority: 1,
+      render: (brand) => (
+        <div className="flex items-center gap-3">
+          {brand.logoUrl ? (
+            <img 
+              src={brand.logoUrl} 
+              alt={brand.name}
+              className="w-8 h-8 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-cgi-secondary/20 flex items-center justify-center">
+              <Factory className="h-4 w-4 text-cgi-secondary" />
+            </div>
+          )}
+          <div>
+            <p className="font-medium">{brand.name}</p>
+            {brand.notes && (
+              <p className="text-sm text-cgi-muted-foreground truncate max-w-xs">
+                {brand.notes}
+              </p>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'contact',
+      label: 'Kapcsolattartó',
+      priority: 2,
+      render: (brand) => (
+        brand.contactName ? (
+          <div>
+            <p className="font-medium">{brand.contactName}</p>
+            {brand.contactEmail && (
+              <p className="text-sm text-cgi-muted-foreground">{brand.contactEmail}</p>
+            )}
+          </div>
+        ) : (
+          <span className="text-cgi-muted-foreground">Nincs megadva</span>
+        )
+      )
+    },
+    {
+      key: 'campaigns',
+      label: 'Aktív kampányok',
+      priority: 3,
+      render: (brand) => (
+        <span className="font-bold text-lg">{getActiveCampaignsCount(brand.id)}</span>
+      )
+    },
+    {
+      key: 'lastActivation',
+      label: 'Utolsó aktiváció',
+      priority: 4,
+      render: (brand) => (
+        <span className="text-cgi-muted-foreground">{getLastCampaignDate(brand.id)}</span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Műveletek',
+      priority: 5,
+      render: (brand) => (
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="cgi-button-ghost">
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="cgi-button-ghost">
+            <Users className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   const handleCreateBrand = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -98,7 +177,7 @@ export default function Brands() {
       <PageLayout>
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Factory className="h-8 w-8 text-cgi-secondary" />
               <div>
@@ -208,86 +287,12 @@ export default function Brands() {
             </div>
           </Card>
 
-          {/* Brands Table */}
-          <Card className="cgi-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Márka</TableHead>
-                  <TableHead>Kapcsolattartó</TableHead>
-                  <TableHead>Aktív kampányok</TableHead>
-                  <TableHead>Utolsó aktiváció</TableHead>
-                  <TableHead>Műveletek</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBrands.map((brand) => (
-                  <TableRow key={brand.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {brand.logoUrl ? (
-                          <img 
-                            src={brand.logoUrl} 
-                            alt={brand.name}
-                            className="w-8 h-8 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-cgi-secondary/20 flex items-center justify-center">
-                            <Factory className="h-4 w-4 text-cgi-secondary" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium">{brand.name}</p>
-                          {brand.notes && (
-                            <p className="text-sm text-cgi-muted-foreground truncate max-w-xs">
-                              {brand.notes}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {brand.contactName ? (
-                        <div>
-                          <p className="font-medium">{brand.contactName}</p>
-                          {brand.contactEmail && (
-                            <p className="text-sm text-cgi-muted-foreground">{brand.contactEmail}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-cgi-muted-foreground">Nincs megadva</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-bold text-lg">{getActiveCampaignsCount(brand.id)}</span>
-                    </TableCell>
-                    <TableCell className="text-cgi-muted-foreground">
-                      {getLastCampaignDate(brand.id)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="cgi-button-ghost">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="cgi-button-ghost">
-                          <Users className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
-            {filteredBrands.length === 0 && (
-              <div className="text-center py-8 text-cgi-muted-foreground">
-                {searchTerm 
-                  ? 'Nincs a keresési feltételeknek megfelelő márka.'
-                  : 'Még nincsenek márkák létrehozva.'
-                }
-              </div>
-            )}
-          </Card>
+          {/* Brands DataTable */}
+          <DataTable
+            data={filteredBrands}
+            columns={columns}
+            searchPlaceholder="Keresés márka vagy kapcsolattartó neve alapján..."
+          />
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
