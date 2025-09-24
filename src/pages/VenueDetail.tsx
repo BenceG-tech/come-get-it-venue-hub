@@ -103,8 +103,14 @@ export default function VenueDetail() {
 
     try {
       const saved = await dataProvider.update<Venue>('venues', venue.id, updates);
+      // Update the venue state with the enriched data that includes drinks, images, etc.
       setVenue(saved);
-      toast({ title: 'Siker', description: 'Változások elmentve.' });
+      toast({ 
+        title: 'Siker', 
+        description: saved.drinks?.length ? 
+          `Változások elmentve. ${saved.drinks.length} ital mentve.` : 
+          'Változások elmentve.'
+      });
       return saved;
     } catch (error: any) {
       console.error("Failed to update venue:", error);

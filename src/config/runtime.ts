@@ -27,6 +27,7 @@ const resolvedProvider = (queryProvider || localProvider || envProvider || defau
 
 export const runtimeConfig = {
   useSupabase: resolvedProvider === 'supabase',
+  useLegacyPublicListLayout: true, // Feature flag to restore compact venue list layout
 };
 
 // Helpful logs

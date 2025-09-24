@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Search, MapPin, Gift, Star, Sparkles } from 'lucide-react';
 import { usePublicVenues } from '@/hooks/usePublicVenues';
 import PublicVenueCard from '@/components/PublicVenueCard';
+import PublicVenueListItem from '@/components/PublicVenueListItem';
+import { runtimeConfig } from '@/config/runtime';
 
 export default function PublicHome() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -174,9 +176,16 @@ export default function PublicHome() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            <div className={runtimeConfig.useLegacyPublicListLayout 
+              ? "space-y-3" 
+              : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
+            }>
               {venues.map((venue) => (
-                <PublicVenueCard key={venue.id} venue={venue} />
+                runtimeConfig.useLegacyPublicListLayout ? (
+                  <PublicVenueListItem key={venue.id} venue={venue} />
+                ) : (
+                  <PublicVenueCard key={venue.id} venue={venue} />
+                )
               ))}
             </div>
           )}

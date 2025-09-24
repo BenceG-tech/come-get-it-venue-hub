@@ -162,83 +162,137 @@ async function fetchFreeDrinkWindows(venueId: string) {
 }
 
 async function replaceVenueDrinks(venueId: string, drinks: any[]) {
-  // Early return if no drinks provided - don't delete existing ones
-  if (!drinks || drinks.length === 0) {
-    return fetchVenueDrinks(venueId);
-  }
-
-  // Delete all drinks for this venue
-  const { error: delErr } = await supabase
-    .from("venue_drinks")
-    .delete()
-    .eq("venue_id", venueId);
-  if (delErr) {
-    logSbError("replaceVenueDrinks(delete)", delErr);
-    throw delErr;
-  }
-
-  const rows = drinks.map((drink: any) => ({
-    id: drink.id,
+  console.log('[replaceVenueDrinks] Starting with venueId:', venueId, 'drinks:', drinks);
+  
+  // Ensure all drinks have IDs and venue_id
+  const drinksToUpsert = drinks.map(d => ({
+    id: d.id || crypto.randomUUID(),
     venue_id: venueId,
-    drink_name: drink.drinkName,
-    category: drink.category,
-    is_free_drink: drink.is_free_drink,
-    is_sponsored: drink.is_sponsored,
-    brand_id: drink.brand_id,
-    description: drink.description,
-    ingredients: drink.ingredients,
-    image_url: drink.image_url,
-    serving_style: drink.serving_style,
-    abv: drink.abv
+    drink_name: d.drinkName,
+    category: d.category,
+    is_free_drink: d.is_free_drink,
+    is_sponsored: d.is_sponsored,
+    brand_id: d.brand_id,
+    description: d.description,
+    ingredients: d.ingredients,
+    image_url: d.image_url,
+    serving_style: d.serving_style,
+    abv: d.abv
   }));
+  
+  console.log('[replaceVenueDrinks] About to upsert drinks:', drinksToUpsert);
 
-  const { data: inserted, error: insErr } = await supabase
-    .from("venue_drinks")
-    .upsert(rows)
+  // Step 1: Upsert the new drinks (will insert new or update existing)
+  const { data: upsertedDrinks, error: upsertErr } = await supabase
+    .from('venue_drinks')
+    .upsert(drinksToUpsert, { onConflict: 'id' })
     .select();
-  if (insErr) {
-    logSbError("replaceVenueDrinks(insert)", insErr);
-    throw new Error(`Failed to save drinks: ${insErr.message || insErr}`);
+    
+  if (upsertErr) {
+    logSbError("replaceVenueDrinks(upsert)", upsertErr);
+    console.error('[replaceVenueDrinks] Upsert failed:', upsertErr);
+    throw new Error(`Failed to save drinks: ${upsertErr.message || upsertErr}`);
+  }
+  
+  console.log('[replaceVenueDrinks] Upsert successful, result:', upsertedDrinks);
+
+  // Step 2: Only if upsert succeeded, remove drinks that are not in our list
+  if (drinksToUpsert.length > 0) {
+    const keepIds = drinksToUpsert.map(d => d.id);
+    console.log('[replaceVenueDrinks] Removing drinks not in list:', keepIds);
+    
+    const { error: delErr } = await supabase
+      .from('venue_drinks')
+      .delete()
+      .eq('venue_id', venueId)
+      .not('id', 'in', `(${keepIds.map(id => `"${id}"`).join(',')})`);
+      
+    if (delErr) {
+      logSbError("replaceVenueDrinks(cleanup)", delErr);
+      console.warn('[replaceVenueDrinks] Cleanup failed, but data was saved:', delErr);
+      // Don't throw here - the main data was saved successfully
+    }
+  } else {
+    // If no drinks provided, remove all drinks for this venue
+    console.log('[replaceVenueDrinks] No drinks provided, removing all for venue');
+    const { error: delErr } = await supabase
+      .from('venue_drinks')
+      .delete()
+      .eq('venue_id', venueId);
+      
+    if (delErr) {
+      logSbError("replaceVenueDrinks(clear all)", delErr);
+      console.error('[replaceVenueDrinks] Failed to clear all drinks:', delErr);
+      throw new Error(`Failed to clear drinks: ${delErr.message || delErr}`);
+    }
   }
 
+  console.log('[replaceVenueDrinks] Completed successfully');
   return fetchVenueDrinks(venueId);
 }
 
 async function replaceFreeDrinkWindows(venueId: string, windows: any[]) {
-  // Early return if no windows provided - don't delete existing ones
-  if (!windows || windows.length === 0) {
-    return fetchFreeDrinkWindows(venueId);
-  }
-
-  // Delete all windows for this venue
-  const { error: delErr } = await supabase
-    .from("free_drink_windows")
-    .delete()
-    .eq("venue_id", venueId);
-  if (delErr) {
-    logSbError("replaceFreeDrinkWindows(delete)", delErr);
-    throw delErr;
-  }
-
-  const rows = windows.map((window: any) => ({
-    id: window.id,
+  console.log('[replaceFreeDrinkWindows] Starting with venueId:', venueId, 'windows:', windows);
+  
+  // Ensure all windows have IDs and venue_id
+  const windowsToUpsert = windows.map(w => ({
+    id: w.id || crypto.randomUUID(),
     venue_id: venueId,
-    drink_id: window.drink_id,
-    days: window.days,
-    start_time: window.start,
-    end_time: window.end,
-    timezone: window.timezone
+    drink_id: w.drink_id,
+    days: w.days,
+    start_time: w.start,
+    end_time: w.end,
+    timezone: w.timezone
   }));
+  
+  console.log('[replaceFreeDrinkWindows] About to upsert windows:', windowsToUpsert);
 
-  const { data: inserted, error: insErr } = await supabase
-    .from("free_drink_windows")
-    .upsert(rows)
+  // Step 1: Upsert the new windows (will insert new or update existing)
+  const { data: upsertedWindows, error: upsertErr } = await supabase
+    .from('free_drink_windows')
+    .upsert(windowsToUpsert, { onConflict: 'id' })
     .select();
-  if (insErr) {
-    logSbError("replaceFreeDrinkWindows(insert)", insErr);
-    throw new Error(`Failed to save drink windows: ${insErr.message || insErr}`);
+    
+  if (upsertErr) {
+    logSbError("replaceFreeDrinkWindows(upsert)", upsertErr);
+    console.error('[replaceFreeDrinkWindows] Upsert failed:', upsertErr);
+    throw new Error(`Failed to save drink windows: ${upsertErr.message || upsertErr}`);
+  }
+  
+  console.log('[replaceFreeDrinkWindows] Upsert successful, result:', upsertedWindows);
+
+  // Step 2: Only if upsert succeeded, remove windows that are not in our list
+  if (windowsToUpsert.length > 0) {
+    const keepIds = windowsToUpsert.map(w => w.id);
+    console.log('[replaceFreeDrinkWindows] Removing windows not in list:', keepIds);
+    
+    const { error: delErr } = await supabase
+      .from('free_drink_windows')
+      .delete()
+      .eq('venue_id', venueId)
+      .not('id', 'in', `(${keepIds.map(id => `"${id}"`).join(',')})`);
+      
+    if (delErr) {
+      logSbError("replaceFreeDrinkWindows(cleanup)", delErr);
+      console.warn('[replaceFreeDrinkWindows] Cleanup failed, but data was saved:', delErr);
+      // Don't throw here - the main data was saved successfully
+    }
+  } else {
+    // If no windows provided, remove all windows for this venue
+    console.log('[replaceFreeDrinkWindows] No windows provided, removing all for venue');
+    const { error: delErr } = await supabase
+      .from('free_drink_windows')
+      .delete()
+      .eq('venue_id', venueId);
+      
+    if (delErr) {
+      logSbError("replaceFreeDrinkWindows(clear all)", delErr);
+      console.error('[replaceFreeDrinkWindows] Failed to clear all windows:', delErr);
+      throw new Error(`Failed to clear windows: ${delErr.message || delErr}`);
+    }
   }
 
+  console.log('[replaceFreeDrinkWindows] Completed successfully');
   return fetchFreeDrinkWindows(venueId);
 }
 

@@ -153,11 +153,21 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     try {
       setSaving(true);
       await Promise.resolve(onSave(finalFormData));
-      toast({ title: 'Siker', description: 'Változások elmentve.' });
+      toast({ 
+        title: 'Siker', 
+        description: 'Változások elmentve. Az italok most már láthatók!',
+        duration: 5000
+      });
+      
       setOpen(false);
     } catch (error: any) {
       console.error('Save failed:', error);
-      toast({ title: 'Hiba', description: String(error?.message || error), variant: 'destructive' as any });
+      toast({ 
+        title: 'Hiba', 
+        description: String(error?.message || error), 
+        variant: 'destructive' as any,
+        duration: 7000 
+      });
     } finally {
       setSaving(false);
     }
