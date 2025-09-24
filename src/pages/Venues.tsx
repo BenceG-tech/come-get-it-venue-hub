@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building, Plus, Search, Eye } from 'lucide-react';
+import { Building, Plus, Search, Eye, Phone, Globe } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
 import { VenueFormModal } from '@/components/VenueFormModal';
@@ -37,6 +38,7 @@ export default function Venues() {
   const [isCreating, setIsCreating] = useState(false);
   const dataProvider = getDataProvider();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadVenues();
@@ -199,7 +201,7 @@ export default function Venues() {
       <PageLayout>
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <Building className="h-8 w-8 text-cgi-secondary" />
               <div>
@@ -207,7 +209,7 @@ export default function Venues() {
                 <p className="text-cgi-muted-foreground">Venue-k kezelése és beállításai</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <VenueFormModal
                 onSave={handleCreateVenue}
                 trigger={
@@ -217,12 +219,14 @@ export default function Venues() {
                   </Button>
                 }
               />
-              <Button variant="outline" className="cgi-button-secondary" onClick={() => setPage(1)}>
-                Frissítés
-              </Button>
-              <Button className="cgi-button-primary" onClick={exportCSV} disabled={csvExporting}>
-                CSV export
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" className="cgi-button-secondary flex-1 sm:flex-initial" onClick={() => setPage(1)}>
+                  Frissítés
+                </Button>
+                <Button className="cgi-button-primary flex-1 sm:flex-initial" onClick={exportCSV} disabled={csvExporting}>
+                  CSV export
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -241,83 +245,161 @@ export default function Venues() {
             </div>
           </Card>
 
-          {/* Venues Table */}
-          <Card className="cgi-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Név</TableHead>
-                  <TableHead>Cím</TableHead>
-                  <TableHead>Csomag</TableHead>
-                  <TableHead>Státusz</TableHead>
-                  <TableHead>Telefon</TableHead>
-                  <TableHead>Web</TableHead>
-                  <TableHead>Létrehozva</TableHead>
-                  <TableHead>Műveletek</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {venues.map((venue) => (
-                  <TableRow key={venue.id}>
-                    <TableCell className="font-medium">{venue.name}</TableCell>
-                    <TableCell className="text-cgi-muted-foreground">{venue.address}</TableCell>
-                    <TableCell>
-                      <Badge className={`${planBadgeColor(venue.plan)} capitalize`}>{venue.plan}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {venue.is_paused ? (
-                        <Badge className="bg-cgi-error text-cgi-error-foreground">Szünetel</Badge>
-                      ) : (
-                        <Badge className="bg-cgi-success text-cgi-success-foreground">Aktív</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-cgi-muted-foreground">{venue.phone_number || '—'}</TableCell>
-                    <TableCell>
-                      {venue.website_url ? (
-                        <a
-                          href={venue.website_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-cgi-secondary underline"
-                        >
-                          Megnyitás
-                        </a>
-                      ) : (
-                        <span className="text-cgi-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-cgi-muted-foreground">
-                      {new Date(venue.created_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+          {/* Venues Display - Mobile Cards / Desktop Table */}
+          {isMobile ? (
+            <div className="space-y-4">
+              {venues.map((venue) => (
+                <Card key={venue.id} className="cgi-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg font-semibold truncate">{venue.name}</CardTitle>
+                        <p className="text-sm text-cgi-muted-foreground mt-1 line-clamp-2">{venue.address}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 ml-3">
+                        <Badge className={`${planBadgeColor(venue.plan)} capitalize text-xs`}>{venue.plan}</Badge>
+                        {venue.is_paused ? (
+                          <Badge className="bg-cgi-error text-cgi-error-foreground text-xs">Szünetel</Badge>
+                        ) : (
+                          <Badge className="bg-cgi-success text-cgi-success-foreground text-xs">Aktív</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex flex-col gap-3">
+                      {/* Contact Info */}
+                      <div className="flex flex-col gap-2">
+                        {venue.phone_number && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-cgi-muted-foreground" />
+                            <span className="text-cgi-muted-foreground">{venue.phone_number}</span>
+                          </div>
+                        )}
+                        {venue.website_url && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Globe className="h-4 w-4 text-cgi-muted-foreground" />
+                            <a
+                              href={venue.website_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cgi-secondary underline truncate"
+                            >
+                              Weboldal megnyitása
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Bottom row */}
+                      <div className="flex items-center justify-between pt-2 border-t border-cgi-muted">
+                        <span className="text-xs text-cgi-muted-foreground">
+                          {new Date(venue.created_at).toLocaleDateString()}
+                        </span>
                         <Link to={`/venues/${venue.id}`}>
                           <Button variant="ghost" size="sm" className="cgi-button-ghost">
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4 mr-1" />
+                            Részletek
                           </Button>
                         </Link>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {venues.length === 0 && (
+                <Card className="cgi-card">
+                  <CardContent className="text-center py-8 text-cgi-muted-foreground">
+                    {runtimeConfig.useSupabase
+                      ? 'Még nincsenek helyszínek létrehozva.'
+                      : 'Még nincsenek helyszínek létrehozva.'}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <Card className="cgi-card">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Név</TableHead>
+                      <TableHead>Cím</TableHead>
+                      <TableHead>Csomag</TableHead>
+                      <TableHead>Státusz</TableHead>
+                      <TableHead>Telefon</TableHead>
+                      <TableHead>Web</TableHead>
+                      <TableHead>Létrehozva</TableHead>
+                      <TableHead>Műveletek</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {venues.map((venue) => (
+                      <TableRow key={venue.id}>
+                        <TableCell className="font-medium">{venue.name}</TableCell>
+                        <TableCell className="text-cgi-muted-foreground">{venue.address}</TableCell>
+                        <TableCell>
+                          <Badge className={`${planBadgeColor(venue.plan)} capitalize`}>{venue.plan}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {venue.is_paused ? (
+                            <Badge className="bg-cgi-error text-cgi-error-foreground">Szünetel</Badge>
+                          ) : (
+                            <Badge className="bg-cgi-success text-cgi-success-foreground">Aktív</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-cgi-muted-foreground">{venue.phone_number || '—'}</TableCell>
+                        <TableCell>
+                          {venue.website_url ? (
+                            <a
+                              href={venue.website_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cgi-secondary underline"
+                            >
+                              Megnyitás
+                            </a>
+                          ) : (
+                            <span className="text-cgi-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-cgi-muted-foreground">
+                          {new Date(venue.created_at).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Link to={`/venues/${venue.id}`}>
+                              <Button variant="ghost" size="sm" className="cgi-button-ghost">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
 
-            {venues.length === 0 && (
-              <div className="text-center py-8 text-cgi-muted-foreground">
-                {runtimeConfig.useSupabase
-                  ? 'Még nincsenek helyszínek létrehozva.'
-                  : 'Még nincsenek helyszínek létrehozva.'}
+                {venues.length === 0 && (
+                  <div className="text-center py-8 text-cgi-muted-foreground">
+                    {runtimeConfig.useSupabase
+                      ? 'Még nincsenek helyszínek létrehozva.'
+                      : 'Még nincsenek helyszínek létrehozva.'}
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-cgi-muted-foreground">Oldal: {page}</span>
-              <div className="flex gap-2">
+            </Card>
+          )}
+          
+          {/* Pagination */}
+          <Card className="cgi-card">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 gap-3">
+              <span className="text-sm text-cgi-muted-foreground text-center sm:text-left">Oldal: {page}</span>
+              <div className="flex gap-2 justify-center sm:justify-end">
                 <Button
                   variant="outline"
-                  className="cgi-button-secondary"
+                  className="cgi-button-secondary flex-1 sm:flex-initial"
                   disabled={page === 1}
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                 >
@@ -325,7 +407,7 @@ export default function Venues() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="cgi-button-secondary"
+                  className="cgi-button-secondary flex-1 sm:flex-initial"
                   disabled={!hasMore}
                   onClick={() => setPage(p => p + 1)}
                 >
