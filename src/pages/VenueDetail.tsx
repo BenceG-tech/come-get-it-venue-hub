@@ -102,12 +102,14 @@ export default function VenueDetail() {
     if (!venue) return;
 
     try {
-      const updatedVenue = { ...venue, ...updates };
-      await dataProvider.update<Venue>('venues', venue.id, updates);
-      setVenue(updatedVenue);
+      const saved = await dataProvider.update<Venue>('venues', venue.id, updates);
+      setVenue(saved);
+      toast({ title: 'Siker', description: 'Változások elmentve.' });
+      return saved;
     } catch (error: any) {
       console.error("Failed to update venue:", error);
       toast({ title: "Hiba", description: String(error?.message || error), variant: "destructive" as any });
+      throw error;
     }
   };
 

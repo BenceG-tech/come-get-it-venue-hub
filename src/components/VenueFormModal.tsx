@@ -13,6 +13,7 @@ import { EnhancedDrinkSelector } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { ImageUploadInput } from './ImageUploadInput';
+import { useToast } from '@/hooks/use-toast';
 
 interface VenueFormModalProps {
   venue?: Venue;
@@ -24,6 +25,8 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const [open, setOpen] = useState(false);
   const [drinksTouched, setDrinksTouched] = useState(false);
   const [windowsTouched, setWindowsTouched] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<Venue>>({
     name: venue?.name || '',
     address: venue?.address || '',
@@ -118,29 +121,27 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation: Check that every free drink has at least one time window
     const freeDrinks = formData.drinks?.filter(d => d.is_free_drink) || [];
     for (const drink of freeDrinks) {
       const drinkWindows = formData.freeDrinkWindows?.filter(w => w.drink_id === drink.id) || [];
       if (drinkWindows.length === 0) {
-        // Show error toast - you'll need to import useToast
-        console.error(`Free drink "${drink.drinkName}" has no time windows configured`);
-        alert(`Hiba: Az ingyenes ital "${drink.drinkName}" nem rendelkezik időablakokkal. Adj hozzá legalább egy időablakot.`);
+        toast({ title: 'Hiba', description: `Az ingyenes ital ("${drink.drinkName}") nem rendelkezik időablakokkal.`, variant: 'destructive' as any });
         return;
       }
     }
-    
+
     // Extract cover image URL and set it to both image_url and hero_image_url
     const coverImage = formData.images?.find(img => img.isCover);
-    const finalFormData = {
+    const finalFormData: any = {
       ...formData,
       image_url: coverImage?.url || null,
       hero_image_url: coverImage?.url || null,
     };
-    
+
     // Only include drinks/windows if they were actually modified
     if (!drinksTouched) {
       delete finalFormData.drinks;
@@ -148,9 +149,18 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     if (!windowsTouched) {
       delete finalFormData.freeDrinkWindows;
     }
-    
-    onSave(finalFormData);
-    setOpen(false);
+
+    try {
+      setSaving(true);
+      await Promise.resolve(onSave(finalFormData));
+      toast({ title: 'Siker', description: 'Változások elmentve.' });
+      setOpen(false);
+    } catch (error: any) {
+      console.error('Save failed:', error);
+      toast({ title: 'Hiba', description: String(error?.message || error), variant: 'destructive' as any });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -482,11 +492,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           </Tabs>
 
           <div className="flex justify-end space-x-4 pt-4 border-t border-cgi-muted">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary" disabled={saving}>
               Mégse
             </Button>
-            <Button type="submit" className="cgi-button-primary">
-              {venue ? 'Mentés' : 'Létrehozás'}
+            <Button type="submit" className="cgi-button-primary" disabled={saving}>
+              {saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
             </Button>
           </div>
         </form>
