@@ -72,12 +72,13 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
   const addFreeDrinkWindow = () => {
     const newWindow: FreeDrinkWindow = {
-      id: `window-${Date.now()}`,
+      id: crypto.randomUUID(),
       venue_id: '', // Will be set when venue is saved
       days: [1, 2, 3, 4, 5], // Default: weekdays
       start: '14:00',
       end: '16:00',
       timezone: 'Europe/Budapest'
+    };
     };
     
     setFormData(prev => ({
@@ -122,7 +123,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
   const addImage = () => {
     const newImage: VenueImage = {
-      id: `img-${Date.now()}`,
+      id: crypto.randomUUID(),
       url: '',
       label: ''
     };
@@ -135,7 +136,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   // NEW: add a helper to append a freshly uploaded image
   const addImageWithUrl = (url: string) => {
     const newImage: VenueImage = {
-      id: `img-${Date.now()}`,
+      id: crypto.randomUUID(),
       url,
       label: ''
     };
@@ -190,12 +191,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-6 bg-cgi-muted">
+            <TabsList className="grid w-full grid-cols-5 bg-cgi-muted">
               <TabsTrigger value="basic" className="text-cgi-surface-foreground">Alapok</TabsTrigger>
               <TabsTrigger value="contact" className="text-cgi-surface-foreground">Kapcsolat</TabsTrigger>
               <TabsTrigger value="images" className="text-cgi-surface-foreground">Képek</TabsTrigger>
               <TabsTrigger value="drinks" className="text-cgi-surface-foreground">Italok</TabsTrigger>
-              <TabsTrigger value="schedule" className="text-cgi-surface-foreground">Időbeosztás</TabsTrigger>
               <TabsTrigger value="caps" className="text-cgi-surface-foreground">Limitek</TabsTrigger>
             </TabsList>
 
@@ -414,68 +414,6 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 onChange={(drinks) => setFormData(prev => ({ ...prev, drinks }))}
                 onFreeDrinkWindowsChange={(windows) => setFormData(prev => ({ ...prev, freeDrinkWindows: windows }))}
               />
-            </TabsContent>
-
-            <TabsContent value="schedule" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-cgi-surface-foreground">Ingyenes ital időablakok</Label>
-                <Button type="button" onClick={addFreeDrinkWindow} size="sm" className="cgi-button-primary">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Új időablak
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {formData.freeDrinkWindows?.map((window) => (
-                  <Card key={window.id} className="p-4 cgi-card bg-cgi-surface border-cgi-muted">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-cgi-surface-foreground">Időablak</h4>
-                        <Button
-                          type="button"
-                          onClick={() => removeFreeDrinkWindow(window.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-cgi-surface-foreground">Napok</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {DAYS.map(day => (
-                            <Badge
-                              key={day.value}
-                              variant={window.days.includes(day.value) ? "default" : "outline"}
-                              className={`cursor-pointer cgi-badge ${
-                                window.days.includes(day.value) ? 'bg-cgi-secondary text-cgi-secondary-foreground' : ''
-                              }`}
-                              onClick={() => toggleDay(window.id, day.value)}
-                            >
-                              {day.label}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <TimeRangeInput
-                        startTime={window.start}
-                        endTime={window.end}
-                        onStartTimeChange={(time) => updateFreeDrinkWindow(window.id, { start: time })}
-                        onEndTimeChange={(time) => updateFreeDrinkWindow(window.id, { end: time })}
-                      />
-                    </div>
-                  </Card>
-                ))}
-
-                {!formData.freeDrinkWindows?.length && (
-                  <div className="text-center py-8 text-cgi-muted-foreground">
-                    Még nincsenek időablakok beállítva. Kattints a "Új időablak" gombra a hozzáadáshoz.
-                  </div>
-                )}
-              </div>
             </TabsContent>
 
             <TabsContent value="caps" className="space-y-4">

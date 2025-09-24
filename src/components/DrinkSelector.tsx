@@ -38,7 +38,7 @@ export function DrinkSelector({ drinks, onChange }: DrinkSelectorProps) {
     if (!newDrink.drinkName?.trim()) return;
 
     const drink: VenueDrink = {
-      id: `drink-${Date.now()}`,
+      id: crypto.randomUUID(),
       venue_id: '', // Will be set when venue is saved
       drinkName: newDrink.drinkName,
       category: newDrink.category || undefined,
@@ -113,6 +113,7 @@ export function DrinkSelector({ drinks, onChange }: DrinkSelectorProps) {
                   </div>
                 </div>
                 <Button
+                  type="button"
                   onClick={() => removeDrink(drink.id)}
                   variant="ghost"
                   size="sm"
@@ -160,6 +161,7 @@ export function DrinkSelector({ drinks, onChange }: DrinkSelectorProps) {
                 <span className="text-xs text-cgi-muted-foreground">Ingyenes</span>
               </div>
               <Button
+                type="button"
                 onClick={addDrink}
                 size="sm"
                 className="cgi-button-primary"

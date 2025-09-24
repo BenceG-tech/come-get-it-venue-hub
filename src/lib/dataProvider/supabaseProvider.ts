@@ -109,6 +109,130 @@ async function replaceVenueImages(venueId: string, images: any[]) {
   }));
 }
 
+async function fetchVenueDrinks(venueId: string) {
+  const { data: drinks, error: drinksErr } = await supabase
+    .from("venue_drinks")
+    .select("*")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: true });
+  if (drinksErr) {
+    logSbError("fetchVenueDrinks", drinksErr);
+    throw drinksErr;
+  }
+  // Map to UI format
+  return (drinks || []).map((d: any) => ({
+    id: d.id,
+    venue_id: d.venue_id,
+    drinkName: d.drink_name,
+    category: d.category,
+    is_free_drink: d.is_free_drink,
+    is_sponsored: d.is_sponsored,
+    brand_id: d.brand_id,
+    description: d.description,
+    ingredients: d.ingredients,
+    image_url: d.image_url,
+    serving_style: d.serving_style,
+    abv: d.abv
+  }));
+}
+
+async function fetchFreeDrinkWindows(venueId: string) {
+  const { data: windows, error: windowsErr } = await supabase
+    .from("free_drink_windows")
+    .select("*")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: true });
+  if (windowsErr) {
+    logSbError("fetchFreeDrinkWindows", windowsErr);
+    throw windowsErr;
+  }
+  // Map to UI format
+  return (windows || []).map((w: any) => ({
+    id: w.id,
+    venue_id: w.venue_id,
+    drink_id: w.drink_id,
+    days: w.days,
+    start: w.start_time,
+    end: w.end_time,
+    timezone: w.timezone
+  }));
+}
+
+async function replaceVenueDrinks(venueId: string, drinks: any[]) {
+  // Delete all drinks for this venue
+  const { error: delErr } = await supabase
+    .from("venue_drinks")
+    .delete()
+    .eq("venue_id", venueId);
+  if (delErr) {
+    logSbError("replaceVenueDrinks(delete)", delErr);
+    throw delErr;
+  }
+
+  if (!drinks || drinks.length === 0) return [];
+
+  const rows = drinks.map((drink: any) => ({
+    id: drink.id,
+    venue_id: venueId,
+    drink_name: drink.drinkName,
+    category: drink.category,
+    is_free_drink: drink.is_free_drink,
+    is_sponsored: drink.is_sponsored,
+    brand_id: drink.brand_id,
+    description: drink.description,
+    ingredients: drink.ingredients,
+    image_url: drink.image_url,
+    serving_style: drink.serving_style,
+    abv: drink.abv
+  }));
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("venue_drinks")
+    .upsert(rows)
+    .select();
+  if (insErr) {
+    logSbError("replaceVenueDrinks(insert)", insErr);
+    throw insErr;
+  }
+
+  return fetchVenueDrinks(venueId);
+}
+
+async function replaceFreeDrinkWindows(venueId: string, windows: any[]) {
+  // Delete all windows for this venue
+  const { error: delErr } = await supabase
+    .from("free_drink_windows")
+    .delete()
+    .eq("venue_id", venueId);
+  if (delErr) {
+    logSbError("replaceFreeDrinkWindows(delete)", delErr);
+    throw delErr;
+  }
+
+  if (!windows || windows.length === 0) return [];
+
+  const rows = windows.map((window: any) => ({
+    id: window.id,
+    venue_id: venueId,
+    drink_id: window.drink_id,
+    days: window.days,
+    start_time: window.start,
+    end_time: window.end,
+    timezone: window.timezone
+  }));
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("free_drink_windows")
+    .upsert(rows)
+    .select();
+  if (insErr) {
+    logSbError("replaceFreeDrinkWindows(insert)", insErr);
+    throw insErr;
+  }
+
+  return fetchFreeDrinkWindows(venueId);
+}
+
 export const supabaseProvider: DataProvider & {
   getCount?: (resource: string, filters?: ListFilters) => Promise<number>;
   getPublicVenues?: (filters?: ListFilters) => Promise<any[]>;
@@ -261,13 +385,15 @@ export const supabaseProvider: DataProvider & {
         throw error;
       }
 
-      // Attach images
+      // Attach images, drinks, and free drink windows
       const images = await fetchVenueImages(id);
+      const drinks = await fetchVenueDrinks(id);
+      const freeDrinkWindows = await fetchFreeDrinkWindows(id);
 
       // Map DB opening_hours -> UI business_hours
       const business_hours = (row as any)?.opening_hours ?? undefined;
 
-      const enriched = { ...(row as any), images, business_hours };
+      const enriched = { ...(row as any), images, drinks, freeDrinkWindows, business_hours };
       return enriched as T;
     }
 
@@ -299,8 +425,10 @@ export const supabaseProvider: DataProvider & {
         payload = { ...payload, owner_profile_id: authData.user.id };
       }
 
-      // Extract images from payload; store only supported columns in venues
+      // Extract images, drinks, and windows from payload; store only supported columns in venues
       const images = Array.isArray(payload.images) ? payload.images : undefined;
+      const drinks = Array.isArray(payload.drinks) ? payload.drinks : undefined;
+      const freeDrinkWindows = Array.isArray(payload.freeDrinkWindows) ? payload.freeDrinkWindows : undefined;
 
       // Ensure opening_hours is set from business_hours for DB
       const insertPayload = pickVenueColumns(payload);
@@ -315,15 +443,30 @@ export const supabaseProvider: DataProvider & {
         throw error;
       }
 
+      const venueId = (row as any).id;
+
       // If images provided, insert them into venue_images
       if (images && images.length > 0) {
-        await replaceVenueImages((row as any).id, images);
+        await replaceVenueImages(venueId, images);
       }
 
-      // Return venue with images and UI business_hours
-      const finalImages = images ? await fetchVenueImages((row as any).id) : [];
+      // If drinks provided, insert them into venue_drinks
+      if (drinks && drinks.length > 0) {
+        await replaceVenueDrinks(venueId, drinks);
+      }
+
+      // If windows provided, insert them into free_drink_windows
+      if (freeDrinkWindows && freeDrinkWindows.length > 0) {
+        await replaceFreeDrinkWindows(venueId, freeDrinkWindows);
+      }
+
+      // Return venue with all related data
+      const finalImages = await fetchVenueImages(venueId);
+      const finalDrinks = await fetchVenueDrinks(venueId);
+      const finalWindows = await fetchFreeDrinkWindows(venueId);
       const business_hours = (row as any)?.opening_hours ?? insertPayload?.opening_hours ?? undefined;
-      const enriched = { ...(row as any), images: finalImages, business_hours };
+      
+      const enriched = { ...(row as any), images: finalImages, drinks: finalDrinks, freeDrinkWindows: finalWindows, business_hours };
       return enriched as T;
     }
 
@@ -345,6 +488,8 @@ export const supabaseProvider: DataProvider & {
     if (resource === "venues") {
       const payload = data as any;
       const images = Array.isArray(payload.images) ? payload.images : undefined;
+      const drinks = Array.isArray(payload.drinks) ? payload.drinks : undefined;
+      const freeDrinkWindows = Array.isArray(payload.freeDrinkWindows) ? payload.freeDrinkWindows : undefined;
 
       // Ensure opening_hours is set from business_hours for DB
       const updatePayload = pickVenueColumns(payload);
@@ -366,10 +511,23 @@ export const supabaseProvider: DataProvider & {
         await replaceVenueImages(id, images);
       }
 
-      // Return updated venue with images and UI business_hours
+      // If drinks provided, sync them in venue_drinks
+      if (drinks) {
+        await replaceVenueDrinks(id, drinks);
+      }
+
+      // If windows provided, sync them in free_drink_windows
+      if (freeDrinkWindows) {
+        await replaceFreeDrinkWindows(id, freeDrinkWindows);
+      }
+
+      // Return updated venue with all related data
       const finalImages = await fetchVenueImages(id);
+      const finalDrinks = await fetchVenueDrinks(id);
+      const finalWindows = await fetchFreeDrinkWindows(id);
       const business_hours = (row as any)?.opening_hours ?? updatePayload?.opening_hours ?? undefined;
-      const enriched = { ...(row as any), images: finalImages, business_hours };
+      
+      const enriched = { ...(row as any), images: finalImages, drinks: finalDrinks, freeDrinkWindows: finalWindows, business_hours };
       return enriched as T;
     }
 

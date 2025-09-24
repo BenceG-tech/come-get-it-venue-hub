@@ -63,7 +63,7 @@ export function EnhancedDrinkSelector({
     if (!newDrink.drinkName?.trim()) return;
 
     const drink: VenueDrink = {
-      id: `drink-${Date.now()}`,
+      id: crypto.randomUUID(),
       venue_id: '', // Will be set when venue is saved
       drinkName: newDrink.drinkName,
       category: newDrink.category || undefined,
@@ -105,7 +105,7 @@ export function EnhancedDrinkSelector({
 
   const addTimeWindow = (drinkId: string) => {
     const newWindow: FreeDrinkWindow = {
-      id: `window-${Date.now()}`,
+      id: crypto.randomUUID(),
       venue_id: '', // Will be set when venue is saved
       drink_id: drinkId,
       days: [1, 2, 3, 4, 5], // Default: weekdays
@@ -184,6 +184,7 @@ export function EnhancedDrinkSelector({
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
                     <Button
+                      type="button"
                       onClick={() => setExpandedDrink(expandedDrink === drink.id ? null : drink.id)}
                       variant="outline"
                       size="sm"
@@ -191,6 +192,7 @@ export function EnhancedDrinkSelector({
                       {expandedDrink === drink.id ? 'Bezár' : 'Részletek'}
                     </Button>
                     <Button
+                      type="button"
                       onClick={() => removeDrink(drink.id)}
                       variant="ghost"
                       size="sm"
@@ -231,6 +233,7 @@ export function EnhancedDrinkSelector({
                         <div className="flex items-center justify-between">
                           <Label className="text-cgi-surface-foreground">Ingyenes ital időablakok</Label>
                           <Button
+                            type="button"
                             onClick={() => addTimeWindow(drink.id)}
                             size="sm"
                             variant="outline"
@@ -246,6 +249,7 @@ export function EnhancedDrinkSelector({
                               <div className="flex items-center justify-between">
                                 <Label className="text-sm">Időablak</Label>
                                 <Button
+                                  type="button"
                                   onClick={() => removeTimeWindow(window.id)}
                                   variant="ghost"
                                   size="sm"
@@ -270,6 +274,7 @@ export function EnhancedDrinkSelector({
                                   {DAYS.map((day) => (
                                     <Button
                                       key={day.value}
+                                      type="button"
                                       onClick={() => toggleDay(window.id, day.value)}
                                       variant={window.days.includes(day.value) ? "default" : "outline"}
                                       size="sm"
@@ -337,6 +342,7 @@ export function EnhancedDrinkSelector({
 
             <div className="flex justify-end">
               <Button
+                type="button"
                 onClick={addDrink}
                 className="cgi-button-primary"
                 disabled={!newDrink.drinkName?.trim()}

@@ -202,6 +202,54 @@ export default function PublicVenueDetail() {
             />
 
             {/* Free Drinks Section */}
+            {venue.drinks && venue.drinks.filter(d => d.is_free_drink).length > 0 && (
+              <Card className="cgi-card">
+                <div className="cgi-card-header">
+                  <h3 className="cgi-card-title">Ingyenes italok</h3>
+                </div>
+                <div className="space-y-4">
+                  {venue.drinks.filter(d => d.is_free_drink).map(drink => {
+                    const drinkWindows = venue.freeDrinkWindows?.filter(w => w.drink_id === drink.id) || [];
+                    const formatTimeWindows = (windows: any[]) => {
+                      if (!windows.length) return 'Nincs megadva időablak';
+                      return windows.map(w => {
+                        const dayNames = ['', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap'];
+                        const days = w.days.map((d: number) => dayNames[d]).join(', ');
+                        return `${days} ${w.start}-${w.end}`;
+                      }).join(' | ');
+                    };
+                    
+                    return (
+                      <div key={drink.id} className="flex items-start gap-4 p-4 bg-cgi-surface rounded-lg border border-cgi-muted">
+                        {drink.image_url && (
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={drink.image_url} 
+                              alt={drink.drinkName}
+                              className="w-16 h-16 object-cover rounded-lg"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-cgi-surface-foreground mb-1">{drink.drinkName}</h4>
+                          {drink.description && (
+                            <p className="text-sm text-cgi-muted-foreground mb-2">{drink.description}</p>
+                          )}
+                          <div className="text-xs text-cgi-secondary">
+                            {formatTimeWindows(drinkWindows)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
             <DrinkRedemptionCard
               offer={{
                 id: 'daily-happy-hour',
