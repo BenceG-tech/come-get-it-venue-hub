@@ -462,13 +462,13 @@ export function EnhancedDrinkSelector({
 
             {/* Time windows for new free drink - moved directly under checkbox */}
             {newDrink.is_free_drink && (
-              <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="space-y-3 bg-cgi-muted/30 border border-cgi-muted rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-blue-600" />
+                    <Clock className="h-4 w-4 text-cgi-primary" />
                     <Label className="text-cgi-surface-foreground font-medium">Ingyenes ital időablakok</Label>
                     {newWindows.length === 0 && (
-                      <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                      <span className="text-xs text-orange-600 bg-orange-100/20 px-2 py-1 rounded border border-orange-200/30">
                         Időablak szükséges!
                       </span>
                     )}
@@ -478,7 +478,7 @@ export function EnhancedDrinkSelector({
                     onClick={addNewTimeWindow}
                     size="sm"
                     variant="outline"
-                    className="bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                    className="bg-cgi-muted/50 border-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Időablak hozzáadása
@@ -486,22 +486,22 @@ export function EnhancedDrinkSelector({
                 </div>
                 
                 {newWindows.length === 0 && (
-                  <div className="text-sm text-orange-700 bg-orange-50 p-3 rounded border border-orange-200">
+                  <div className="text-sm text-orange-600 bg-orange-100/20 p-3 rounded border border-orange-200/30">
                     <strong>Figyelem:</strong> Az ingyenes italhoz legalább egy időablakot be kell állítani, hogy megjelenjen a vendégeknek.
                   </div>
                 )}
                 
                 {newWindows.map((window, index) => (
-                  <Card key={window.id} className="p-3 bg-white border border-blue-200">
+                  <Card key={window.id} className="p-3 bg-cgi-surface border border-cgi-muted">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">Időablak #{index + 1}</Label>
+                        <Label className="text-sm font-medium text-cgi-surface-foreground">Időablak #{index + 1}</Label>
                         <Button
                           type="button"
                           onClick={() => removeNewTimeWindow(window.id)}
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50/10"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -517,16 +517,45 @@ export function EnhancedDrinkSelector({
                       />
 
                       <div className="space-y-2">
-                        <Label className="text-sm">Napok</Label>
+                        <Label className="text-sm text-cgi-surface-foreground">Napok</Label>
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const weekdays = [1, 2, 3, 4, 5];
+                              updateNewTimeWindow(window.id, { days: weekdays });
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs bg-cgi-muted/50 text-cgi-surface-foreground hover:bg-cgi-muted"
+                          >
+                            H-P
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const allDays = [1, 2, 3, 4, 5, 6, 7];
+                              updateNewTimeWindow(window.id, { days: allDays });
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs bg-cgi-muted/50 text-cgi-surface-foreground hover:bg-cgi-muted"
+                          >
+                            H-V
+                          </Button>
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           {DAYS.map((day) => (
                             <Button
                               key={day.value}
                               type="button"
                               onClick={() => toggleNewDay(window.id, day.value)}
-                              variant={window.days.includes(day.value) ? "default" : "outline"}
                               size="sm"
-                              className="text-xs"
+                              className={`text-xs ${
+                                window.days.includes(day.value)
+                                  ? 'bg-cgi-primary/20 text-cgi-primary border-cgi-primary/40 border hover:bg-cgi-primary/30'
+                                  : 'bg-cgi-surface border-cgi-muted text-cgi-muted-foreground hover:bg-cgi-muted/50 border'
+                              }`}
                             >
                               {day.label}
                             </Button>
