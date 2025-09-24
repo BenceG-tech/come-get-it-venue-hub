@@ -453,7 +453,7 @@ export default function VenueDetail() {
             </TabsContent>
           </Tabs>
         </div>
-      </PageLayout>
+      </div>
     </PageLayout>
   );
 }
