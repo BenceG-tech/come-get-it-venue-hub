@@ -36,25 +36,28 @@ export default function PublicHome() {
       <header className="bg-cgi-surface border-b border-cgi-muted sticky top-0 z-50 backdrop-blur-sm bg-cgi-surface/95">
         <div className="cgi-container py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <div className="relative">
-                <Gift className="h-8 w-8 text-cgi-secondary" />
-                <Sparkles className="h-4 w-4 text-cgi-primary absolute -top-1 -right-1" />
+                <Gift className="h-6 w-6 md:h-8 md:w-8 text-cgi-secondary" />
+                <Sparkles className="h-3 w-3 md:h-4 md:w-4 text-cgi-primary absolute -top-1 -right-1" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-cgi-surface-foreground">Come Get It</h1>
-                <p className="text-sm text-cgi-muted-foreground">Fedezd fel az ingyenes italokat</p>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-bold text-cgi-surface-foreground truncate">Come Get It</h1>
+                <p className="text-xs md:text-sm text-cgi-muted-foreground hidden sm:block">Fedezd fel az ingyenes italokat</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <Link to="/login">
-                <Button variant="outline" className="cgi-button-secondary">
+                <Button variant="outline" size="sm" className="cgi-button-secondary text-xs md:text-sm px-2 md:px-4">
                   Bejelentkezés
                 </Button>
               </Link>
               <Link to="/dashboard">
-                <Button className="cgi-button-primary">
+                <Button size="sm" className="cgi-button-primary text-xs md:text-sm px-2 md:px-4 hidden sm:inline-flex">
                   Partner Dashboard
+                </Button>
+                <Button size="sm" className="cgi-button-primary text-xs md:text-sm px-2 sm:hidden">
+                  Partner
                 </Button>
               </Link>
             </div>
@@ -63,44 +66,44 @@ export default function PublicHome() {
       </header>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-cgi-primary/10 via-cgi-secondary/10 to-cgi-primary/5 py-16 relative overflow-hidden">
+      <section className="bg-gradient-to-br from-cgi-primary/10 via-cgi-secondary/10 to-cgi-primary/5 py-8 md:py-16 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
         <div className="cgi-container text-center relative">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-bold text-cgi-surface-foreground mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-cgi-surface-foreground mb-3 md:mb-4 px-4">
               Ingyenes italok a
-              <span className="text-cgi-primary"> kedvenc helyeidtől</span>
+              <span className="text-cgi-primary block sm:inline"> kedvenc helyeidtől</span>
             </h2>
-            <p className="text-xl text-cgi-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-base md:text-xl text-cgi-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto px-4">
               Fedezd fel a környékbeli bárokat és éttermeket, és élvezd az ingyenes italokat különleges időablakokban.
             </p>
             
             {/* Enhanced Search Bar */}
-            <div className="max-w-lg mx-auto relative mb-8">
+            <div className="max-w-lg mx-auto relative mb-6 md:mb-8 px-4">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cgi-muted-foreground" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 md:h-5 md:w-5 -translate-y-1/2 text-cgi-muted-foreground" />
                 <Input
                   placeholder="Keresés helyszín vagy név alapján..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="cgi-input pl-12 pr-4 h-14 text-lg shadow-lg border-0 ring-1 ring-cgi-muted/20 focus:ring-cgi-primary focus:ring-2"
+                  className="cgi-input pl-10 md:pl-12 pr-4 h-12 md:h-14 text-base md:text-lg shadow-lg border-0 ring-1 ring-cgi-muted/20 focus:ring-cgi-primary focus:ring-2"
                 />
               </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="flex items-center justify-center gap-8 text-sm text-cgi-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 md:gap-8 text-xs sm:text-sm text-cgi-muted-foreground px-4">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-cgi-primary" />
-                <span>{venues.length} aktív helyszín</span>
+                <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-cgi-primary flex-shrink-0" />
+                <span className="whitespace-nowrap">{venues.length} aktív helyszín</span>
               </div>
               <div className="flex items-center gap-2">
-                <Gift className="h-4 w-4 text-cgi-secondary" />
-                <span>Ingyenes italok</span>
+                <Gift className="h-3 w-3 sm:h-4 sm:w-4 text-cgi-secondary flex-shrink-0" />
+                <span className="whitespace-nowrap">Ingyenes italok</span>
               </div>
               <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-cgi-success" />
-                <span>Minőségi partnerek</span>
+                <Star className="h-3 w-3 sm:h-4 sm:w-4 text-cgi-success flex-shrink-0" />
+                <span className="whitespace-nowrap">Minőségi partnerek</span>
               </div>
             </div>
           </div>
@@ -171,7 +174,7 @@ export default function PublicHome() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {venues.map((venue) => (
                 <PublicVenueCard key={venue.id} venue={venue} />
               ))}
@@ -191,16 +194,16 @@ export default function PublicHome() {
               Regisztrálj most, és kezd el felfedezni a legjobb helyeket a környékeden. 
               Minden nap új lehetőségek várnak rád!
             </p>
-            <div className="flex items-center justify-center gap-4">
-              <Link to="/login">
-                <Button size="lg" className="cgi-button-primary">
-                  <Gift className="h-5 w-5 mr-2" />
-                  Regisztrálás most
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4">
+              <Link to="/login" className="w-full sm:w-auto">
+                <Button size="lg" className="cgi-button-primary w-full sm:w-auto min-h-[44px]">
+                  <Gift className="h-5 w-5 mr-2 flex-shrink-0" />
+                  <span className="truncate">Regisztrálás most</span>
                 </Button>
               </Link>
-              <Link to="/dashboard">
-                <Button variant="outline" size="lg" className="cgi-button-secondary">
-                  Partner lettél?
+              <Link to="/dashboard" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="cgi-button-secondary w-full sm:w-auto min-h-[44px]">
+                  <span className="truncate">Partner lettél?</span>
                 </Button>
               </Link>
             </div>
