@@ -11,6 +11,8 @@ import { VenueDrink, FreeDrinkWindow } from '@/lib/types';
 import { SimpleImageInput } from './SimpleImageInput';
 import { TimeRangeInput } from './TimeRangeInput';
 
+import { useToast } from '@/hooks/use-toast';
+
 interface EnhancedDrinkSelectorProps {
   drinks: VenueDrink[];
   freeDrinkWindows: FreeDrinkWindow[];
@@ -45,6 +47,7 @@ export function EnhancedDrinkSelector({
   onChange, 
   onFreeDrinkWindowsChange 
 }: EnhancedDrinkSelectorProps) {
+  const { toast } = useToast();
   const [newDrink, setNewDrink] = useState<Partial<VenueDrink>>({
     drinkName: '',
     category: '',
@@ -61,11 +64,45 @@ export function EnhancedDrinkSelector({
   const [newWindows, setNewWindows] = useState<FreeDrinkWindow[]>([]);
 
   const addDrink = () => {
-    if (!newDrink.drinkName?.trim()) return;
+    if (!newDrink.drinkName?.trim()) {
+      toast({
+        title: "Hiba",
+        description: "Az ital neve kötelező mező.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Validation: Free drinks must have at least one time window
     if (newDrink.is_free_drink && newWindows.length === 0) {
-      return; // Button should be disabled, but extra safety check
+      toast({
+        title: "Hiba", 
+        description: "Ingyenes italoknál legalább egy időablak megadása kötelező.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate time windows
+    if (newDrink.is_free_drink) {
+      for (const window of newWindows) {
+        if (window.days.length === 0) {
+          toast({
+            title: "Hiba",
+            description: "Minden időablaknál legalább egy napot ki kell választani.",
+            variant: "destructive"
+          });
+          return;
+        }
+        if (window.start >= window.end) {
+          toast({
+            title: "Hiba", 
+            description: "A záró időpontnak a nyitó időpont után kell lennie.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
     }
 
     const drinkId = crypto.randomUUID();

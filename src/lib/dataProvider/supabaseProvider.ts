@@ -405,7 +405,7 @@ export const supabaseProvider: DataProvider & {
             id, name, address, description, plan, phone_number, 
             website_url, image_url, hero_image_url, is_paused, 
             created_at, tags, opening_hours, participates_in_points, distance,
-            google_maps_url, category, price_tier, rating
+            google_maps_url, category, price_tier, rating, coordinates
           `)
           .eq('id', id)
           .eq('is_paused', false)
@@ -416,13 +416,15 @@ export const supabaseProvider: DataProvider & {
           throw venueError;
         }
 
-        // Fetch images separately
+        // Fetch all related data to match edge function response
         const images = await fetchVenueImages(id);
+        const drinks = await fetchVenueDrinks(id);
+        const freeDrinkWindows = await fetchFreeDrinkWindows(id);
         
         // Map opening_hours to business_hours for UI compatibility
         const business_hours = venue?.opening_hours ?? undefined;
         
-        return { ...venue, images, business_hours };
+        return { ...venue, images, drinks, freeDrinkWindows, business_hours };
       }
 
       // Map opening_hours to business_hours for UI compatibility
