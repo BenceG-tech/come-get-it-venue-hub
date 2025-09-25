@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +62,16 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       specialDates: []
     }
   });
+
+  // Initialize touch flags if venue already has drinks/windows
+  useEffect(() => {
+    if (venue?.drinks?.length) {
+      setDrinksTouched(true);
+    }
+    if (venue?.freeDrinkWindows?.length) {
+      setWindowsTouched(true);
+    }
+  }, [venue?.drinks?.length, venue?.freeDrinkWindows?.length]);
 
   const updateCaps = (updates: Partial<RedemptionCap>) => {
     setFormData(prev => ({
@@ -143,10 +153,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     };
 
     // Only include drinks/windows if they were actually modified
-    if (!drinksTouched) {
+    // Don't delete existing data when venue already has drinks/windows
+    if (!drinksTouched && (!venue?.drinks?.length)) {
       delete finalFormData.drinks;
     }
-    if (!windowsTouched) {
+    if (!windowsTouched && (!venue?.freeDrinkWindows?.length)) {
       delete finalFormData.freeDrinkWindows;
     }
 
