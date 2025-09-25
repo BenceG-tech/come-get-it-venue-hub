@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ interface EnhancedDrinkSelectorProps {
   freeDrinkWindows: FreeDrinkWindow[];
   onChange: (drinks: VenueDrink[]) => void;
   onFreeDrinkWindowsChange: (windows: FreeDrinkWindow[]) => void;
+  saveSignal?: number;
 }
 
 const DRINK_CATEGORIES = [
@@ -45,7 +46,8 @@ export function EnhancedDrinkSelector({
   drinks, 
   freeDrinkWindows, 
   onChange, 
-  onFreeDrinkWindowsChange 
+  onFreeDrinkWindowsChange,
+  saveSignal,
 }: EnhancedDrinkSelectorProps) {
   const { toast } = useToast();
   const [newDrink, setNewDrink] = useState<Partial<VenueDrink>>({
@@ -63,6 +65,14 @@ export function EnhancedDrinkSelector({
   const [expandedDrink, setExpandedDrink] = useState<string | null>(null);
   const [newWindows, setNewWindows] = useState<FreeDrinkWindow[]>([]);
 
+  // Auto-flush staged drink on save signal
+  useEffect(() => {
+    if (typeof saveSignal === 'undefined') return;
+    // If user typed a new drink name but didn't click add, add it now
+    if (newDrink.drinkName && newDrink.drinkName.trim().length > 0) {
+      addDrink();
+    }
+  }, [saveSignal]);
   const addDrink = () => {
     if (!newDrink.drinkName?.trim()) {
       toast({

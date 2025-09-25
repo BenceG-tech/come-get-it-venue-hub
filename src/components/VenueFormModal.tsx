@@ -26,6 +26,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const [drinksTouched, setDrinksTouched] = useState(false);
   const [windowsTouched, setWindowsTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveSignal, setSaveSignal] = useState(0);
   const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<Venue>>({
     name: venue?.name || '',
@@ -72,6 +73,41 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       setWindowsTouched(true);
     }
   }, [venue?.drinks?.length, venue?.freeDrinkWindows?.length]);
+
+  // Rehydrate form with latest venue data each time the modal opens
+  useEffect(() => {
+    if (!open) return;
+    setFormData({
+      name: venue?.name || '',
+      address: venue?.address || '',
+      description: venue?.description || '',
+      tags: venue?.tags || [],
+      plan: venue?.plan || 'basic',
+      is_paused: venue?.is_paused || false,
+      drinks: venue?.drinks || [],
+      freeDrinkWindows: venue?.freeDrinkWindows || [],
+      caps: venue?.caps || { onExhaust: 'close' },
+      notifications: venue?.notifications || { email: true, push: false, weekly_reports: true },
+      phone_number: venue?.phone_number || '',
+      website_url: venue?.website_url || '',
+      images: venue?.images || [],
+      coordinates: venue?.coordinates || { lat: 0, lng: 0 },
+      business_hours: venue?.business_hours || {
+        byDay: {
+          1: { open: '09:00', close: '22:00' },
+          2: { open: '09:00', close: '22:00' },
+          3: { open: '09:00', close: '22:00' },
+          4: { open: '09:00', close: '22:00' },
+          5: { open: '09:00', close: '23:00' },
+          6: { open: '10:00', close: '23:00' },
+          7: { open: '10:00', close: '21:00' },
+        },
+        specialDates: []
+      }
+    });
+    setDrinksTouched(!!venue?.drinks?.length);
+    setWindowsTouched(!!venue?.freeDrinkWindows?.length);
+  }, [open, venue?.id]);
 
   const updateCaps = (updates: Partial<RedemptionCap>) => {
     setFormData(prev => ({
@@ -134,6 +170,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Flush any staged drinks from the selector before validating/saving
+    setSaveSignal((s) => s + 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     // Validation: Check that every free drink has at least one time window
     const freeDrinks = formData.drinks?.filter(d => d.is_free_drink) || [];
     for (const drink of freeDrinks) {
@@ -161,6 +201,14 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       delete finalFormData.freeDrinkWindows;
     }
 
+    console.info('[VenueFormModal] Submit payload preview', {
+      drinksLen: formData.drinks?.length || 0,
+      windowsLen: formData.freeDrinkWindows?.length || 0,
+      drinksTouched,
+      windowsTouched,
+      hasDrinksInPayload: !!finalFormData.drinks,
+      hasWindowsInPayload: !!finalFormData.freeDrinkWindows,
+    });
     try {
       setSaving(true);
       await Promise.resolve(onSave(finalFormData));
@@ -425,6 +473,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                   setWindowsTouched(true);
                   setFormData(prev => ({ ...prev, freeDrinkWindows: windows }));
                 }}
+                saveSignal={saveSignal}
               />
             </TabsContent>
 
