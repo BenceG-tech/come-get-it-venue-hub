@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,10 @@ interface EnhancedDrinkSelectorProps {
   freeDrinkWindows: FreeDrinkWindow[];
   onChange: (drinks: VenueDrink[]) => void;
   onFreeDrinkWindowsChange: (windows: FreeDrinkWindow[]) => void;
-  saveSignal?: number;
+}
+
+export interface EnhancedDrinkSelectorRef {
+  flushStaged(): Promise<{ success: boolean; error?: string }>;
 }
 
 const DRINK_CATEGORIES = [
@@ -42,13 +45,12 @@ const DAYS = [
   { value: 7, label: 'Vasárnap' },
 ];
 
-export function EnhancedDrinkSelector({ 
+export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, EnhancedDrinkSelectorProps>(({ 
   drinks, 
   freeDrinkWindows, 
   onChange, 
   onFreeDrinkWindowsChange,
-  saveSignal,
-}: EnhancedDrinkSelectorProps) {
+}, ref) => {
   const { toast } = useToast();
   const [newDrink, setNewDrink] = useState<Partial<VenueDrink>>({
     drinkName: '',
@@ -65,14 +67,103 @@ export function EnhancedDrinkSelector({
   const [expandedDrink, setExpandedDrink] = useState<string | null>(null);
   const [newWindows, setNewWindows] = useState<FreeDrinkWindow[]>([]);
 
-  // Auto-flush staged drink on save signal
-  useEffect(() => {
-    if (typeof saveSignal === 'undefined') return;
-    // If user typed a new drink name but didn't click add, add it now
-    if (newDrink.drinkName && newDrink.drinkName.trim().length > 0) {
-      addDrink();
+  // Expose imperative handle for synchronous flushing
+  useImperativeHandle(ref, () => ({
+    flushStaged: async () => {
+      console.log('[EnhancedDrinkSelector] flushStaged called', {
+        hasNewDrink: !!newDrink.drinkName?.trim(),
+        newDrinkName: newDrink.drinkName,
+        newWindowsCount: newWindows.length
+      });
+
+      if (!newDrink.drinkName?.trim()) {
+        return { success: true }; // Nothing to flush
+      }
+
+      // Validate staged drink
+      if (newDrink.is_free_drink && newWindows.length === 0) {
+        toast({
+          title: "Hiba", 
+          description: `Az ingyenes ital ("${newDrink.drinkName}") nem rendelkezik időablakokkal. Adj hozzá legalább egy időablakot a mentés előtt.`,
+          variant: "destructive"
+        });
+        return { success: false, error: "Free drink missing time windows" };
+      }
+
+      // Validate time windows
+      if (newDrink.is_free_drink) {
+        for (const window of newWindows) {
+          if (window.days.length === 0) {
+            toast({
+              title: "Hiba",
+              description: `Az ital ("${newDrink.drinkName}") egyik időablakjánál nincs kiválasztva nap.`,
+              variant: "destructive"
+            });
+            return { success: false, error: "Time window missing days" };
+          }
+          if (window.start >= window.end) {
+            toast({
+              title: "Hiba", 
+              description: `Az ital ("${newDrink.drinkName}") egyik időablakjánál a záró időpontnak a nyitó időpont után kell lennie.`,
+              variant: "destructive"
+            });
+            return { success: false, error: "Invalid time window" };
+          }
+        }
+      }
+
+      // Add the drink
+      try {
+        const drinkId = crypto.randomUUID();
+        const drink: VenueDrink = {
+          id: drinkId,
+          venue_id: '', // Will be set when venue is saved
+          drinkName: newDrink.drinkName,
+          category: newDrink.category || undefined,
+          abv: newDrink.abv || undefined,
+          is_sponsored: newDrink.is_sponsored || false,
+          brand_id: newDrink.brand_id || undefined,
+          is_free_drink: newDrink.is_free_drink || false,
+          description: newDrink.description || undefined,
+          ingredients: newDrink.ingredients || [],
+          serving_style: newDrink.serving_style || undefined,
+          image_url: newDrink.image_url || undefined
+        };
+
+        onChange([...drinks, drink]);
+        
+        // Add time windows for the new drink if it's a free drink
+        if (newDrink.is_free_drink && newWindows.length > 0) {
+          const mappedWindows = newWindows.map(window => ({
+            ...window,
+            drink_id: drinkId,
+            venue_id: ''
+          }));
+          onFreeDrinkWindowsChange([...freeDrinkWindows, ...mappedWindows]);
+        }
+        
+        // Reset form
+        setNewDrink({
+          drinkName: '',
+          category: '',
+          abv: 0,
+          is_sponsored: false,
+          is_free_drink: false,
+          description: '',
+          ingredients: [],
+          serving_style: '',
+          image_url: ''
+        });
+        setNewWindows([]);
+
+        console.log('[EnhancedDrinkSelector] Successfully flushed staged drink', { drinkName: drink.drinkName, windowsCount: newWindows.length });
+        return { success: true };
+      } catch (error) {
+        console.error('[EnhancedDrinkSelector] Error flushing staged drink:', error);
+        return { success: false, error: String(error) };
+      }
     }
-  }, [saveSignal]);
+  }), [newDrink, newWindows, drinks, freeDrinkWindows, onChange, onFreeDrinkWindowsChange, toast]);
   const addDrink = () => {
     if (!newDrink.drinkName?.trim()) {
       toast({
@@ -631,4 +722,4 @@ export function EnhancedDrinkSelector({
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TagInput } from './TagInput';
-import { EnhancedDrinkSelector } from './EnhancedDrinkSelector';
+import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { ImageUploadInput } from './ImageUploadInput';
@@ -23,11 +23,9 @@ interface VenueFormModalProps {
 
 export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) {
   const [open, setOpen] = useState(false);
-  const [drinksTouched, setDrinksTouched] = useState(false);
-  const [windowsTouched, setWindowsTouched] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveSignal, setSaveSignal] = useState(0);
   const { toast } = useToast();
+  const drinkSelectorRef = useRef<EnhancedDrinkSelectorRef>(null);
   const [formData, setFormData] = useState<Partial<Venue>>({
     name: venue?.name || '',
     address: venue?.address || '',
@@ -64,15 +62,6 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
   });
 
-  // Initialize touch flags if venue already has drinks/windows
-  useEffect(() => {
-    if (venue?.drinks?.length) {
-      setDrinksTouched(true);
-    }
-    if (venue?.freeDrinkWindows?.length) {
-      setWindowsTouched(true);
-    }
-  }, [venue?.drinks?.length, venue?.freeDrinkWindows?.length]);
 
   // Rehydrate form with latest venue data each time the modal opens
   useEffect(() => {
@@ -105,8 +94,6 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         specialDates: []
       }
     });
-    setDrinksTouched(!!venue?.drinks?.length);
-    setWindowsTouched(!!venue?.freeDrinkWindows?.length);
   }, [open, venue?.id]);
 
   const updateCaps = (updates: Partial<RedemptionCap>) => {
@@ -170,9 +157,14 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Flush any staged drinks from the selector before validating/saving
-    setSaveSignal((s) => s + 1);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Flush any staged drinks synchronously
+    if (drinkSelectorRef.current) {
+      const flushResult = await drinkSelectorRef.current.flushStaged();
+      if (!flushResult.success) {
+        console.error('[VenueFormModal] Failed to flush staged drinks:', flushResult.error);
+        return; // Don't proceed with save
+      }
+    }
 
     // Validation: Check that every free drink has at least one time window
     const freeDrinks = formData.drinks?.filter(d => d.is_free_drink) || [];
@@ -192,20 +184,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       hero_image_url: coverImage?.url || null,
     };
 
-    // Only include drinks/windows if they were actually modified
-    // Don't delete existing data when venue already has drinks/windows
-    if (!drinksTouched && (!venue?.drinks?.length)) {
-      delete finalFormData.drinks;
-    }
-    if (!windowsTouched && (!venue?.freeDrinkWindows?.length)) {
-      delete finalFormData.freeDrinkWindows;
-    }
-
+    // ALWAYS include drinks and windows in payload - never prune them implicitly
     console.info('[VenueFormModal] Submit payload preview', {
       drinksLen: formData.drinks?.length || 0,
       windowsLen: formData.freeDrinkWindows?.length || 0,
-      drinksTouched,
-      windowsTouched,
       hasDrinksInPayload: !!finalFormData.drinks,
       hasWindowsInPayload: !!finalFormData.freeDrinkWindows,
     });
@@ -463,17 +445,15 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
             <TabsContent value="drinks" className="space-y-4">
               <EnhancedDrinkSelector
+                ref={drinkSelectorRef}
                 drinks={formData.drinks || []}
                 freeDrinkWindows={formData.freeDrinkWindows || []}
                 onChange={(drinks) => {
-                  setDrinksTouched(true);
                   setFormData(prev => ({ ...prev, drinks }));
                 }}
                 onFreeDrinkWindowsChange={(windows) => {
-                  setWindowsTouched(true);
                   setFormData(prev => ({ ...prev, freeDrinkWindows: windows }));
                 }}
-                saveSignal={saveSignal}
               />
             </TabsContent>
 

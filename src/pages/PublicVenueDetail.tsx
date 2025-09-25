@@ -261,6 +261,65 @@ export default function PublicVenueDetail() {
               </Card>
             )}
 
+            {/* ALL FREE DRINKS SECTION - For verification/debugging */}
+            {venue.drinks && venue.drinks.filter(d => d.is_free_drink).length > 0 && (
+              <Card className="cgi-card border-orange-200 bg-orange-50/50">
+                <div className="cgi-card-header">
+                  <h3 className="cgi-card-title text-orange-800">🔧 Összes ingyenes ital (ellenőrzés)</h3>
+                  <p className="text-sm text-orange-600">Ideiglenesen megjelenítjük az összes ingyenes italt az időablakoktól függetlenül</p>
+                </div>
+                <div className="space-y-4">
+                  {venue.drinks.filter(d => d.is_free_drink).map(drink => {
+                    const drinkWindows = venue.freeDrinkWindows?.filter(w => w.drink_id === drink.id) || [];
+                    const formatTimeWindows = (windows: any[]) => {
+                      if (!windows.length) return 'Nincs megadva időablak';
+                      return windows.map(w => {
+                        const dayNames = ['', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap'];
+                        const days = w.days.map((d: number) => dayNames[d]).join(', ');
+                        return `${days} ${w.start}-${w.end}`;
+                      }).join(' | ');
+                    };
+                    
+                    const isCurrentlyActive = drinkWindows.some(w => isWindowActive(w, new Date()));
+                    
+                    return (
+                      <div key={drink.id} className={`flex items-start gap-4 p-4 rounded-lg border ${
+                        isCurrentlyActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        {drink.image_url && (
+                          <div className="flex-shrink-0">
+                            <img 
+                              src={drink.image_url} 
+                              alt={drink.drinkName}
+                              className="w-16 h-16 object-cover rounded-lg"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold text-gray-800">{drink.drinkName}</h4>
+                            <Badge className={isCurrentlyActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>
+                              {isCurrentlyActive ? 'Aktív' : 'Inaktív'}
+                            </Badge>
+                          </div>
+                          {drink.description && (
+                            <p className="text-sm text-gray-600 mb-2">{drink.description}</p>
+                          )}
+                          <div className="text-xs text-gray-500">
+                            {formatTimeWindows(drinkWindows)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
             <DrinkRedemptionCard
               offer={{
                 id: 'daily-happy-hour',
