@@ -6,12 +6,26 @@ import localStorageProvider from "./localStorageProvider";
 
 /**
  * Returns the active DataProvider.
- * Priority:
+ * 
+ * Production behavior:
+ * - Always returns Supabase provider (overrides ignored)
+ * 
+ * Development/Staging priority:
  * 1) URL param: ?provider=supabase|local
- * 2) localStorage: provider = 'supabase' | 'local'
+ * 2) localStorage: provider = 'supabase' | 'local'  
  * 3) runtimeConfig.useSupabase (boolean)
  */
 export function getDataProvider(): DataProvider {
+  // Production lock: always use Supabase
+  const mode = import.meta.env.MODE || 'development';
+  const environment = import.meta.env.VITE_ENVIRONMENT || mode;
+  const isProduction = mode === 'production' || environment === 'production';
+  const forceSupabase = import.meta.env.VITE_FORCE_SUPABASE === 'true';
+  
+  if (isProduction || forceSupabase) {
+    console.log("[providerFactory] Production mode - using Supabase provider");
+    return supabaseProvider;
+  }
   // Read from URL param
   let urlProvider: string | null = null;
   try {

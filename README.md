@@ -60,6 +60,56 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Data Provider Configuration
+
+This application uses a configurable data provider system that can switch between Supabase (production) and mock data (development).
+
+### Environment Behavior
+
+**Production:**
+- Data provider is **locked to Supabase**
+- URL parameters (`?provider=mock`) and localStorage overrides are **ignored for security**
+- Override attempts are logged as security warnings
+
+**Development/Staging:**
+- Flexible provider switching supported
+- Switch via URL: `?provider=supabase` or `?provider=mock`
+- Switch via localStorage: `localStorage.setItem('provider', 'supabase')`
+- Switch via env: `VITE_USE_SUPABASE=true`
+
+### Environment Variables
+
+Create appropriate `.env` files for each environment:
+
+```bash
+# .env.development
+VITE_ENVIRONMENT=development
+VITE_USE_SUPABASE=false
+VITE_FORCE_SUPABASE=false
+
+# .env.staging  
+VITE_ENVIRONMENT=staging
+VITE_USE_SUPABASE=true
+VITE_FORCE_SUPABASE=false
+
+# .env.production
+VITE_ENVIRONMENT=production
+VITE_USE_SUPABASE=true
+VITE_FORCE_SUPABASE=true
+```
+
+### Troubleshooting: Provider Won't Change
+
+**Q: Why can't I switch to mock data in production?**
+A: This is intentional security behavior. Production always uses Supabase to prevent data inconsistencies and security issues.
+
+**Q: Provider switching not working in development?**
+A: Check these in order:
+1. Verify you're in development mode (`import.meta.env.MODE !== 'production'`)
+2. Check `VITE_FORCE_SUPABASE` is not set to `true`
+3. Clear localStorage and try URL parameter: `?provider=mock`
+4. Check browser console for configuration logs
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/c40952ff-7625-45d8-8cc4-e06de5f6ee13) and click on Share -> Publish.
