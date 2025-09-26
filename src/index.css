@@ -11,7 +11,7 @@
     --foreground: 0 0% 95%; /* Near white */
     --card: 0 0% 0%; /* Pure black cards */
     --card-foreground: 0 0% 95%;
-    --popover: 0 0% 0%; /* Pure black popover */
+    --popover: 0 0% 8%; /* Dark gray popover for better visibility */
     --popover-foreground: 0 0% 95%;
     --primary: 182 71% 42%; /* #1fb1b7 - Turquoise primary */
     --primary-foreground: 0 0% 0%;

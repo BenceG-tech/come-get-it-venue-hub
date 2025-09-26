@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Filter, Info } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -85,16 +85,14 @@ export function DataTable<T extends Record<string, any>>({
                               {column.mobileLabel || column.label}:
                             </span>
                             {column.tooltip && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Info className="h-3 w-3 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-xs">
-                                    <p className="text-sm">{column.tooltip}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3 w-3 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  <p className="text-sm">{column.tooltip}</p>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                           <div className="text-sm">
@@ -125,18 +123,16 @@ export function DataTable<T extends Record<string, any>>({
                   >
                     <div className="flex items-center gap-2">
                       <span>{column.label}</span>
-                      {column.tooltip && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-3 w-3 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              <p className="text-sm">{column.tooltip}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
+                       {column.tooltip && (
+                         <Tooltip>
+                           <TooltipTrigger asChild>
+                             <Info className="h-3 w-3 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
+                           </TooltipTrigger>
+                           <TooltipContent side="top" className="max-w-xs">
+                             <p className="text-sm">{column.tooltip}</p>
+                           </TooltipContent>
+                         </Tooltip>
+                       )}
                     </div>
                   </th>
                 ))}

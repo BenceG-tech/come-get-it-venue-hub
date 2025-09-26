@@ -1,6 +1,6 @@
 
 import { Card } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LucideIcon, Info } from "lucide-react";
 
 interface KPICardProps {
@@ -23,16 +23,14 @@ export function KPICard({ title, value, change, icon: Icon, className = "", tool
           <Icon className="h-5 w-5 text-cgi-secondary" />
           <h3 className="cgi-card-title">{title}</h3>
           {tooltip && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p className="text-sm">{tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-sm">{tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
         {change && (

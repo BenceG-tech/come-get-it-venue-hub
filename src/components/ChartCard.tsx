@@ -1,6 +1,6 @@
 
 import { Card } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { ReactNode } from "react";
 
@@ -19,16 +19,14 @@ export function ChartCard({ title, children, className = "", action, tooltip }: 
         <div className="flex items-center gap-2">
           <h3 className="cgi-card-title">{title}</h3>
           {tooltip && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p className="text-sm">{tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-sm">{tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
         {action && <div>{action}</div>}
