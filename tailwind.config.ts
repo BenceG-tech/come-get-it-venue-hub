@@ -65,19 +65,29 @@ export default {
 				},
 				// Come Get It specific colors
 				cgi: {
-					primary: 'hsl(var(--cgi-primary))',
+					primary: 'hsl(var(--cgi-primary))', // #1fb1b7
 					'primary-foreground': 'hsl(var(--cgi-primary-foreground))',
-					secondary: 'hsl(var(--cgi-secondary))',
+					secondary: 'hsl(var(--cgi-secondary))', // #0a6e99
 					'secondary-foreground': 'hsl(var(--cgi-secondary-foreground))',
-					surface: 'hsl(var(--cgi-surface))',
+					tertiary: 'hsl(var(--cgi-tertiary))', // #076894
+					'tertiary-foreground': 'hsl(var(--cgi-tertiary-foreground))',
+					surface: 'hsl(var(--cgi-surface))', // Pure black
 					'surface-foreground': 'hsl(var(--cgi-surface-foreground))',
 					muted: 'hsl(var(--cgi-muted))',
 					'muted-foreground': 'hsl(var(--cgi-muted-foreground))',
+					success: 'hsl(var(--cgi-success))',
+					'success-foreground': 'hsl(var(--cgi-success-foreground))',
+					error: 'hsl(var(--cgi-error))',
+					'error-foreground': 'hsl(var(--cgi-error-foreground))',
 					role: {
-						staff: 'hsl(var(--cgi-role-staff))',
-						owner: 'hsl(var(--cgi-role-owner))',
-						brand: 'hsl(var(--cgi-role-brand))',
-						admin: 'hsl(var(--cgi-role-admin))',
+						staff: 'hsl(var(--cgi-role-staff))', // #1fb1b7
+						'staff-foreground': 'hsl(var(--cgi-role-staff-foreground))',
+						owner: 'hsl(var(--cgi-role-owner))', // #0a6e99
+						'owner-foreground': 'hsl(var(--cgi-role-owner-foreground))',
+						brand: 'hsl(var(--cgi-role-brand))', // #076894
+						'brand-foreground': 'hsl(var(--cgi-role-brand-foreground))',
+						admin: 'hsl(var(--cgi-role-admin))', // #1fb1b7
+						'admin-foreground': 'hsl(var(--cgi-role-admin-foreground))'
 					}
 				}
 			},

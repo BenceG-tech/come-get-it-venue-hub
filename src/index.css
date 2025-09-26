@@ -6,55 +6,58 @@
 
 @layer base {
   :root {
-    /* Deep blue to black gradient matching Come Get It brand */
-    --background: 217 91% 3%;
-    --foreground: 213 31% 91%;
-    --card: 217 60% 8%;
-    --card-foreground: 213 31% 91%;
-    --popover: 217 70% 8%;
-    --popover-foreground: 215 20% 85%;
-    --primary: 180 100% 50%; /* Turquoise accent from Come Get It */
-    --primary-foreground: 217 91% 3%;
-    --secondary: 217 50% 15%;
-    --secondary-foreground: 213 31% 91%;
-    --muted: 217 40% 20%;
-    --muted-foreground: 215 16% 65%;
-    --accent: 180 100% 50%;
-    --accent-foreground: 217 91% 3%;
+    /* Pure black background theme with custom blue accents */
+    --background: 0 0% 0%; /* Pure black */
+    --foreground: 0 0% 95%; /* Near white */
+    --card: 0 0% 0%; /* Pure black cards */
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 0%; /* Pure black popover */
+    --popover-foreground: 0 0% 95%;
+    --primary: 182 71% 42%; /* #1fb1b7 - Turquoise primary */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 200 88% 32%; /* #0a6e99 - Medium blue */
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 10%; /* Very dark gray for muted elements */
+    --muted-foreground: 0 0% 60%; /* Light gray text */
+    --accent: 182 71% 42%; /* Same as primary */
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 220 9% 95%;
-    --border: 217 40% 20%;
-    --input: 217 40% 12%;
-    --ring: 180 100% 50%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 15%; /* Dark border */
+    --input: 0 0% 5%; /* Very dark input background */
+    --ring: 182 71% 42%; /* Turquoise focus ring */
     --radius: 0.5rem;
 
-    /* Come Get It specific colors - Updated to match brand */
-    --cgi-primary: 180 100% 50%; /* Bright turquoise */
-    --cgi-primary-foreground: 217 91% 3%;
-    --cgi-secondary: 217 70% 25%; /* Deep blue */
-    --cgi-secondary-foreground: 213 31% 91%;
-    --cgi-surface: 217 60% 8%; /* Dark blue surface */
-    --cgi-surface-foreground: 213 31% 91%;
-    --cgi-muted: 217 40% 20%;
-    --cgi-muted-foreground: 215 16% 65%;
+    /* Come Get It specific colors - Black theme with custom blues */
+    --cgi-primary: 182 71% 42%; /* #1fb1b7 - Turquoise */
+    --cgi-primary-foreground: 0 0% 0%;
+    --cgi-secondary: 200 88% 32%; /* #0a6e99 - Medium blue */
+    --cgi-secondary-foreground: 0 0% 95%;
+    --cgi-tertiary: 198 91% 30%; /* #076894 - Dark blue */
+    --cgi-tertiary-foreground: 0 0% 95%;
+    --cgi-surface: 0 0% 0%; /* Pure black surface */
+    --cgi-surface-foreground: 0 0% 95%;
+    --cgi-muted: 0 0% 10%; /* Dark muted */
+    --cgi-muted-foreground: 0 0% 60%;
     --cgi-success: 142 76% 36%;
-    --cgi-success-foreground: 220 9% 95%;
+    --cgi-success-foreground: 0 0% 95%;
     --cgi-error: 0 84% 60%;
-    --cgi-error-foreground: 220 9% 95%;
+    --cgi-error-foreground: 0 0% 95%;
 
-    /* Role-specific colors - Updated with blue theme variations */
-    --cgi-role-staff: 200 100% 60%; /* Light blue */
-    --cgi-role-staff-foreground: 220 9% 95%;
-    --cgi-role-owner: 160 80% 50%; /* Teal green */
-    --cgi-role-owner-foreground: 220 9% 95%;
-    --cgi-role-brand: 35 100% 60%; /* Orange */
-    --cgi-role-brand-foreground: 220 9% 95%;
-    --cgi-role-admin: 280 100% 70%; /* Purple */
-    --cgi-role-admin-foreground: 220 9% 95%;
+    /* Role-specific colors - Using custom blue palette */
+    --cgi-role-staff: 182 71% 42%; /* #1fb1b7 - Turquoise */
+    --cgi-role-staff-foreground: 0 0% 0%;
+    --cgi-role-owner: 200 88% 32%; /* #0a6e99 - Medium blue */
+    --cgi-role-owner-foreground: 0 0% 95%;
+    --cgi-role-brand: 198 91% 30%; /* #076894 - Dark blue */
+    --cgi-role-brand-foreground: 0 0% 95%;
+    --cgi-role-admin: 182 71% 42%; /* Turquoise for admin */
+    --cgi-role-admin-foreground: 0 0% 0%;
     
-    /* Background gradient */
-    --cgi-gradient-bg: linear-gradient(135deg, hsl(217, 70%, 25%) 0%, hsl(217, 91%, 3%) 70%, hsl(0, 0%, 0%) 100%);
-    --cgi-bottom-accent: linear-gradient(0deg, hsl(180, 100%, 50%) 0%, transparent 100%);
+    /* Background gradients using custom blues */
+    --cgi-gradient-bg: linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(200, 88%, 32%) 50%, hsl(182, 71%, 42%) 100%);
+    --cgi-gradient-primary: linear-gradient(135deg, hsl(182, 71%, 42%) 0%, hsl(200, 88%, 32%) 50%, hsl(198, 91%, 30%) 100%);
+    --cgi-bottom-accent: linear-gradient(0deg, hsl(182, 71%, 42%) 0%, transparent 100%);
   }
 }
 
