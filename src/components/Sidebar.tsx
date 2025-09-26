@@ -114,7 +114,7 @@ export function Sidebar() {
           {/* Header */}
           <div className="flex h-16 items-center gap-2 px-6 border-b border-cgi-muted">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cgi-secondary">
-              <Users className="h-5 w-5 text-cgi-secondary-foreground" />
+              <Users className="h-5 w-5 text-cgi-primary" />
             </div>
             <div>
               <h1 className="text-lg font-semibold text-cgi-surface-foreground">Come Get It</h1>
