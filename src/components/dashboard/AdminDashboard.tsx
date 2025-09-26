@@ -82,10 +82,10 @@ export function AdminDashboard() {
               <Line 
                 type="monotone" 
                 dataKey="redemptions" 
-                stroke="#06b6d4" 
+                stroke="hsl(var(--cgi-role-admin))" 
                 strokeWidth={2}
-                dot={{ fill: '#06b6d4', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: '#06b6d4', strokeWidth: 2 }}
+                dot={{ fill: 'hsl(var(--cgi-role-admin))', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: 'hsl(var(--cgi-role-admin))', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -118,7 +118,7 @@ export function AdminDashboard() {
               />
               <Bar 
                 dataKey="revenue" 
-                fill="#06b6d4"
+                fill="hsl(var(--cgi-role-admin))"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
