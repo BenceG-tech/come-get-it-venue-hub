@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Lock, Mail, ShieldCheck } from "lucide-react";
+import { Users, Lock, Mail, ShieldCheck, Building2, UserCheck, Crown, Briefcase } from "lucide-react";
+import logoImage from "@/assets/come-get-it-logo.png";
 import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
 import { seedData } from "@/lib/mock/seed";
 import { runtimeConfig } from "@/config/runtime";
@@ -14,7 +14,7 @@ import { signInWithEmailPassword } from "@/auth/supabaseAuth";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -42,8 +42,8 @@ export default function Login() {
       }
     }
 
-    // Mock login - find user by ID or email
-    let user = DEMO_USERS.find(u => u.id === selectedUserId);
+    // Mock login - find user by role or email
+    let user = DEMO_USERS.find(u => u.role === selectedRole);
     if (!user && email) {
       user = DEMO_USERS.find(u => u.email === email);
     }
@@ -60,26 +60,59 @@ export default function Login() {
     }
   };
 
-  const handleDemoUserSelect = (userId: string) => {
-    const user = DEMO_USERS.find(u => u.id === userId);
+  const handleRoleSelect = (role: string) => {
+    const user = DEMO_USERS.find(u => u.role === role);
     if (user) {
-      setSelectedUserId(userId);
+      setSelectedRole(role);
       setEmail(user.email);
     }
   };
 
+  const roleCards = [
+    {
+      role: 'venue_staff',
+      title: 'Staff',
+      description: 'Limited access to venue operations',
+      icon: <UserCheck className="h-6 w-6" />,
+      email: 'staff@trendybar.com'
+    },
+    {
+      role: 'venue_owner',
+      title: 'Owner',
+      description: 'Manage your venues and rewards',
+      icon: <Building2 className="h-6 w-6" />,
+      email: 'owner@trendybar.com'
+    },
+    {
+      role: 'brand_admin',
+      title: 'Brand Admin',
+      description: 'Manage brand partnerships',
+      icon: <Briefcase className="h-6 w-6" />,
+      email: 'brand@heineken.com'
+    },
+    {
+      role: 'cgi_admin',
+      title: 'Main Admin',
+      description: 'Full system administration',
+      icon: <Crown className="h-6 w-6" />,
+      email: 'admin@comegetit.app'
+    }
+  ];
+
   return (
     <div className="cgi-page flex items-center justify-center p-4">
-      <Card className="w-full max-w-md cgi-card">
+      <Card className="w-full max-w-lg cgi-card">
         <div className="space-y-6">
           <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-cgi-secondary">
-                <Users className="h-7 w-7 text-cgi-secondary-foreground" />
-              </div>
+            <div className="flex justify-center mb-6">
+              <img 
+                src={logoImage} 
+                alt="Come Get It Logo" 
+                className="h-16 w-auto"
+              />
             </div>
-            <h1 className="text-2xl font-bold text-cgi-surface-foreground">Come Get It</h1>
-            <p className="text-cgi-muted-foreground mt-2">Partner Dashboard</p>
+            <h1 className="text-2xl font-bold text-cgi-surface-foreground">Admin Interface</h1>
+            <p className="text-cgi-muted-foreground mt-2">Select your role to continue</p>
             {isSupabaseMode && (
               <div className="mt-3 inline-flex items-center gap-2 text-cgi-success">
                 <ShieldCheck className="h-4 w-4" />
@@ -88,24 +121,39 @@ export default function Login() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isSupabaseMode && (
-              <div className="space-y-2">
-                <Label htmlFor="demo-user" className="text-cgi-surface-foreground">Demo Felhasználó</Label>
-                <Select value={selectedUserId} onValueChange={handleDemoUserSelect}>
-                  <SelectTrigger className="cgi-input">
-                    <SelectValue placeholder="Válassz demo felhasználót" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEMO_USERS.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.role.replace('_', ' ')})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {!isSupabaseMode && (
+            <div className="space-y-3">
+              <Label className="text-cgi-surface-foreground text-sm font-medium">Choose Role</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {roleCards.map((card) => (
+                  <button
+                    key={card.role}
+                    type="button"
+                    onClick={() => handleRoleSelect(card.role)}
+                    className={`p-4 rounded-lg border-2 transition-all text-left hover:bg-cgi-muted/50 ${
+                      selectedRole === card.role
+                        ? 'border-cgi-primary bg-cgi-primary/10'
+                        : 'border-cgi-muted bg-cgi-surface'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <div className={`p-2 rounded-lg ${
+                        selectedRole === card.role ? 'bg-cgi-primary text-cgi-primary-foreground' : 'bg-cgi-muted text-cgi-muted-foreground'
+                      }`}>
+                        {card.icon}
+                      </div>
+                      <div>
+                        <div className="font-medium text-cgi-surface-foreground text-sm">{card.title}</div>
+                        <div className="text-xs text-cgi-muted-foreground">{card.description}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-cgi-surface-foreground">E-mail cím</Label>
@@ -148,20 +196,10 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="text-center">
-            <Button variant="ghost" className="cgi-button-ghost text-sm">
-              Elfelejtett jelszó?
-            </Button>
-          </div>
-
-          {!isSupabaseMode && (
-            <div className="text-xs text-cgi-muted-foreground space-y-1">
-              <p><strong>Demo felhasználók:</strong></p>
-              <ul className="space-y-1">
-                <li>• CGI Admin: teljes hozzáférés</li>
-                <li>• Venue Owner: saját helyszín kezelése</li>
-                <li>• Venue Staff: csak olvasási jogok</li>
-              </ul>
+          {!isSupabaseMode && selectedRole && (
+            <div className="text-xs text-cgi-muted-foreground text-center">
+              <p>Selected: <strong>{roleCards.find(c => c.role === selectedRole)?.title}</strong></p>
+              <p>Email: {roleCards.find(c => c.role === selectedRole)?.email}</p>
             </div>
           )}
         </div>

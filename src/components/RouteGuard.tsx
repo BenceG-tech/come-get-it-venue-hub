@@ -22,7 +22,7 @@ export function RouteGuard({
   if (!session) {
     // If trying to access root path, redirect to login
     if (location.pathname === '/') {
-      return <Navigate to="/login" replace />;
+      return <Navigate to="/" replace />;
     }
     return <Navigate to={fallback} replace state={{ from: location }} />;
   }

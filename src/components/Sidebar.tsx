@@ -27,11 +27,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'] },
   { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
   { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'] },
   { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'] },
-  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner'] },
+  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'] },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'] },
   { name: 'Venue Összehasonlítás', href: '/venues/comparison', icon: TrendingUp, roles: ['cgi_admin'] },
   { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'] },
@@ -41,7 +41,8 @@ const navigation = [
 const roleLabels = {
   'cgi_admin': 'Admin Dashboard',
   'venue_owner': 'Venue Owner előnézet',
-  'venue_staff': 'Staff előnézet'
+  'venue_staff': 'Staff előnézet',
+  'brand_admin': 'Brand Admin előnézet'
 };
 
 export function Sidebar() {
@@ -76,10 +77,10 @@ export function Sidebar() {
 
   const handleLogout = () => {
     sessionManager.clearSession();
-    navigate('/login');
+    navigate('/');
   };
 
-  const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff') => {
+  const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin') => {
     console.log('Sidebar: Changing role to:', role);
     sessionManager.setPreviewRole(role === 'cgi_admin' ? null : role);
   };
@@ -175,6 +176,12 @@ export function Sidebar() {
                       className="text-cgi-surface-foreground hover:bg-cgi-muted/50"
                     >
                       Staff előnézet
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleRoleChange('brand_admin')}
+                      className="text-cgi-surface-foreground hover:bg-cgi-muted/50"
+                    >
+                      Brand Admin előnézet
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

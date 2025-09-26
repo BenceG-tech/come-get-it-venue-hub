@@ -5,6 +5,7 @@ import { sessionManager } from "@/auth/mockSession";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { OwnerDashboard } from "@/components/dashboard/OwnerDashboard";
 import { StaffDashboard } from "@/components/dashboard/StaffDashboard";
+import { BrandDashboard } from "@/components/dashboard/BrandDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getDataProvider } from "@/lib/dataProvider/providerFactory";
@@ -71,6 +72,8 @@ export default function Dashboard() {
         return <OwnerDashboard />;
       case 'venue_staff':
         return <StaffDashboard />;
+      case 'brand_admin':
+        return <BrandDashboard />;
       default:
         return <div>Ismeretlen szerepkör</div>;
     }

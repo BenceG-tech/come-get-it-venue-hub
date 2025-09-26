@@ -4,7 +4,7 @@
 export interface User {
   id: string;
   email: string;
-  role: 'cgi_admin' | 'venue_owner' | 'venue_staff';
+  role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin';
   name: string;
   venue_ids?: string[]; // venues this user can access
 }

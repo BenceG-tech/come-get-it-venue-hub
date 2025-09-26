@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { RouteGuard } from "@/components/RouteGuard";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ConsumerApp from "./pages/ConsumerApp";
 import Redemptions from "./pages/Redemptions";
 import Transactions from "./pages/Transactions";
 import Rewards from "./pages/Rewards";
@@ -17,14 +18,13 @@ import VenueDetail from "./pages/VenueDetail";
 import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
 import NotFound from "./pages/NotFound";
-import PublicHome from "./pages/PublicHome";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
-    <RouteGuard fallback="/login">
+    <RouteGuard fallback="/">
       {children}
     </RouteGuard>
   );
@@ -37,12 +37,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<PublicHome />} />
-          <Route path="/venue/:id" element={<PublicVenueDetail />} />
-          <Route path="/login" element={<Login />} />
+          {/* Admin login */}
+          <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
           
-          {/* Protected admin/partner routes */}
+          {/* Consumer app */}
+          <Route path="/app" element={<ConsumerApp />} />
+          <Route path="/app/venue/:id" element={<PublicVenueDetail />} />
+          <Route path="/venue/:id" element={<Navigate to="/app/venue/:id" replace />} />
+          
+          {/* Protected admin routes */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />

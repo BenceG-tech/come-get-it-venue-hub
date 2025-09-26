@@ -22,12 +22,19 @@ export const DEMO_USERS: User[] = [
     role: 'venue_staff',
     name: 'Bar Staff',
     venue_ids: ['venue-1'] // only their venue, read-only mostly
+  },
+  {
+    id: 'brand-admin-1',
+    email: 'brand@heineken.com',
+    role: 'brand_admin',
+    name: 'Brand Manager',
+    venue_ids: ['venue-1', 'venue-2'] // brand partner venues
   }
 ];
 
 class MockSessionManager {
   private currentSession: Session | null = null;
-  private previewRole: 'cgi_admin' | 'venue_owner' | 'venue_staff' | null = null;
+  private previewRole: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin' | null = null;
   private listeners: Set<() => void> = new Set();
 
   constructor() {
@@ -35,7 +42,7 @@ class MockSessionManager {
     try {
       const savedPreviewRole = localStorage.getItem('cgi_admin_preview_role');
       if (savedPreviewRole && savedPreviewRole !== 'null') {
-        this.previewRole = savedPreviewRole as 'cgi_admin' | 'venue_owner' | 'venue_staff';
+        this.previewRole = savedPreviewRole as 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin';
         console.log('Loaded preview role from localStorage:', this.previewRole);
       }
     } catch (error) {
@@ -92,7 +99,7 @@ class MockSessionManager {
   }
 
   // Preview role methods
-  setPreviewRole(role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | null): void {
+  setPreviewRole(role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin' | null): void {
     const session = this.getCurrentSession();
     if (session && session.user.role === 'cgi_admin') {
       this.previewRole = role;
@@ -115,11 +122,11 @@ class MockSessionManager {
     }
   }
 
-  getPreviewRole(): 'cgi_admin' | 'venue_owner' | 'venue_staff' | null {
+  getPreviewRole(): 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin' | null {
     return this.previewRole;
   }
 
-  getEffectiveRole(): 'cgi_admin' | 'venue_owner' | 'venue_staff' | null {
+  getEffectiveRole(): 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin' | null {
     const session = this.getCurrentSession();
     if (!session) return null;
     
