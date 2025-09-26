@@ -73,166 +73,158 @@ export default function Login() {
       role: 'venue_staff',
       title: 'Munkatárs',
       description: 'Korlátozott hozzáférés a venue műveletekhez',
-      icon: <UserCheck className="h-6 w-6" />,
+      icon: UserCheck,
       email: 'staff@trendybar.com',
-      colorClass: 'role-staff'
+      color: 'staff'
     },
     {
-      role: 'venue_owner',
+      role: 'venue_owner', 
       title: 'Tulajdonos',
       description: 'Venue-k és jutalmak kezelése',
-      icon: <Building2 className="h-6 w-6" />,
+      icon: Building2,
       email: 'owner@trendybar.com',
-      colorClass: 'role-owner'
+      color: 'owner'
     },
     {
       role: 'brand_admin',
-      title: 'Márka Admin',
+      title: 'Márka Admin', 
       description: 'Márka partnerségek kezelése',
-      icon: <Briefcase className="h-6 w-6" />,
+      icon: Briefcase,
       email: 'brand@heineken.com',
-      colorClass: 'role-brand'
+      color: 'brand'
     },
     {
       role: 'cgi_admin',
       title: 'Főadmin',
       description: 'Teljes rendszer adminisztráció',
-      icon: <Crown className="h-6 w-6" />,
+      icon: Crown,
       email: 'admin@comegetit.app',
-      colorClass: 'role-admin'
+      color: 'admin'
     }
   ];
 
   return (
-    <div className="cgi-page flex flex-col items-center justify-center p-2 sm:p-4 space-y-4 min-h-screen">
-      {/* Logo - Responsive size */}
-      <div className="flex justify-center flex-shrink-0">
-        <img 
-          src={logoImage} 
-          alt="Come Get It Logo" 
-          className="h-32 sm:h-40 md:h-48 w-auto"
-        />
-      </div>
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{ background: 'var(--cgi-gradient-bg)' }}
+    >
+      {/* Blue accent at bottom */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 h-24 opacity-30 pointer-events-none"
+        style={{ background: 'var(--cgi-bottom-accent)' }}
+      />
+      
+      <div className="w-full max-w-xl space-y-2 relative z-10">
+        {/* Logo - Smaller and responsive */}
+        <div className="flex justify-center mb-2">
+          <img 
+            src={logoImage} 
+            alt="Come Get It Logo" 
+            className="h-20 sm:h-24 md:h-28 w-auto"
+          />
+        </div>
 
-      <Card className="w-full max-w-lg cgi-card flex-shrink-0">
-        <div className="space-y-4 sm:space-y-6">
-          <div className="text-center">
-            <h1 className="text-xl sm:text-2xl font-bold text-cgi-surface-foreground">Adminisztrációs Felület</h1>
-            <p className="text-cgi-muted-foreground mt-2 text-sm sm:text-base">Válassza ki a szerepét a folytatáshoz</p>
-            {isSupabaseMode && (
-              <div className="mt-3 inline-flex items-center gap-2 text-cgi-success">
-                <ShieldCheck className="h-4 w-4" />
-                <span className="text-xs">Supabase hitelesítés aktív</span>
+        <Card className="bg-cgi-surface/90 backdrop-blur border-cgi-secondary/30 p-4 shadow-xl">
+          <div className="space-y-3">
+            <div className="text-center">
+              <h1 className="text-lg sm:text-xl font-bold text-cgi-surface-foreground">Adminisztrációs Felület</h1>
+              <p className="text-cgi-muted-foreground mt-1 text-sm">Válassza ki a szerepét a folytatáshoz</p>
+              {isSupabaseMode && (
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cgi-primary/10 border border-cgi-primary/20">
+                  <div className="w-2 h-2 bg-cgi-primary rounded-full animate-pulse" />
+                  <span className="text-xs text-cgi-primary">Supabase hitelesítés aktív</span>
+                </div>
+              )}
+            </div>
+
+            {/* Role selection - compact */}
+            <div className="space-y-2">
+              <Label className="text-cgi-surface-foreground text-sm font-medium">Szerepkör Választás</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {roleCards.map((card) => (
+                  <button
+                    key={card.role}
+                    type="button"
+                    onClick={() => handleRoleSelect(card.role)}
+                    className={`p-2 rounded-lg border-2 transition-all duration-300 text-left hover:scale-[1.02] ${
+                      selectedRole === card.role
+                        ? `border-cgi-role-${card.color} bg-cgi-role-${card.color}/10 shadow-lg shadow-cgi-role-${card.color}/20`
+                        : `border-cgi-role-${card.color}/30 bg-cgi-role-${card.color}/5 hover:border-cgi-role-${card.color}/50 hover:bg-cgi-role-${card.color}/10`
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className={`p-1.5 rounded-lg bg-cgi-role-${card.color}/20`}>
+                        <card.icon className={`h-4 w-4 text-cgi-role-${card.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-cgi-surface-foreground text-xs">{card.title}</div>
+                        <div className="text-xs text-cgi-muted-foreground truncate">{card.description}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Login Form - compact */}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="email" className="text-cgi-surface-foreground text-sm">E-mail cím</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cgi-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder={isSupabaseMode ? "te@pelda.com" : "admin@venue.com"}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-cgi-surface/50 border-cgi-secondary/50 text-cgi-surface-foreground h-9 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="password" className="text-cgi-surface-foreground text-sm">Jelszó</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cgi-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-cgi-surface/50 border-cgi-secondary/50 text-cgi-surface-foreground h-9 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-cgi-primary hover:bg-cgi-primary/90 text-cgi-primary-foreground font-semibold h-10 transition-all duration-300 hover:scale-[1.02]"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-cgi-primary-foreground border-t-transparent rounded-full"></div>
+                    <span>Bejelentkezés...</span>
+                  </div>
+                ) : (
+                  isSupabaseMode ? 'Bejelentkezés' : 'Bejelentkezés'
+                )}
+              </Button>
+            </form>
+
+            {/* Selected Role Display - compact */}
+            {selectedRole && (
+              <div className="text-xs text-cgi-muted-foreground text-center bg-cgi-secondary/10 rounded-lg p-2">
+                <p>Kiválasztott: <strong className="text-cgi-surface-foreground">{roleCards.find(c => c.role === selectedRole)?.title}</strong></p>
               </div>
             )}
           </div>
-
-          {/* Role selection - always visible */}
-          <div className="space-y-3">
-            <Label className="text-cgi-surface-foreground text-sm font-medium">Szerepkör Választás</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              {roleCards.map((card) => (
-                <button
-                  key={card.role}
-                  type="button"
-                  onClick={() => handleRoleSelect(card.role)}
-                  className={`p-3 sm:p-4 rounded-lg border-2 transition-all duration-300 text-left min-h-[70px] sm:min-h-[80px] hover:scale-105 hover:shadow-lg transform ${
-                    selectedRole === card.role
-                      ? `border-cgi-${card.colorClass} bg-cgi-${card.colorClass}/20 shadow-md`
-                      : 'border-cgi-muted bg-cgi-surface hover:bg-cgi-muted/30'
-                  }`}
-                  style={{
-                    borderColor: selectedRole === card.role 
-                      ? `hsl(var(--cgi-${card.colorClass}))` 
-                      : undefined,
-                    backgroundColor: selectedRole === card.role 
-                      ? `hsl(var(--cgi-${card.colorClass}) / 0.1)` 
-                      : undefined
-                  }}
-                >
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div 
-                      className={`p-2 rounded-lg transition-all duration-300 ${
-                        selectedRole === card.role 
-                          ? 'text-white shadow-sm' 
-                          : 'bg-cgi-muted text-cgi-muted-foreground'
-                      }`}
-                      style={{
-                        backgroundColor: selectedRole === card.role 
-                          ? `hsl(var(--cgi-${card.colorClass}))` 
-                          : undefined
-                      }}
-                    >
-                      {card.icon}
-                    </div>
-                    <div>
-                      <div className="font-medium text-cgi-surface-foreground text-xs sm:text-sm">{card.title}</div>
-                      <div className="text-xs text-cgi-muted-foreground line-clamp-2 sm:line-clamp-none">{card.description}</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-cgi-surface-foreground text-sm">E-mail cím</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cgi-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder={isSupabaseMode ? "te@pelda.com" : "admin@venue.com"}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="cgi-input pl-10 text-sm sm:text-base"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-cgi-surface-foreground text-sm">Jelszó</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cgi-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="cgi-input pl-10 text-sm sm:text-base"
-                  required
-                />
-              </div>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full cgi-button-primary min-h-[44px] transition-all duration-300 hover:scale-[1.02]"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  <span>Bejelentkezés...</span>
-                </div>
-              ) : (
-                isSupabaseMode ? 'Bejelentkezés Supabase-szel' : 'Bejelentkezés'
-              )}
-            </Button>
-          </form>
-
-          {selectedRole && (
-            <div className="text-xs text-cgi-muted-foreground text-center">
-              <p>Kiválasztott: <strong>{roleCards.find(c => c.role === selectedRole)?.title}</strong></p>
-              <p>Email: {roleCards.find(c => c.role === selectedRole)?.email}</p>
-            </div>
-          )}
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

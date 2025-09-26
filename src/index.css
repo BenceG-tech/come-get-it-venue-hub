@@ -6,50 +6,55 @@
 
 @layer base {
   :root {
-    --background: 220 13% 9%;
-    --foreground: 220 9% 95%;
-    --card: 220 13% 11%;
-    --card-foreground: 220 9% 95%;
-    --popover: 220 13% 11%;
-    --popover-foreground: 220 9% 95%;
-    --primary: 180 100% 50%;
-    --primary-foreground: 220 13% 9%;
-    --secondary: 220 13% 15%;
-    --secondary-foreground: 220 9% 95%;
-    --muted: 220 13% 15%;
-    --muted-foreground: 220 9% 60%;
+    /* Deep blue to black gradient matching Come Get It brand */
+    --background: 217 91% 3%;
+    --foreground: 213 31% 91%;
+    --card: 217 60% 8%;
+    --card-foreground: 213 31% 91%;
+    --popover: 217 70% 8%;
+    --popover-foreground: 215 20% 85%;
+    --primary: 180 100% 50%; /* Turquoise accent from Come Get It */
+    --primary-foreground: 217 91% 3%;
+    --secondary: 217 50% 15%;
+    --secondary-foreground: 213 31% 91%;
+    --muted: 217 40% 20%;
+    --muted-foreground: 215 16% 65%;
     --accent: 180 100% 50%;
-    --accent-foreground: 220 13% 9%;
+    --accent-foreground: 217 91% 3%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 220 9% 95%;
-    --border: 220 13% 20%;
-    --input: 220 13% 15%;
+    --border: 217 40% 20%;
+    --input: 217 40% 12%;
     --ring: 180 100% 50%;
     --radius: 0.5rem;
 
-    /* Come Get It specific colors */
-    --cgi-primary: 180 100% 50%;
-    --cgi-primary-foreground: 220 13% 9%;
-    --cgi-secondary: 180 100% 50%;
-    --cgi-secondary-foreground: 220 13% 9%;
-    --cgi-surface: 220 13% 11%;
-    --cgi-surface-foreground: 220 9% 95%;
-    --cgi-muted: 220 13% 20%;
-    --cgi-muted-foreground: 220 9% 60%;
+    /* Come Get It specific colors - Updated to match brand */
+    --cgi-primary: 180 100% 50%; /* Bright turquoise */
+    --cgi-primary-foreground: 217 91% 3%;
+    --cgi-secondary: 217 70% 25%; /* Deep blue */
+    --cgi-secondary-foreground: 213 31% 91%;
+    --cgi-surface: 217 60% 8%; /* Dark blue surface */
+    --cgi-surface-foreground: 213 31% 91%;
+    --cgi-muted: 217 40% 20%;
+    --cgi-muted-foreground: 215 16% 65%;
     --cgi-success: 142 76% 36%;
     --cgi-success-foreground: 220 9% 95%;
     --cgi-error: 0 84% 60%;
     --cgi-error-foreground: 220 9% 95%;
 
-    /* Role-specific colors */
-    --cgi-role-staff: 217 91% 60%;
+    /* Role-specific colors - Updated with blue theme variations */
+    --cgi-role-staff: 200 100% 60%; /* Light blue */
     --cgi-role-staff-foreground: 220 9% 95%;
-    --cgi-role-owner: 142 76% 36%;
+    --cgi-role-owner: 160 80% 50%; /* Teal green */
     --cgi-role-owner-foreground: 220 9% 95%;
-    --cgi-role-brand: 25 95% 53%;
+    --cgi-role-brand: 35 100% 60%; /* Orange */
     --cgi-role-brand-foreground: 220 9% 95%;
-    --cgi-role-admin: 271 81% 56%;
+    --cgi-role-admin: 280 100% 70%; /* Purple */
     --cgi-role-admin-foreground: 220 9% 95%;
+    
+    /* Background gradient */
+    --cgi-gradient-bg: linear-gradient(135deg, hsl(217, 70%, 25%) 0%, hsl(217, 91%, 3%) 70%, hsl(0, 0%, 0%) 100%);
+    --cgi-bottom-accent: linear-gradient(0deg, hsl(180, 100%, 50%) 0%, transparent 100%);
   }
 }
 

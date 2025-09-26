@@ -72,7 +72,13 @@ export default {
 					surface: 'hsl(var(--cgi-surface))',
 					'surface-foreground': 'hsl(var(--cgi-surface-foreground))',
 					muted: 'hsl(var(--cgi-muted))',
-					'muted-foreground': 'hsl(var(--cgi-muted-foreground))'
+					'muted-foreground': 'hsl(var(--cgi-muted-foreground))',
+					role: {
+						staff: 'hsl(var(--cgi-role-staff))',
+						owner: 'hsl(var(--cgi-role-owner))',
+						brand: 'hsl(var(--cgi-role-brand))',
+						admin: 'hsl(var(--cgi-role-admin))',
+					}
 				}
 			},
 			borderRadius: {
