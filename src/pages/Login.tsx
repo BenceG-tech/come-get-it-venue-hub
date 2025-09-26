@@ -100,17 +100,19 @@ export default function Login() {
   ];
 
   return (
-    <div className="cgi-page flex items-center justify-center p-4">
+    <div className="cgi-page flex flex-col items-center justify-center p-4 space-y-8">
+      {/* Logo - Large and outside the card */}
+      <div className="flex justify-center">
+        <img 
+          src={logoImage} 
+          alt="Come Get It Logo" 
+          className="h-80 w-auto"
+        />
+      </div>
+
       <Card className="w-full max-w-lg cgi-card">
         <div className="space-y-6">
           <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <img 
-                src={logoImage} 
-                alt="Come Get It Logo" 
-                className="h-16 w-auto"
-              />
-            </div>
             <h1 className="text-2xl font-bold text-cgi-surface-foreground">Admin Interface</h1>
             <p className="text-cgi-muted-foreground mt-2">Select your role to continue</p>
             {isSupabaseMode && (
@@ -121,37 +123,36 @@ export default function Login() {
             )}
           </div>
 
-          {!isSupabaseMode && (
-            <div className="space-y-3">
-              <Label className="text-cgi-surface-foreground text-sm font-medium">Choose Role</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {roleCards.map((card) => (
-                  <button
-                    key={card.role}
-                    type="button"
-                    onClick={() => handleRoleSelect(card.role)}
-                    className={`p-4 rounded-lg border-2 transition-all text-left hover:bg-cgi-muted/50 ${
-                      selectedRole === card.role
-                        ? 'border-cgi-primary bg-cgi-primary/10'
-                        : 'border-cgi-muted bg-cgi-surface'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center text-center space-y-2">
-                      <div className={`p-2 rounded-lg ${
-                        selectedRole === card.role ? 'bg-cgi-primary text-cgi-primary-foreground' : 'bg-cgi-muted text-cgi-muted-foreground'
-                      }`}>
-                        {card.icon}
-                      </div>
-                      <div>
-                        <div className="font-medium text-cgi-surface-foreground text-sm">{card.title}</div>
-                        <div className="text-xs text-cgi-muted-foreground">{card.description}</div>
-                      </div>
+          {/* Role selection - always visible */}
+          <div className="space-y-3">
+            <Label className="text-cgi-surface-foreground text-sm font-medium">Choose Role</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {roleCards.map((card) => (
+                <button
+                  key={card.role}
+                  type="button"
+                  onClick={() => handleRoleSelect(card.role)}
+                  className={`p-4 rounded-lg border-2 transition-all text-left hover:bg-cgi-muted/50 ${
+                    selectedRole === card.role
+                      ? 'border-cgi-primary bg-cgi-primary/10'
+                      : 'border-cgi-muted bg-cgi-surface'
+                  }`}
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className={`p-2 rounded-lg ${
+                      selectedRole === card.role ? 'bg-cgi-primary text-cgi-primary-foreground' : 'bg-cgi-muted text-cgi-muted-foreground'
+                    }`}>
+                      {card.icon}
                     </div>
-                  </button>
-                ))}
-              </div>
+                    <div>
+                      <div className="font-medium text-cgi-surface-foreground text-sm">{card.title}</div>
+                      <div className="text-xs text-cgi-muted-foreground">{card.description}</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -196,7 +197,7 @@ export default function Login() {
             </Button>
           </form>
 
-          {!isSupabaseMode && selectedRole && (
+          {selectedRole && (
             <div className="text-xs text-cgi-muted-foreground text-center">
               <p>Selected: <strong>{roleCards.find(c => c.role === selectedRole)?.title}</strong></p>
               <p>Email: {roleCards.find(c => c.role === selectedRole)?.email}</p>
