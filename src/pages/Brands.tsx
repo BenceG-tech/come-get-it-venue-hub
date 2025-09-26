@@ -318,7 +318,7 @@ export default function Brands() {
             
             <Card className="p-6 cgi-card">
               <div className="flex items-center gap-3">
-                <Users className="h-8 w-8 text-blue-500" />
+                <Users className="h-8 w-8 text-cgi-primary" />
                 <div>
                   <p className="text-2xl font-bold">{brands.filter(b => b.contactEmail).length}</p>
                   <p className="text-cgi-muted-foreground">Aktív partnerkapcsolat</p>

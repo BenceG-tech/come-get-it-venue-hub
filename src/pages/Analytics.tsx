@@ -16,7 +16,7 @@ import { ChartCard } from "@/components/ChartCard";
 import { mockAnalyticsData } from "@/lib/mockData";
 import { useState } from 'react';
 
-const COLORS = ['#06b6d4', '#10b981'];
+const COLORS = ['#1fb1b7', '#1fb1b7'];
 
 export default function Analytics() {
   const { redemption_timeseries, user_activity, hourly_heatmap } = mockAnalyticsData;
@@ -92,20 +92,20 @@ export default function Analytics() {
                 <Line 
                   type="monotone" 
                   dataKey="redemptions" 
-                  stroke="#06b6d4" 
+                  stroke="#1fb1b7" 
                   strokeWidth={2}
                   name="Aktuális hét"
-                  dot={{ fill: '#06b6d4', strokeWidth: 2, r: 4 }}
+                  dot={{ fill: '#1fb1b7', strokeWidth: 2, r: 4 }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="redemptions" 
                   data={redemption_timeseries.previous_week}
-                  stroke="#10b981" 
+                  stroke="#1fb1b7" 
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   name="Előző hét"
-                  dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                  dot={{ fill: '#1fb1b7', strokeWidth: 2, r: 4 }}
                 />
               </LineChart>
             </ResponsiveContainer>

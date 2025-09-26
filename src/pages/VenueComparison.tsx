@@ -111,7 +111,7 @@ export default function VenueComparison() {
                 />
                 <Bar 
                   dataKey="monthly_revenue" 
-                  fill="#06b6d4"
+                  fill="#1fb1b7"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -145,14 +145,14 @@ export default function VenueComparison() {
                 <Line 
                   type="monotone" 
                   dataKey="trendy_bar" 
-                  stroke="#06b6d4" 
+                  stroke="#1fb1b7" 
                   strokeWidth={2}
                   name="Trendy Bar"
                 />
                 <Line 
                   type="monotone" 
                   dataKey="rooftop_lounge" 
-                  stroke="#10b981" 
+                  stroke="#1fb1b7" 
                   strokeWidth={2}
                   name="Rooftop Lounge"
                 />
