@@ -40,6 +40,16 @@
     --cgi-success-foreground: 220 9% 95%;
     --cgi-error: 0 84% 60%;
     --cgi-error-foreground: 220 9% 95%;
+
+    /* Role-specific colors */
+    --cgi-role-staff: 217 91% 60%;
+    --cgi-role-staff-foreground: 220 9% 95%;
+    --cgi-role-owner: 142 76% 36%;
+    --cgi-role-owner-foreground: 220 9% 95%;
+    --cgi-role-brand: 25 95% 53%;
+    --cgi-role-brand-foreground: 220 9% 95%;
+    --cgi-role-admin: 271 81% 56%;
+    --cgi-role-admin-foreground: 220 9% 95%;
   }
 }
 
