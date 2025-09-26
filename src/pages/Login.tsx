@@ -155,7 +155,7 @@ export default function Login() {
                     className={`p-2 rounded-lg border-2 transition-all duration-300 text-left hover:scale-[1.02] ${
                       selectedRole === card.role
                         ? `border-cgi-role-${card.color} bg-cgi-role-${card.color}/10 shadow-lg shadow-cgi-role-${card.color}/20`
-                        : `border-cgi-role-${card.color}/30 bg-cgi-role-${card.color}/5 hover:border-cgi-role-${card.color}/50 hover:bg-cgi-role-${card.color}/10`
+                        : `border-cgi-role-${card.color}/30 bg-cgi-role-${card.color}/5 hover:border-cgi-primary/50 hover:bg-cgi-primary/10`
                     }`}
                   >
                     <div className="flex items-center space-x-2">
