@@ -133,7 +133,9 @@ export function Sidebar() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`cgi-nav-item ${isActive ? 'active' : ''}`}
+                  className={`cgi-nav-item ${isActive ? 'active' : ''} ${
+                    isActive && effectiveRole === 'cgi_admin' ? 'admin-active' : ''
+                  }`}
                 >
                   <Icon className="h-5 w-5" />
                   {item.name}

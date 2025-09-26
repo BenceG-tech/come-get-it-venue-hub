@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Users, Lock, Mail, ShieldCheck, Building2, UserCheck, Crown, Briefcase } from "lucide-react";
 import logoImage from "@/assets/come-get-it-logo.png";
+import loginBackground from "@/assets/login-background.png";
 import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
 import { seedData } from "@/lib/mock/seed";
 import { runtimeConfig } from "@/config/runtime";
@@ -106,7 +107,12 @@ export default function Login() {
   return (
     <div 
       className="min-h-screen flex items-center justify-center p-4 relative"
-      style={{ background: 'var(--cgi-gradient-bg)' }}
+      style={{
+        backgroundImage: `url(${loginBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
     >
       {/* Blue accent at bottom */}
       <div 

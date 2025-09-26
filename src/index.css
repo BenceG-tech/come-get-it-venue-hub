@@ -51,7 +51,7 @@
     --cgi-role-owner-foreground: 0 0% 95%;
     --cgi-role-brand: 198 91% 30%; /* #076894 - Dark blue */
     --cgi-role-brand-foreground: 0 0% 95%;
-    --cgi-role-admin: 182 71% 55%; /* Turquoise for admin */
+    --cgi-role-admin: 182 71% 42%; /* #1fb1b7 - Turquoise for admin */
     --cgi-role-admin-foreground: 0 0% 0%;
     
     /* Background gradients using custom blues */
@@ -147,6 +147,10 @@
   
   .cgi-nav-item.active {
     @apply bg-cgi-secondary text-cgi-secondary-foreground;
+  }
+  
+  .cgi-nav-item.admin-active {
+    @apply bg-cgi-role-admin/15 text-cgi-role-admin border-l-[3px] border-cgi-role-admin;
   }
 
   /* Forms */
