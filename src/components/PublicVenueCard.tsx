@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Gift, Star, Phone, Globe } from 'lucide-react';
+import OpeningHoursDisplay from '@/components/OpeningHoursDisplay';
+import type { BusinessHours } from '@/lib/types';
 
 interface PublicVenue {
   id: string;
@@ -13,6 +15,7 @@ interface PublicVenue {
   phone_number?: string;
   website_url?: string;
   is_paused: boolean;
+  opening_hours?: BusinessHours;
   // Image fields
   image_url?: string;
   hero_image_url?: string;
@@ -102,10 +105,13 @@ export default function PublicVenueCard({ venue }: PublicVenueCardProps) {
               <Star className="h-4 w-4" />
               <span className="text-sm font-medium">Ingyenes italok</span>
             </div>
-            <div className="flex items-center gap-1 text-cgi-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm">Nyitva</span>
-            </div>
+            <OpeningHoursDisplay 
+              businessHours={venue.opening_hours} 
+              venueForStatus={{ opening_hours: venue.opening_hours }}
+              showStatus={true}
+              compact={true}
+              className="text-cgi-muted-foreground"
+            />
           </div>
         </div>
       </Link>

@@ -13,6 +13,7 @@ import { VenueFormModal } from '@/components/VenueFormModal';
 import { useToast } from '@/hooks/use-toast';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { runtimeConfig } from '@/config/runtime';
+import OpeningHoursDisplay from '@/components/OpeningHoursDisplay';
 import type { Venue } from '@/lib/types';
 
 type VenueRow = {
@@ -24,6 +25,7 @@ type VenueRow = {
   website_url?: string | null;
   phone_number?: string | null;
   created_at: string;
+  business_hours?: any;
 };
 
 const PAGE_SIZE = 20;
@@ -289,6 +291,17 @@ export default function Venues() {
                             </a>
                           </div>
                         )}
+                        <div className="text-sm">
+                          {venue.business_hours ? (
+                            <OpeningHoursDisplay 
+                              businessHours={venue.business_hours} 
+                              compact={true}
+                              className="text-cgi-muted-foreground"
+                            />
+                          ) : (
+                            <span className="text-cgi-muted-foreground">📅 Nyitvatartás nincs beállítva</span>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Bottom row */}
@@ -328,6 +341,7 @@ export default function Venues() {
                       <TableHead>Cím</TableHead>
                       <TableHead>Csomag</TableHead>
                       <TableHead>Státusz</TableHead>
+                      <TableHead>Nyitvatartás</TableHead>
                       <TableHead>Telefon</TableHead>
                       <TableHead>Web</TableHead>
                       <TableHead>Létrehozva</TableHead>
@@ -347,6 +361,17 @@ export default function Venues() {
                             <Badge className="bg-cgi-error text-cgi-error-foreground">Szünetel</Badge>
                           ) : (
                             <Badge className="bg-cgi-success text-cgi-success-foreground">Aktív</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {venue.business_hours ? (
+                            <OpeningHoursDisplay 
+                              businessHours={venue.business_hours} 
+                              compact={true}
+                              className="text-xs"
+                            />
+                          ) : (
+                            <span className="text-cgi-muted-foreground text-xs">Nincs beállítva</span>
                           )}
                         </TableCell>
                         <TableCell className="text-cgi-muted-foreground">{venue.phone_number || '—'}</TableCell>

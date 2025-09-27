@@ -9,6 +9,7 @@ import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { VenueImageGallery } from '@/components/VenueImageGallery';
 import DrinkRedemptionCard from '@/components/DrinkRedemptionCard';
 import CardLinkingModal from '@/components/CardLinkingModal';
+import OpeningHoursDisplay from '@/components/OpeningHoursDisplay';
 import type { Venue } from '@/lib/types';
 
 import { isWindowActive } from '@/lib/businessLogic';
@@ -368,20 +369,11 @@ export default function PublicVenueDetail() {
                   Nyitvatartás
                 </h3>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-cgi-surface-foreground">Hétfő - Csütörtök</span>
-                  <span className="text-cgi-muted-foreground">12:00 - 23:00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-cgi-surface-foreground">Péntek - Szombat</span>
-                  <span className="text-cgi-muted-foreground">12:00 - 01:00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-cgi-surface-foreground">Vasárnap</span>
-                  <span className="text-cgi-muted-foreground">14:00 - 22:00</span>
-                </div>
-              </div>
+              <OpeningHoursDisplay 
+                businessHours={venue.business_hours} 
+                venueForStatus={{ opening_hours: venue.business_hours }}
+                showStatus={true}
+              />
             </Card>
 
             {/* Location */}
