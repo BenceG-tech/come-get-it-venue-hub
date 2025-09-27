@@ -228,13 +228,13 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 bg-cgi-muted">
-              <TabsTrigger value="basic" className="text-cgi-surface-foreground whitespace-nowrap">Alapok</TabsTrigger>
-              <TabsTrigger value="contact" className="text-cgi-surface-foreground whitespace-nowrap">Kontakt</TabsTrigger>
-              <TabsTrigger value="images" className="text-cgi-surface-foreground whitespace-nowrap">Képek</TabsTrigger>
-              <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap">Italok</TabsTrigger>
-              <TabsTrigger value="hours" className="text-cgi-surface-foreground whitespace-nowrap">Nyitva</TabsTrigger>
-              <TabsTrigger value="caps" className="text-cgi-surface-foreground whitespace-nowrap">Limitek</TabsTrigger>
+            <TabsList className="flex w-full overflow-x-auto bg-cgi-muted gap-1 scrollbar-hide">
+              <TabsTrigger value="basic" className="flex-shrink-0 text-cgi-surface-foreground whitespace-nowrap px-4">Alapok</TabsTrigger>
+              <TabsTrigger value="contact" className="flex-shrink-0 text-cgi-surface-foreground whitespace-nowrap px-4">Kontakt</TabsTrigger>
+              <TabsTrigger value="images" className="flex-shrink-0 text-cgi-surface-foreground whitespace-nowrap px-4">Képek</TabsTrigger>
+              <TabsTrigger value="drinks" className="flex-shrink-0 text-cgi-surface-foreground whitespace-nowrap px-4">Italok</TabsTrigger>
+              <TabsTrigger value="hours" className="flex-shrink-0 text-cgi-surface-foreground whitespace-nowrap px-4">Nyitva</TabsTrigger>
+              <TabsTrigger value="caps" className="flex-shrink-0 text-cgi-surface-foreground whitespace-nowrap px-4">Limitek</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4">
