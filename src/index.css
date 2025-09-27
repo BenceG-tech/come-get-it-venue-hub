@@ -174,4 +174,14 @@
   .cgi-badge-info {
     @apply border-transparent bg-cgi-muted text-cgi-surface-foreground;
   }
+
+  /* Hide scrollbars for cleaner mobile tab scrolling */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
