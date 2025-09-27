@@ -14,6 +14,7 @@ import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { ImageUploadInput } from './ImageUploadInput';
 import { useToast } from '@/hooks/use-toast';
+import BusinessHoursEditor from './BusinessHoursEditor';
 
 interface VenueFormModalProps {
   venue?: Venue;
@@ -227,11 +228,12 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-cgi-muted">
+            <TabsList className="grid w-full grid-cols-6 bg-cgi-muted">
               <TabsTrigger value="basic" className="text-cgi-surface-foreground">Alapok</TabsTrigger>
               <TabsTrigger value="contact" className="text-cgi-surface-foreground">Kapcsolat</TabsTrigger>
               <TabsTrigger value="images" className="text-cgi-surface-foreground">Képek</TabsTrigger>
               <TabsTrigger value="drinks" className="text-cgi-surface-foreground">Italok</TabsTrigger>
+              <TabsTrigger value="hours" className="text-cgi-surface-foreground">Nyitvatartás</TabsTrigger>
               <TabsTrigger value="caps" className="text-cgi-surface-foreground">Limitek</TabsTrigger>
             </TabsList>
 
@@ -324,38 +326,47 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-cgi-surface-foreground">Szélesség (lat)</Label>
-                  <Input
-                    value={formData.coordinates?.lat ?? ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev, 
-                      coordinates: { 
-                        ...(prev.coordinates || { lat: 0, lng: 0 }), 
-                        lat: Number(e.target.value) || 0 
-                      }
-                    }))}
-                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                    inputMode="decimal"
-                    placeholder="47.4979"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-cgi-surface-foreground">Hosszúság (lng)</Label>
-                  <Input
-                    value={formData.coordinates?.lng ?? ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev, 
-                      coordinates: { 
-                        ...(prev.coordinates || { lat: 0, lng: 0 }), 
-                        lng: Number(e.target.value) || 0 
-                      }
-                    }))}
-                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                    inputMode="decimal"
-                    placeholder="19.0402"
-                  />
+              <div className="space-y-4">
+                <div className="bg-cgi-muted/20 border border-cgi-muted rounded-lg p-4">
+                  <h4 className="font-medium text-cgi-surface-foreground mb-2">GPS Koordináták (Opcionális)</h4>
+                  <p className="text-sm text-cgi-muted-foreground mb-3">
+                    A GPS koordináták segítenek a pontos helyszín meghatározásában térképes alkalmazásokban. 
+                    Ha nem tölti ki, a rendszer a címből próbálja meghatározni a helyszínt.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-cgi-surface-foreground">Szélesség (Latitude)</Label>
+                      <Input
+                        value={formData.coordinates?.lat ?? ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev, 
+                          coordinates: { 
+                            ...(prev.coordinates || { lat: 0, lng: 0 }), 
+                            lat: Number(e.target.value) || 0 
+                          }
+                        }))}
+                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                        inputMode="decimal"
+                        placeholder="47.4979"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-cgi-surface-foreground">Hosszúság (Longitude)</Label>
+                      <Input
+                        value={formData.coordinates?.lng ?? ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev, 
+                          coordinates: { 
+                            ...(prev.coordinates || { lat: 0, lng: 0 }), 
+                            lng: Number(e.target.value) || 0 
+                          }
+                        }))}
+                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                        inputMode="decimal"
+                        placeholder="19.0402"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -538,6 +549,15 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                   />
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="hours" className="space-y-4">
+              <BusinessHoursEditor
+                initialHours={formData.business_hours}
+                onSave={async (hours) => {
+                  setFormData(prev => ({ ...prev, business_hours: hours }));
+                }}
+              />
             </TabsContent>
           </Tabs>
 
