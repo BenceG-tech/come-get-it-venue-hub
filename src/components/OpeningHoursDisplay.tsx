@@ -35,6 +35,15 @@ export default function OpeningHoursDisplay({
   const now = new Date();
   const currentDay = now.getDay() === 0 ? 7 : now.getDay(); // Convert Sunday from 0 to 7
 
+  // Debug logging for opening hours data flow
+  console.log('🕐 [OpeningHoursDisplay] Props received:', {
+    businessHours,
+    venueForStatus,
+    showStatus,
+    compact
+  });
+  console.log('🕐 [OpeningHoursDisplay] Current day:', currentDay, 'Date:', now.toDateString());
+
   const groupedHours = useMemo(() => {
     if (!businessHours?.byDay) return [];
 

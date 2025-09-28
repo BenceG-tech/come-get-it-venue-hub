@@ -38,6 +38,11 @@ export default function PublicVenueDetail() {
           // Fallback to regular getOne method
           venueData = await dataProvider.getOne<Venue>('venues', id);
         }
+        console.log('🏢 [PublicVenueDetail] Venue data loaded:', venueData);
+        console.log('🏢 [PublicVenueDetail] Opening hours mapping:', {
+          opening_hours: venueData?.opening_hours,
+          business_hours: venueData?.business_hours
+        });
         setVenue(venueData);
       } catch (error) {
         console.error('Error loading venue:', error);

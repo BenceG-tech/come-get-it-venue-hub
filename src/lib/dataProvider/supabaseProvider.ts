@@ -423,12 +423,22 @@ export const supabaseProvider: DataProvider & {
         
         // Map opening_hours to business_hours for UI compatibility
         const business_hours = venue?.opening_hours ?? undefined;
+        console.log('📡 [supabaseProvider] getPublicVenue fallback result:', {
+          opening_hours: venue?.opening_hours,
+          business_hours,
+          venue_name: venue?.name
+        });
         
         return { ...venue, images, drinks, freeDrinkWindows, business_hours };
       }
 
       // Map opening_hours to business_hours for UI compatibility
       const business_hours = data?.opening_hours ?? undefined;
+      console.log('📡 [supabaseProvider] getPublicVenue edge function result:', {
+        opening_hours: data?.opening_hours,
+        business_hours,
+        venue_name: data?.name
+      });
       return { ...data, business_hours };
     } catch (err) {
       logSbError("getPublicVenue", err);
