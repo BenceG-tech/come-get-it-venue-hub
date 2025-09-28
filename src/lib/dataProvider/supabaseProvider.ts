@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DataProvider } from "./index";
+import { normalizeBusinessHours } from "@/lib/businessHours";
 
 type ListFilters = {
   // filtering
@@ -421,8 +422,8 @@ export const supabaseProvider: DataProvider & {
         const drinks = await fetchVenueDrinks(id);
         const freeDrinkWindows = await fetchFreeDrinkWindows(id);
         
-        // Map opening_hours to business_hours for UI compatibility
-        const business_hours = venue?.opening_hours ?? undefined;
+        // Map opening_hours to business_hours for UI compatibility and normalize
+        const business_hours = normalizeBusinessHours(venue?.opening_hours);
         console.log('📡 [supabaseProvider] getPublicVenue fallback result:', {
           opening_hours: venue?.opening_hours,
           business_hours,
@@ -432,8 +433,8 @@ export const supabaseProvider: DataProvider & {
         return { ...venue, images, drinks, freeDrinkWindows, business_hours };
       }
 
-      // Map opening_hours to business_hours for UI compatibility
-      const business_hours = data?.opening_hours ?? undefined;
+      // Map opening_hours to business_hours for UI compatibility and normalize
+      const business_hours = normalizeBusinessHours(data?.opening_hours);
       console.log('📡 [supabaseProvider] getPublicVenue edge function result:', {
         opening_hours: data?.opening_hours,
         business_hours,
@@ -465,8 +466,8 @@ export const supabaseProvider: DataProvider & {
       const drinks = await fetchVenueDrinks(id);
       const freeDrinkWindows = await fetchFreeDrinkWindows(id);
 
-      // Map DB opening_hours -> UI business_hours
-      const business_hours = (row as any)?.opening_hours ?? undefined;
+      // Map DB opening_hours -> UI business_hours and normalize
+      const business_hours = normalizeBusinessHours((row as any)?.opening_hours);
 
       const enriched = { ...(row as any), images, drinks, freeDrinkWindows, business_hours };
       return enriched as T;

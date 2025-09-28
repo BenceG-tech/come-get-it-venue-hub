@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Clock } from 'lucide-react';
 import type { BusinessHours } from '@/lib/types';
 import { isVenueOpenNow, getClosingTimeToday } from '@/lib/businessLogic';
+import { normalizeBusinessHours } from '@/lib/businessHours';
 
 interface VenueForStatus {
   opening_hours?: BusinessHours;
@@ -35,23 +36,30 @@ export default function OpeningHoursDisplay({
   const now = new Date();
   const currentDay = now.getDay() === 0 ? 7 : now.getDay(); // Convert Sunday from 0 to 7
 
+  // Normalize business hours from any source
+  const normalizedHours = useMemo(() => 
+    normalizeBusinessHours(businessHours ?? venueForStatus?.opening_hours), 
+    [businessHours, venueForStatus]
+  );
+
   // Debug logging for opening hours data flow
   console.log('🕐 [OpeningHoursDisplay] Props received:', {
     businessHours,
     venueForStatus,
     showStatus,
-    compact
+    compact,
+    normalizedHours
   });
   console.log('🕐 [OpeningHoursDisplay] Current day:', currentDay, 'Date:', now.toDateString());
 
   const groupedHours = useMemo(() => {
-    if (!businessHours?.byDay) return [];
+    if (!normalizedHours?.byDay) return [];
 
     const groups: Array<{ days: string, hours: string, isToday: boolean }> = [];
     let currentGroup: { days: number[], hours: string } | null = null;
 
     DAYS.forEach(day => {
-      const dayHours = businessHours.byDay[day.key];
+      const dayHours = normalizedHours.byDay[day.key];
       const hoursString = dayHours?.open && dayHours?.close 
         ? `${dayHours.open} - ${dayHours.close}`
         : 'Zárva';
@@ -95,12 +103,12 @@ export default function OpeningHoursDisplay({
     }
 
     return groups;
-  }, [businessHours, currentDay]);
+  }, [normalizedHours, currentDay]);
 
-  const isOpen = venueForStatus?.opening_hours ? isVenueOpenNow({ business_hours: venueForStatus.opening_hours } as any, now) : false;
-  const closingTime = venueForStatus?.opening_hours ? getClosingTimeToday({ business_hours: venueForStatus.opening_hours } as any, now) : null;
+  const isOpen = normalizedHours ? isVenueOpenNow({ business_hours: normalizedHours } as any, now) : false;
+  const closingTime = normalizedHours ? getClosingTimeToday({ business_hours: normalizedHours } as any, now) : null;
 
-  if (!businessHours?.byDay) {
+  if (!normalizedHours?.byDay) {
     return (
       <div className={`text-cgi-muted-foreground ${className}`}>
         {compact ? 'Órák nem elérhetőek' : 'Nyitvatartás nem elérhető'}
@@ -118,8 +126,8 @@ export default function OpeningHoursDisplay({
           </span>
         ) : (
           <span className="text-sm text-cgi-muted-foreground">
-            {businessHours.byDay[currentDay]?.open && businessHours.byDay[currentDay]?.close
-              ? `${businessHours.byDay[currentDay]?.open} - ${businessHours.byDay[currentDay]?.close}`
+            {normalizedHours.byDay[currentDay]?.open && normalizedHours.byDay[currentDay]?.close
+              ? `${normalizedHours.byDay[currentDay]?.open} - ${normalizedHours.byDay[currentDay]?.close}`
               : 'Zárva ma'
             }
           </span>
