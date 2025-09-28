@@ -111,9 +111,103 @@ serve(async (req) => {
       console.warn('[get-public-venue] windows fetch warning', windowsErr)
     }
 
-    // Add images, drinks, and windows to venue object
+    // Helper function to parse HH:MM to minutes
+    const parseTimeToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    // Helper function to group consecutive days with same hours
+    const groupOpeningHours = (openingHours: any) => {
+      if (!openingHours?.byDay) return [];
+      
+      const DAYS = [
+        { key: '1', label: 'Hétfő' },
+        { key: '2', label: 'Kedd' },
+        { key: '3', label: 'Szerda' },
+        { key: '4', label: 'Csütörtök' },
+        { key: '5', label: 'Péntek' },
+        { key: '6', label: 'Szombat' },
+        { key: '7', label: 'Vasárnap' }
+      ];
+
+      const groups: { days: string; hours: string }[] = [];
+      let currentGroup: { dayKeys: string[]; dayLabels: string[]; hours: string } | null = null;
+
+      for (const day of DAYS) {
+        const dayHours = openingHours.byDay[day.key];
+        const hoursText = dayHours?.open && dayHours?.close 
+          ? `${dayHours.open} - ${dayHours.close}`
+          : 'Zárva';
+
+        if (currentGroup && currentGroup.hours === hoursText) {
+          currentGroup.dayKeys.push(day.key);
+          currentGroup.dayLabels.push(day.label);
+        } else {
+          if (currentGroup) {
+            const daysText = currentGroup.dayLabels.length === 1
+              ? currentGroup.dayLabels[0]
+              : `${currentGroup.dayLabels[0]} - ${currentGroup.dayLabels[currentGroup.dayLabels.length - 1]}`;
+            groups.push({ days: daysText, hours: currentGroup.hours });
+          }
+          currentGroup = {
+            dayKeys: [day.key],
+            dayLabels: [day.label],
+            hours: hoursText
+          };
+        }
+      }
+
+      if (currentGroup) {
+        const daysText = currentGroup.dayLabels.length === 1
+          ? currentGroup.dayLabels[0]
+          : `${currentGroup.dayLabels[0]} - ${currentGroup.dayLabels[currentGroup.dayLabels.length - 1]}`;
+        groups.push({ days: daysText, hours: currentGroup.hours });
+      }
+
+      return groups;
+    };
+
+    // Compute opening status and hours summary
+    const now = new Date();
+    const currentDay = ((now.getDay()) || 7).toString(); // Sunday = 7
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    const business_hours = venue.opening_hours || null;
+    let open_status = {
+      is_open_now: false,
+      closes_at: null as string | null,
+      hours_today: null as { open: string; close: string } | null
+    };
+
+    if (business_hours?.byDay?.[currentDay]) {
+      const todayHours = business_hours.byDay[currentDay];
+      if (todayHours.open && todayHours.close) {
+        const openMinutes = parseTimeToMinutes(todayHours.open);
+        const closeMinutes = parseTimeToMinutes(todayHours.close);
+        
+        open_status.hours_today = {
+          open: todayHours.open,
+          close: todayHours.close
+        };
+        
+        // Check if currently open
+        if (currentMinutes >= openMinutes && currentMinutes <= closeMinutes) {
+          open_status.is_open_now = true;
+          open_status.closes_at = todayHours.close;
+        }
+      }
+    }
+
+    const hours_summary = groupOpeningHours(business_hours);
+
+    // Add images, drinks, windows, and computed opening hours data to venue object
     const venueWithImages = {
       ...venue,
+      business_hours, // Alias for opening_hours
+      open_status,
+      hours_summary,
+      timezone: 'Europe/Budapest',
       images: (images || []).map(img => ({
         id: img.id,
         url: img.url,
