@@ -107,8 +107,7 @@ export default function PublicVenueCard({ venue }: PublicVenueCardProps) {
             </div>
             <OpeningHoursDisplay 
               businessHours={venue.opening_hours} 
-              venueForStatus={{ opening_hours: venue.opening_hours }}
-              showStatus={true}
+              showStatus={false}
               compact={true}
               className="text-cgi-muted-foreground"
             />

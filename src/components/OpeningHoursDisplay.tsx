@@ -97,8 +97,8 @@ export default function OpeningHoursDisplay({
     return groups;
   }, [businessHours, currentDay]);
 
-  const isOpen = venueForStatus?.opening_hours ? isVenueOpenNow({ opening_hours: venueForStatus.opening_hours } as any, now) : false;
-  const closingTime = venueForStatus?.opening_hours ? getClosingTimeToday({ opening_hours: venueForStatus.opening_hours } as any, now) : null;
+  const isOpen = venueForStatus?.opening_hours ? isVenueOpenNow({ business_hours: venueForStatus.opening_hours } as any, now) : false;
+  const closingTime = venueForStatus?.opening_hours ? getClosingTimeToday({ business_hours: venueForStatus.opening_hours } as any, now) : null;
 
   if (!businessHours?.byDay) {
     return (
