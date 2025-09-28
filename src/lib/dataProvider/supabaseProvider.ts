@@ -343,7 +343,14 @@ export const supabaseProvider: DataProvider & {
       logSbError("getList", error);
       throw error;
     }
-    return (data as T[]) ?? [];
+    let result = (data as any[]) ?? [];
+    if (resource === 'venues') {
+      result = result.map((row: any) => ({
+        ...row,
+        business_hours: normalizeBusinessHours(row.opening_hours)
+      }));
+    }
+    return result as T[];
   },
 
   // New method for public venue access
@@ -363,7 +370,7 @@ export const supabaseProvider: DataProvider & {
       let fallbackQuery = supabase.from('venues').select(`
         id, name, address, description, plan, phone_number, 
         website_url, image_url, hero_image_url, is_paused, created_at, tags,
-        participates_in_points, distance, google_maps_url, category, price_tier, rating
+        participates_in_points, distance, google_maps_url, category, price_tier, rating, opening_hours
        `).eq('is_paused', false);
 
       if (filters?.search && filters.search.trim().length > 0) {
@@ -382,9 +389,35 @@ export const supabaseProvider: DataProvider & {
         logSbError("getPublicVenues fallback", fallbackError);
         throw fallbackError;
       }
-      return fallbackData ?? [];
+      // Attach normalized business_hours for UI
+      const enriched = (fallbackData || []).map((v: any) => ({
+        ...v,
+        business_hours: normalizeBusinessHours(v.opening_hours)
+      }));
+      return enriched;
     }
-    return data ?? [];
+
+    // If RPC succeeded, it may not include opening_hours; enrich with a single fetch
+    const rows = data || [];
+    const ids = rows.map((r: any) => r.id).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: hoursRows, error: hoursErr } = await supabase
+        .from('venues')
+        .select('id, opening_hours')
+        .in('id', ids)
+        .eq('is_paused', false);
+      if (hoursErr) {
+        console.warn('[getPublicVenues] Could not enrich opening_hours:', hoursErr);
+        return rows;
+      }
+      const map = new Map<string, any>((hoursRows || []).map((r: any) => [r.id, r.opening_hours]));
+      const enriched = rows.map((r: any) => {
+        const opening_hours = map.get(r.id) ?? null;
+        return { ...r, opening_hours, business_hours: normalizeBusinessHours(opening_hours) };
+      });
+      return enriched;
+    }
+    return rows;
   },
 
   // New method for fetching a single public venue
