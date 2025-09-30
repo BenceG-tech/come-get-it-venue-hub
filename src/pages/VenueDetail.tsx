@@ -15,6 +15,7 @@ import { TimeRangeInput } from '@/components/TimeRangeInput';
 import { VenueFormModal } from '@/components/VenueFormModal';
 import { ChartCard } from '@/components/ChartCard';
 import { KPICard } from '@/components/KPICard';
+import { VenueImageGallery } from '@/components/VenueImageGallery';
 import ScheduleGrid from '@/components/ScheduleGrid';
 import BusinessHoursEditor from '@/components/BusinessHoursEditor';
 import VenueLocationManager from '@/components/VenueLocationManager';
@@ -262,34 +263,28 @@ export default function VenueDetail() {
       </div>
 
       <div className="space-y-6">
-        {/* Image Gallery - Fixed null check */}
-        {venue.images?.length ? (
-          <Card className="cgi-card mb-6">
-            <div className="space-y-3">
-              <img
-                src={coverImage?.url || 'https://via.placeholder.com/800x400?text=No+Image'}
-                alt={venue.name}
-                className="w-full h-48 object-cover rounded-lg"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://via.placeholder.com/800x400?text=No+Image';
-                }}
-              />
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {venue.images.map(img => (
-                  <img 
-                    key={img.id} 
-                    src={img.url} 
-                    alt={img.label || 'image'} 
-                    className="h-16 w-24 object-cover rounded-md border border-cgi-muted cursor-pointer hover:opacity-80" 
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/96x64?text=No+Image';
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </Card>
-        ) : null}
+        {/* Image Gallery */}
+        {(() => {
+          const hasDbImages = Array.isArray(venue.images) && venue.images.length > 0;
+          const syntheticImages = !hasDbImages && (venue.hero_image_url || venue.image_url)
+            ? [
+                {
+                  id: 'cover',
+                  url: (venue.hero_image_url || venue.image_url) as string,
+                  label: 'Borítókép',
+                  isCover: true,
+                },
+              ]
+            : [];
+          const galleryImages = hasDbImages ? (venue.images as NonNullable<Venue['images']>) : syntheticImages;
+          
+          return galleryImages.length > 0 ? (
+            <VenueImageGallery 
+              images={galleryImages} 
+              venueName={venue.name} 
+            />
+          ) : null;
+        })()}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <KPICard 
