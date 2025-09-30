@@ -31,94 +31,96 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   );
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Admin login */}
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          
-          {/* Consumer app */}
-          <Route path="/app" element={<ConsumerApp />} />
-          <Route path="/app/venue/:id" element={<PublicVenueDetail />} />
-          <Route path="/venue/:id" element={<Navigate to="/app/venue/:id" replace />} />
-          
-          {/* Protected admin routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/redemptions" element={
-            <ProtectedRoute>
-              <Redemptions />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/transactions" element={
-            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
-              <Transactions />
-            </RouteGuard>
-          } />
-          
-          <Route path="/rewards" element={
-            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
-              <Rewards />
-            </RouteGuard>
-          } />
-          
-          <Route path="/analytics" element={
-            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
-              <Analytics />
-            </RouteGuard>
-          } />
-          
-          <Route path="/venues" element={
-            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
-              <Venues />
-            </RouteGuard>
-          } />
-          
-          <Route path="/venues/comparison" element={
-            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
-              <VenueComparison />
-            </RouteGuard>
-          } />
-          
-          <Route path="/venues/:id" element={
-            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
-              <VenueDetail />
-            </RouteGuard>
-          } />
-          
-          <Route path="/brands" element={
-            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
-              <Brands />
-            </RouteGuard>
-          } />
-          
-          <Route path="/settings" element={
-            <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
-              <Settings />
-            </RouteGuard>
-          } />
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Admin login */}
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            
+            {/* Consumer app */}
+            <Route path="/app" element={<ConsumerApp />} />
+            <Route path="/app/venue/:id" element={<PublicVenueDetail />} />
+            <Route path="/venue/:id" element={<Navigate to="/app/venue/:id" replace />} />
+            
+            {/* Protected admin routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/redemptions" element={
+              <ProtectedRoute>
+                <Redemptions />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/transactions" element={
+              <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
+                <Transactions />
+              </RouteGuard>
+            } />
+            
+            <Route path="/rewards" element={
+              <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
+                <Rewards />
+              </RouteGuard>
+            } />
+            
+            <Route path="/analytics" element={
+              <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
+                <Analytics />
+              </RouteGuard>
+            } />
+            
+            <Route path="/venues" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <Venues />
+              </RouteGuard>
+            } />
+            
+            <Route path="/venues/comparison" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <VenueComparison />
+              </RouteGuard>
+            } />
+            
+            <Route path="/venues/:id" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <VenueDetail />
+              </RouteGuard>
+            } />
+            
+            <Route path="/brands" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <Brands />
+              </RouteGuard>
+            } />
+            
+            <Route path="/settings" element={
+              <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
+                <Settings />
+              </RouteGuard>
+            } />
 
-          <Route path="/saltedge-transactions" element={
-            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
-              <SaltEdgeTransactions />
-            </RouteGuard>
-          } />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            <Route path="/saltedge-transactions" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <SaltEdgeTransactions />
+              </RouteGuard>
+            } />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
