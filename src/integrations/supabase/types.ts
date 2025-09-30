@@ -552,6 +552,7 @@ export type Database = {
           created_at: string
           description: string | null
           distance: number | null
+          formatted_address: string | null
           google_maps_url: string | null
           hero_image_url: string | null
           id: string
@@ -579,6 +580,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           distance?: number | null
+          formatted_address?: string | null
           google_maps_url?: string | null
           hero_image_url?: string | null
           id?: string
@@ -606,6 +608,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           distance?: number | null
+          formatted_address?: string | null
           google_maps_url?: string | null
           hero_image_url?: string | null
           id?: string

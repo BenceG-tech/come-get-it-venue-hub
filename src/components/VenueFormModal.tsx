@@ -11,10 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import { ImageUploadInput } from './ImageUploadInput';
 import { useToast } from '@/hooks/use-toast';
 import BusinessHoursEditor from './BusinessHoursEditor';
+import VenueMapPreview from './VenueMapPreview';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface VenueFormModalProps {
   venue?: Venue;
@@ -25,6 +28,9 @@ interface VenueFormModalProps {
 export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string>('');
   const { toast } = useToast();
   const drinkSelectorRef = useRef<EnhancedDrinkSelectorRef>(null);
   const [formData, setFormData] = useState<Partial<Venue>>({
@@ -155,6 +161,43 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }));
   };
 
+  // Geocoding function
+  const geocodeAddress = async (address: string) => {
+    setGeocoding(true);
+    setGeocodeError(null);
+    try {
+      console.log('Geocoding address:', address);
+      const { data, error } = await supabase.functions.invoke('geocode-address', {
+        body: { address }
+      });
+
+      if (error) {
+        console.error('Geocoding error:', error);
+        throw new Error(error.message || 'Geocoding failed');
+      }
+
+      if (!data || !data.lat || !data.lng) {
+        throw new Error('Invalid geocoding response');
+      }
+
+      console.log('Geocoding successful:', data);
+      setFormData(prev => ({
+        ...prev,
+        coordinates: { lat: data.lat, lng: data.lng },
+        formatted_address: data.formatted_address,
+        google_maps_url: data.google_maps_url,
+      }));
+      setLastGeocodedAddress(address);
+      return true;
+    } catch (error: any) {
+      console.error('Geocoding failed:', error);
+      setGeocodeError(error.message || 'Failed to geocode address');
+      return false;
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -164,6 +207,24 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       if (!flushResult.success) {
         console.error('[VenueFormModal] Failed to flush staged drinks:', flushResult.error);
         return; // Don't proceed with save
+      }
+    }
+
+    // Check if geocoding is needed
+    const addressChanged = formData.address !== lastGeocodedAddress;
+    const coordinatesAreDefault = formData.coordinates?.lat === 0 && formData.coordinates?.lng === 0;
+    
+    if (formData.address && (addressChanged || coordinatesAreDefault)) {
+      console.log('Geocoding needed:', { addressChanged, coordinatesAreDefault });
+      const geocodeSuccess = await geocodeAddress(formData.address);
+      if (!geocodeSuccess) {
+        toast({
+          title: 'Geocoding failed',
+          description: 'Could not find coordinates for this address. You can continue with manual coordinates or try again.',
+          variant: 'destructive' as any,
+        });
+        // Allow user to proceed with manual coordinates or fix address
+        return;
       }
     }
 
@@ -270,10 +331,26 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 <Input
                   id="address"
                   value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, address: e.target.value }));
+                    setGeocodeError(null);
+                  }}
                   className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
                   required
                 />
+                {geocodeError && (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{geocodeError}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="mt-3">
+                  <VenueMapPreview
+                    lat={formData.coordinates?.lat || 0}
+                    lng={formData.coordinates?.lng || 0}
+                    isLoading={geocoding}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -562,11 +639,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           </Tabs>
 
           <div className="flex justify-end space-x-4 pt-4 border-t border-cgi-muted">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary" disabled={saving}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary" disabled={saving || geocoding}>
               Mégse
             </Button>
-            <Button type="submit" className="cgi-button-primary" disabled={saving}>
-              {saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
+            <Button type="submit" className="cgi-button-primary" disabled={saving || geocoding}>
+              {geocoding ? 'Geocoding...' : saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
             </Button>
           </div>
         </form>

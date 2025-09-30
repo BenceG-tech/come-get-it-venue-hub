@@ -32,8 +32,8 @@ serve(async (req) => {
         id, name, address, description, plan, phone_number, 
         website_url, image_url, hero_image_url, is_paused, 
         created_at, tags, opening_hours, participates_in_points, 
-        points_per_visit, distance, google_maps_url, category, 
-        price_tier, rating
+        points_per_visit, distance, coordinates, formatted_address,
+        google_maps_url, category, price_tier, rating
       `)
       .eq('is_paused', false)
       .order('created_at', { ascending: false })

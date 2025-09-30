@@ -162,3 +162,6 @@ verify_jwt = false
 
 [functions.get-public-venues]
 verify_jwt = false
+
+[functions.geocode-address]
+verify_jwt = false

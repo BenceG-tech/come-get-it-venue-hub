@@ -41,6 +41,8 @@ const VENUE_COLUMNS = new Set([
   "tags",
   "opening_hours", // added to support business_hours -> opening_hours mapping
   "coordinates",
+  "formatted_address",
+  "google_maps_url",
   "caps",
   "notifications",
 ]);
@@ -370,7 +372,8 @@ export const supabaseProvider: DataProvider & {
       let fallbackQuery = supabase.from('venues').select(`
         id, name, address, description, plan, phone_number, 
         website_url, image_url, hero_image_url, is_paused, created_at, tags,
-        participates_in_points, distance, google_maps_url, category, price_tier, rating, opening_hours
+        participates_in_points, distance, coordinates, formatted_address, 
+        google_maps_url, category, price_tier, rating, opening_hours
        `).eq('is_paused', false);
 
       if (filters?.search && filters.search.trim().length > 0) {
@@ -439,7 +442,7 @@ export const supabaseProvider: DataProvider & {
             id, name, address, description, plan, phone_number, 
             website_url, image_url, hero_image_url, is_paused, 
             created_at, tags, opening_hours, participates_in_points, distance,
-            google_maps_url, category, price_tier, rating, coordinates
+            coordinates, formatted_address, google_maps_url, category, price_tier, rating
           `)
           .eq('id', id)
           .eq('is_paused', false)
