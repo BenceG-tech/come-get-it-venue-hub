@@ -19,6 +19,7 @@ import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
+import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,12 @@ const App = () => (
           <Route path="/settings" element={
             <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
               <Settings />
+            </RouteGuard>
+          } />
+
+          <Route path="/saltedge-transactions" element={
+            <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+              <SaltEdgeTransactions />
             </RouteGuard>
           } />
           

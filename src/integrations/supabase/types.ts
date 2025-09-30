@@ -322,6 +322,146 @@ export type Database = {
           },
         ]
       }
+      saltedge_connections: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          last_synced_at: string | null
+          provider_name: string | null
+          se_connection_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          last_synced_at?: string | null
+          provider_name?: string | null
+          se_connection_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          last_synced_at?: string | null
+          provider_name?: string | null
+          se_connection_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saltedge_connections_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "saltedge_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saltedge_customers: {
+        Row: {
+          created_at: string
+          id: string
+          se_customer_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          se_customer_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          se_customer_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saltedge_transactions: {
+        Row: {
+          amount_cents: number
+          connection_id: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          made_on: string
+          match_status: string | null
+          matched_venue_id: string | null
+          mcc: string | null
+          merchant_code: string | null
+          merchant_name: string | null
+          points_awarded: number | null
+          raw: Json | null
+          se_transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          connection_id?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          made_on: string
+          match_status?: string | null
+          matched_venue_id?: string | null
+          mcc?: string | null
+          merchant_code?: string | null
+          merchant_name?: string | null
+          points_awarded?: number | null
+          raw?: Json | null
+          se_transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          connection_id?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          made_on?: string
+          match_status?: string | null
+          matched_venue_id?: string | null
+          mcc?: string | null
+          merchant_code?: string | null
+          merchant_name?: string | null
+          points_awarded?: number | null
+          raw?: Json | null
+          se_transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saltedge_transactions_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "saltedge_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saltedge_transactions_matched_venue_id_fkey"
+            columns: ["matched_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -558,6 +698,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_paused: boolean
+          merchant_match_rules: Json | null
           name: string
           notifications: Json | null
           opening_hours: Json | null
@@ -566,6 +707,7 @@ export type Database = {
           phone_number: string | null
           plan: Database["public"]["Enums"]["venue_plan"]
           points_per_visit: number
+          points_rules: Json | null
           price_tier: number | null
           rating: number | null
           tags: string[] | null
@@ -586,6 +728,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_paused?: boolean
+          merchant_match_rules?: Json | null
           name: string
           notifications?: Json | null
           opening_hours?: Json | null
@@ -594,6 +737,7 @@ export type Database = {
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
           points_per_visit?: number
+          points_rules?: Json | null
           price_tier?: number | null
           rating?: number | null
           tags?: string[] | null
@@ -614,6 +758,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_paused?: boolean
+          merchant_match_rules?: Json | null
           name?: string
           notifications?: Json | null
           opening_hours?: Json | null
@@ -622,6 +767,7 @@ export type Database = {
           phone_number?: string | null
           plan?: Database["public"]["Enums"]["venue_plan"]
           points_per_visit?: number
+          points_rules?: Json | null
           price_tier?: number | null
           rating?: number | null
           tags?: string[] | null

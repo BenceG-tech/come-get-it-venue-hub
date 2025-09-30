@@ -15,7 +15,8 @@ import {
   Factory,
   LogOut,
   TrendingUp,
-  ChevronDown
+  ChevronDown,
+  Landmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'] },
   { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
   { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'] },
+  { name: 'Banki Tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'] },
   { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'] },
   { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'] },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'] },

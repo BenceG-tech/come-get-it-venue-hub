@@ -18,7 +18,7 @@ import { KPICard } from '@/components/KPICard';
 import { VenueImageGallery } from '@/components/VenueImageGallery';
 import ScheduleGrid from '@/components/ScheduleGrid';
 import BusinessHoursEditor from '@/components/BusinessHoursEditor';
-import VenueLocationManager from '@/components/VenueLocationManager';
+import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManager';
 import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { seedData } from '@/lib/mock/seed';
@@ -505,13 +505,23 @@ export default function VenueDetail() {
                   <Switch checked={!isPaused} onCheckedChange={() => handlePauseToggle()} />
                 </div>
 
-                {/* Card Linking */}
+                {/* Merchant Rules */}
                 <div className="pb-4 border-b border-cgi-border">
                   <Label className="text-cgi-surface-foreground font-medium flex items-center gap-2 mb-3">
                     <CreditCard className="h-4 w-4" />
-                    Bankkártya kapcsolat
+                    Banki egyeztetési szabályok
                   </Label>
-                  <VenueLocationManager venue={venue} />
+                  <MerchantMatchRulesManager 
+                    venue={venue} 
+                    onUpdate={async () => {
+                      try {
+                        const refreshedVenue = await dataProvider.getOne<Venue>('venues', venue.id);
+                        setVenue(refreshedVenue);
+                      } catch (error) {
+                        console.error('Failed to refresh venue:', error);
+                      }
+                    }} 
+                  />
                 </div>
 
                 {/* Tags */}

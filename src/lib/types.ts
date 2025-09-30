@@ -107,6 +107,19 @@ export interface Venue {
   // Added for mobile/consumer compatibility
   image_url?: string;       // card/list image
   hero_image_url?: string;  // detail header image
+
+  // Salt Edge merchant matching rules
+  merchant_match_rules?: {
+    names: string[];
+    mcc: string[];
+    ibans: string[];
+    terminals: string[];
+    contains: string[];
+  };
+  points_rules?: {
+    per_huf: number;
+    min_amount_huf: number;
+  };
 }
 
 export interface Brand {
