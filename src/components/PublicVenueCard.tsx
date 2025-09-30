@@ -106,7 +106,7 @@ export default function PublicVenueCard({ venue }: PublicVenueCardProps) {
               <span className="text-sm font-medium">Ingyenes italok</span>
             </div>
             <OpeningHoursDisplay 
-              businessHours={venue.opening_hours} 
+              businessHours={(venue as any).business_hours || venue.opening_hours} 
               showStatus={false}
               compact={true}
               className="text-cgi-muted-foreground"

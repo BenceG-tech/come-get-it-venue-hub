@@ -6,6 +6,11 @@ const dayIndexISO = (d: Date) => {
   return k === 0 ? 7 : k;
 };
 
+function hmToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
 export function isVenueOpenNow(venue: Venue, now: Date): boolean {
   const bh = venue.business_hours;
   if (!bh) return false;
@@ -18,8 +23,10 @@ export function isVenueOpenNow(venue: Venue, now: Date): boolean {
   const close = special?.close ?? bh.byDay[day]?.close ?? null;
   if (!open || !close) return false;
 
-  const cur = now.toTimeString().slice(0,5); // "HH:MM"
-  return open <= cur && cur <= close;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const openMinutes = hmToMinutes(open);
+  const closeMinutes = hmToMinutes(close);
+  return openMinutes <= currentMinutes && currentMinutes <= closeMinutes;
 }
 
 export function getClosingTimeToday(venue: Venue, now: Date): string | null {

@@ -108,7 +108,9 @@ export default function OpeningHoursDisplay({
   const isOpen = normalizedHours ? isVenueOpenNow({ business_hours: normalizedHours } as any, now) : false;
   const closingTime = normalizedHours ? getClosingTimeToday({ business_hours: normalizedHours } as any, now) : null;
 
-  if (!normalizedHours?.byDay) {
+  const hasAnyDay = normalizedHours && Object.keys(normalizedHours.byDay || {}).length > 0;
+
+  if (!normalizedHours?.byDay || !hasAnyDay) {
     return (
       <div className={`text-cgi-muted-foreground ${className}`}>
         {compact ? 'Órák nem elérhetőek' : 'Nyitvatartás nem elérhető'}

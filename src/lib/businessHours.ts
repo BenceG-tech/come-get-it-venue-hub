@@ -9,30 +9,26 @@ import type { BusinessHours } from './types';
 export function normalizeBusinessHours(hours: any): BusinessHours | null {
   if (!hours) return null;
   
-  // Handle case where hours is already a normalized BusinessHours object
-  if (hours.byDay && typeof Object.keys(hours.byDay)[0] === 'number') {
-    return hours as BusinessHours;
-  }
+  // Detect whether hours has a byDay property or is flat with day keys at root
+  const source = hours.byDay ? hours.byDay : hours;
   
   const byDay: Record<number, { open: string | null; close: string | null }> = {};
   
   // Handle both string and numeric keys
-  if (hours.byDay) {
-    for (const [key, value] of Object.entries(hours.byDay)) {
-      const numKey = parseInt(key);
-      if (numKey >= 1 && numKey <= 7) {
-        const dayData = value as any;
-        byDay[numKey] = {
-          open: dayData?.open ? padTime(dayData.open) : null,
-          close: dayData?.close ? padTime(dayData.close) : null
-        };
-      }
+  for (const [key, value] of Object.entries(source)) {
+    const numKey = parseInt(key, 10);
+    if (!Number.isNaN(numKey) && numKey >= 1 && numKey <= 7) {
+      const dayData = value as any;
+      byDay[numKey] = {
+        open: dayData?.open ? padTime(dayData.open) : null,
+        close: dayData?.close ? padTime(dayData.close) : null
+      };
     }
   }
   
   return {
     byDay,
-    specialDates: hours.specialDates || []
+    specialDates: hours.specialDates || hours.special_dates || []
   };
 }
 
