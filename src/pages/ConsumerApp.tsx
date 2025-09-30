@@ -6,9 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Search, MapPin, Clock, Star, ArrowRight } from "lucide-react";
 import PublicVenueListItem from "@/components/PublicVenueListItem";
 import { usePublicVenues } from "@/hooks/usePublicVenues";
+import { AIVenueSearch } from "@/components/AIVenueSearch";
 
 export default function ConsumerApp() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [aiFilteredIds, setAiFilteredIds] = useState<string[]>([]);
   const navigate = useNavigate();
   const { venues = [], isLoading, error } = usePublicVenues(searchTerm);
 
@@ -19,6 +21,15 @@ export default function ConsumerApp() {
   const handleAdminLogin = () => {
     navigate('/');
   };
+
+  const handleAIRecommendation = (venueIds: string[]) => {
+    setAiFilteredIds(venueIds);
+  };
+
+  // Filter venues based on AI recommendations if available
+  const displayVenues = aiFilteredIds.length > 0
+    ? venues.filter(v => aiFilteredIds.includes(v.id))
+    : venues;
 
   return (
     <div className="cgi-page">
@@ -73,10 +84,18 @@ export default function ConsumerApp() {
           </Card>
         </div>
 
+        {/* AI-Powered Search */}
+        {!isLoading && venues.length > 0 && (
+          <AIVenueSearch 
+            venues={venues} 
+            onRecommendation={handleAIRecommendation}
+          />
+        )}
+
         {/* Venues */}
         <div>
           <h2 className="text-2xl font-bold text-cgi-surface-foreground mb-6">
-            Featured Venues
+            {aiFilteredIds.length > 0 ? '🤖 AI Recommendations' : 'Featured Venues'}
           </h2>
           
           {isLoading && (
@@ -93,7 +112,7 @@ export default function ConsumerApp() {
           
           {venues.length > 0 && (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {venues.map((venue) => (
+              {displayVenues.map((venue) => (
                 <div key={venue.id} onClick={() => handleVenueClick(venue.id)} className="cursor-pointer">
                   <PublicVenueListItem venue={venue} />
                 </div>
@@ -105,6 +124,14 @@ export default function ConsumerApp() {
             <div className="text-center py-8">
               <p className="text-cgi-muted-foreground">
                 {searchTerm ? 'No venues found matching your search.' : 'No venues available.'}
+              </p>
+            </div>
+          )}
+
+          {displayVenues.length === 0 && venues.length > 0 && aiFilteredIds.length > 0 && (
+            <div className="text-center py-8">
+              <p className="text-cgi-muted-foreground">
+                No venues matched your AI search. Try a different query.
               </p>
             </div>
           )}

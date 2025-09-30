@@ -156,3 +156,6 @@ verify_jwt = false
 
 [functions.get-public-venue]
 verify_jwt = false
+
+[functions.ai-venue-recommend]
+verify_jwt = false
