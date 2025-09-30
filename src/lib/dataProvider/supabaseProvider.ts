@@ -595,13 +595,25 @@ export const supabaseProvider: DataProvider & {
   },
 
   async update<T>(resource: string, id: string, data: Partial<T>): Promise<T> {
-    console.log("[supabaseProvider] update", resource, id, data);
+    console.log("[supabaseProvider] update", resource, id, {
+      hasDrinks: Array.isArray((data as any).drinks),
+      drinksCount: Array.isArray((data as any).drinks) ? (data as any).drinks.length : 0,
+      hasWindows: Array.isArray((data as any).freeDrinkWindows),
+      windowsCount: Array.isArray((data as any).freeDrinkWindows) ? (data as any).freeDrinkWindows.length : 0
+    });
 
     if (resource === "venues") {
       const payload = data as any;
       const images = Array.isArray(payload.images) ? payload.images : undefined;
       const drinks = Array.isArray(payload.drinks) ? payload.drinks : undefined;
       const freeDrinkWindows = Array.isArray(payload.freeDrinkWindows) ? payload.freeDrinkWindows : undefined;
+
+      console.log("[supabaseProvider] Venue update payload breakdown:", {
+        imagesCount: images?.length || 0,
+        drinksCount: drinks?.length || 0,
+        windowsCount: freeDrinkWindows?.length || 0,
+        freeDrinksCount: drinks?.filter((d: any) => d.is_free_drink).length || 0
+      });
 
       // Ensure opening_hours is set from business_hours for DB
       const updatePayload = pickVenueColumns(payload);
@@ -620,16 +632,19 @@ export const supabaseProvider: DataProvider & {
 
       // If images provided, sync them in venue_images
       if (images) {
+        console.log("[supabaseProvider] Syncing", images.length, "images");
         await replaceVenueImages(id, images);
       }
 
       // If drinks provided, sync them in venue_drinks
       if (drinks) {
+        console.log("[supabaseProvider] Syncing", drinks.length, "drinks");
         await replaceVenueDrinks(id, drinks);
       }
 
       // If windows provided, sync them in free_drink_windows
       if (freeDrinkWindows) {
+        console.log("[supabaseProvider] Syncing", freeDrinkWindows.length, "windows");
         await replaceFreeDrinkWindows(id, freeDrinkWindows);
       }
 
@@ -637,6 +652,13 @@ export const supabaseProvider: DataProvider & {
       const finalImages = await fetchVenueImages(id);
       const finalDrinks = await fetchVenueDrinks(id);
       const finalWindows = await fetchFreeDrinkWindows(id);
+      
+      console.log("[supabaseProvider] After sync - fetched from DB:", {
+        imagesCount: finalImages.length,
+        drinksCount: finalDrinks.length,
+        windowsCount: finalWindows.length
+      });
+
       const business_hours = (row as any)?.opening_hours ?? updatePayload?.opening_hours ?? undefined;
       
       const enriched = { ...(row as any), images: finalImages, drinks: finalDrinks, freeDrinkWindows: finalWindows, business_hours };
