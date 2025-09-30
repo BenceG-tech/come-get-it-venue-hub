@@ -226,7 +226,7 @@ export default function VenueDetail() {
               venue={venue} 
               onSave={handleVenueSave}
               trigger={
-                <Button variant="outline" className="cgi-button-primary">
+                <Button className="cgi-button-primary">
                   <Edit className="h-4 w-4 mr-2" />
                   Szerkesztés
                 </Button>
