@@ -201,12 +201,26 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Flush any staged drinks synchronously
+    // Flush any staged drinks synchronously and get the updated data
+    let finalDrinks = formData.drinks || [];
+    let finalWindows = formData.freeDrinkWindows || [];
+    
     if (drinkSelectorRef.current) {
+      console.log('[VenueFormModal] Flushing staged drinks before save');
       const flushResult = await drinkSelectorRef.current.flushStaged();
       if (!flushResult.success) {
         console.error('[VenueFormModal] Failed to flush staged drinks:', flushResult.error);
         return; // Don't proceed with save
+      }
+      
+      // Use the returned drinks and windows to ensure we have the latest data
+      if (flushResult.drinks) {
+        finalDrinks = flushResult.drinks;
+        console.log('[VenueFormModal] Updated drinks from flush:', finalDrinks.length);
+      }
+      if (flushResult.windows) {
+        finalWindows = flushResult.windows;
+        console.log('[VenueFormModal] Updated windows from flush:', finalWindows.length);
       }
     }
 
@@ -229,9 +243,9 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
 
     // Validation: Check that every free drink has at least one time window
-    const freeDrinks = formData.drinks?.filter(d => d.is_free_drink) || [];
+    const freeDrinks = finalDrinks.filter(d => d.is_free_drink) || [];
     for (const drink of freeDrinks) {
-      const drinkWindows = formData.freeDrinkWindows?.filter(w => w.drink_id === drink.id) || [];
+      const drinkWindows = finalWindows.filter(w => w.drink_id === drink.id) || [];
       if (drinkWindows.length === 0) {
         toast({ title: 'Hiba', description: `Az ingyenes ital ("${drink.drinkName}") nem rendelkezik időablakokkal.`, variant: 'destructive' as any });
         return;
@@ -242,14 +256,18 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     const coverImage = formData.images?.find(img => img.isCover);
     const finalFormData: any = {
       ...formData,
+      drinks: finalDrinks,
+      freeDrinkWindows: finalWindows,
       image_url: coverImage?.url || null,
       hero_image_url: coverImage?.url || null,
     };
 
     // ALWAYS include drinks and windows in payload - never prune them implicitly
     console.info('[VenueFormModal] Submit payload preview', {
-      drinksLen: formData.drinks?.length || 0,
-      windowsLen: formData.freeDrinkWindows?.length || 0,
+      drinksLen: finalDrinks.length,
+      windowsLen: finalWindows.length,
+      drinkNames: finalDrinks.map(d => d.drinkName),
+      freeDrinkNames: freeDrinks.map(d => d.drinkName),
       hasDrinksInPayload: !!finalFormData.drinks,
       hasWindowsInPayload: !!finalFormData.freeDrinkWindows,
     });

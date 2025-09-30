@@ -21,7 +21,12 @@ interface EnhancedDrinkSelectorProps {
 }
 
 export interface EnhancedDrinkSelectorRef {
-  flushStaged(): Promise<{ success: boolean; error?: string }>;
+  flushStaged(): Promise<{ 
+    success: boolean; 
+    error?: string;
+    drinks?: VenueDrink[];
+    windows?: FreeDrinkWindow[];
+  }>;
 }
 
 const DRINK_CATEGORIES = [
@@ -73,11 +78,14 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
       console.log('[EnhancedDrinkSelector] flushStaged called', {
         hasNewDrink: !!newDrink.drinkName?.trim(),
         newDrinkName: newDrink.drinkName,
-        newWindowsCount: newWindows.length
+        newWindowsCount: newWindows.length,
+        existingDrinksCount: drinks.length,
+        existingWindowsCount: freeDrinkWindows.length
       });
 
       if (!newDrink.drinkName?.trim()) {
-        return { success: true }; // Nothing to flush
+        console.log('[EnhancedDrinkSelector] No staged drink to flush, returning existing data');
+        return { success: true, drinks, windows: freeDrinkWindows };
       }
 
       // Validate staged drink
@@ -130,16 +138,19 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
           image_url: newDrink.image_url || undefined
         };
 
-        onChange([...drinks, drink]);
+        const updatedDrinks = [...drinks, drink];
+        onChange(updatedDrinks);
         
         // Add time windows for the new drink if it's a free drink
+        let updatedWindows = freeDrinkWindows;
         if (newDrink.is_free_drink && newWindows.length > 0) {
           const mappedWindows = newWindows.map(window => ({
             ...window,
             drink_id: drinkId,
             venue_id: ''
           }));
-          onFreeDrinkWindowsChange([...freeDrinkWindows, ...mappedWindows]);
+          updatedWindows = [...freeDrinkWindows, ...mappedWindows];
+          onFreeDrinkWindowsChange(updatedWindows);
         }
         
         // Reset form
@@ -156,8 +167,13 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
         });
         setNewWindows([]);
 
-        console.log('[EnhancedDrinkSelector] Successfully flushed staged drink', { drinkName: drink.drinkName, windowsCount: newWindows.length });
-        return { success: true };
+        console.log('[EnhancedDrinkSelector] Successfully flushed staged drink', { 
+          drinkName: drink.drinkName, 
+          windowsCount: newWindows.length,
+          totalDrinksAfterFlush: updatedDrinks.length,
+          totalWindowsAfterFlush: updatedWindows.length
+        });
+        return { success: true, drinks: updatedDrinks, windows: updatedWindows };
       } catch (error) {
         console.error('[EnhancedDrinkSelector] Error flushing staged drink:', error);
         return { success: false, error: String(error) };
