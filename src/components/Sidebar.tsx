@@ -16,7 +16,8 @@ import {
   LogOut,
   TrendingUp,
   ChevronDown,
-  Landmark
+  Landmark,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -37,6 +38,7 @@ const navigation = [
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'] },
   { name: 'Venue Összehasonlítás', href: '/venues/comparison', icon: TrendingUp, roles: ['cgi_admin'] },
   { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'] },
+  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'] },
   { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'] },
 ];
 

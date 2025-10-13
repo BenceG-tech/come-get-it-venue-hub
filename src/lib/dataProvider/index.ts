@@ -19,4 +19,5 @@ export type Resource =
   | 'transactions' 
   | 'rewards'
   | 'venue_drinks'
-  | 'free_drink_windows';
+  | 'free_drink_windows'
+  | 'notification_templates';

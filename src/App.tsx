@@ -17,6 +17,7 @@ import Venues from "./pages/Venues";
 import VenueDetail from "./pages/VenueDetail";
 import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
@@ -110,6 +111,12 @@ const App = () => {
             <Route path="/saltedge-transactions" element={
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <SaltEdgeTransactions />
+              </RouteGuard>
+            } />
+
+            <Route path="/notifications" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <Notifications />
               </RouteGuard>
             } />
             

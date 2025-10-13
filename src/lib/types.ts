@@ -229,3 +229,84 @@ export interface CapUsage {
   limit: number;
   pct: number;
 }
+
+// Notification Template
+export interface NotificationTemplate {
+  id: string;
+  title_hu: string;
+  title_en?: string;
+  body_hu: string;
+  body_en?: string;
+  icon?: string;
+  image_url?: string;
+  deep_link?: string; // rork://venue/{id} | rork://map | rork://inbox
+  
+  // Targeting (JSON fields - csak UI state, backend majd feldolgozza)
+  targeting: {
+    geofence?: {
+      enabled: boolean;
+      radius_meters: number;
+      venue_ids?: string[];
+      min_dwell_minutes?: number;
+    };
+    favorites?: boolean;
+    past_visitors?: {
+      enabled: boolean;
+      days: number;
+    };
+    city?: string[];
+    language?: 'hu' | 'en';
+    platform?: 'ios' | 'android' | 'all';
+    user_segment?: 'new' | 'returning' | 'all';
+  };
+  
+  // Timing
+  send_mode: 'immediate' | 'scheduled' | 'event';
+  scheduled_at?: string; // ISO timestamp
+  event_type?: string; // free_drink_start_15m, points_earned, etc.
+  
+  // Anti-spam
+  frequency_limit: {
+    per_user_hours?: number; // 1 értesítés / X óra
+    per_venue_minutes?: number;
+    max_per_day?: number;
+  };
+  quiet_hours: {
+    enabled: boolean;
+    start?: string; // "22:00"
+    end?: string;   // "08:00"
+  };
+  ttl_hours?: number; // értesítés lejárat
+  
+  // Metadata
+  category: 'free_drink' | 'points' | 'reward' | 'venue_status' | 'promo';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  created_by: string; // user_id
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
+// Notification Log (csak olvasásra - a backend tölti fel)
+export interface NotificationLog {
+  id: string;
+  template_id: string;
+  user_id: string;
+  sent_at: string;
+  status: 'queued' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'failed' | 'expired';
+  platform: 'ios' | 'android' | 'web';
+  error_message?: string;
+  opened_at?: string;
+  clicked_at?: string;
+}
+
+// Statistics (számított adatok)
+export interface NotificationStats {
+  template_id: string;
+  sent_count: number;
+  delivered_count: number;
+  opened_count: number;
+  clicked_count: number;
+  open_rate: number; // %
+  click_rate: number; // %
+}

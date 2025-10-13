@@ -1,4 +1,4 @@
-import { Venue, Brand, BrandCampaign, Redemption, Transaction, Reward } from '@/lib/types';
+import { Venue, Brand, BrandCampaign, Redemption, Transaction, Reward, NotificationTemplate } from '@/lib/types';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { runtimeConfig } from '@/config/runtime';
 
@@ -265,6 +265,75 @@ export async function seedData() {
     }
   ];
 
+  // Seed notification templates
+  const notificationTemplates: NotificationTemplate[] = [
+    {
+      id: 'notif-1',
+      title_hu: 'Ingyen sör a közelben! 🍺',
+      body_hu: 'A {venue_name} kínálja! Gyere be {start_time}-ig!',
+      icon: '🍺',
+      deep_link: 'rork://venue/{venue_id}',
+      targeting: {
+        geofence: { enabled: true, radius_meters: 500 },
+        user_segment: 'all',
+        platform: 'all'
+      },
+      send_mode: 'event',
+      event_type: 'free_drink_start_15m',
+      frequency_limit: { per_user_hours: 6, max_per_day: 2 },
+      quiet_hours: { enabled: true, start: '22:00', end: '08:00' },
+      category: 'free_drink',
+      priority: 'high',
+      created_by: 'admin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_active: true
+    },
+    {
+      id: 'notif-2',
+      title_hu: 'Utolsó 30 perc! ⏰',
+      body_hu: 'Siess, még {end_time}-ig igényelheted az ingyen {drink_name}-t!',
+      icon: '⏰',
+      deep_link: 'rork://venue/{venue_id}',
+      targeting: {
+        geofence: { enabled: true, radius_meters: 1000 },
+        user_segment: 'all',
+        platform: 'all'
+      },
+      send_mode: 'event',
+      event_type: 'free_drink_last_30m',
+      frequency_limit: { per_user_hours: 12 },
+      quiet_hours: { enabled: true, start: '22:00', end: '08:00' },
+      category: 'free_drink',
+      priority: 'medium',
+      created_by: 'admin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_active: true
+    },
+    {
+      id: 'notif-3',
+      title_hu: 'Pontjaid jóváírva! 🎉',
+      body_hu: 'Gratulálunk! Pontokat kaptál a látogatásodért!',
+      icon: '🎉',
+      deep_link: 'rork://rewards',
+      targeting: {
+        user_segment: 'all',
+        platform: 'all'
+      },
+      send_mode: 'event',
+      event_type: 'points_earned',
+      frequency_limit: { per_user_hours: 24 },
+      quiet_hours: { enabled: true, start: '22:00', end: '08:00' },
+      category: 'points',
+      priority: 'low',
+      created_by: 'admin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_active: true
+    }
+  ];
+
   // Save to localStorage
   await dataProvider.upsertMany('venues', venues);
   await dataProvider.upsertMany('brands', brands);
@@ -272,6 +341,7 @@ export async function seedData() {
   await dataProvider.upsertMany('redemptions', redemptions);
   await dataProvider.upsertMany('transactions', transactions);
   await dataProvider.upsertMany('rewards', rewards);
+  await dataProvider.upsertMany('notification_templates', notificationTemplates);
 
   // Mark as seeded
   localStorage.setItem(SEED_KEY, 'true');

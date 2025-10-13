@@ -493,6 +493,75 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+// Mock notification templates
+export const mockNotificationTemplates = [
+  {
+    id: '1',
+    title_hu: 'Ingyen sör a közelben! 🍺',
+    body_hu: 'A {venue_name} kínálja! Gyere be {start_time}-ig!',
+    icon: '🍺',
+    deep_link: 'rork://venue/{venue_id}',
+    targeting: {
+      geofence: { enabled: true, radius_meters: 500 },
+      user_segment: 'all' as const,
+      platform: 'all' as const
+    },
+    send_mode: 'event' as const,
+    event_type: 'free_drink_start_15m',
+    frequency_limit: { per_user_hours: 6, max_per_day: 2 },
+    quiet_hours: { enabled: true, start: '22:00', end: '08:00' },
+    category: 'free_drink' as const,
+    priority: 'high' as const,
+    created_by: 'admin',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    is_active: true
+  },
+  {
+    id: '2',
+    title_hu: 'Utolsó 30 perc! ⏰',
+    body_hu: 'Siess, még {end_time}-ig igényelheted az ingyen {drink_name}-t!',
+    icon: '⏰',
+    deep_link: 'rork://venue/{venue_id}',
+    targeting: {
+      geofence: { enabled: true, radius_meters: 1000 },
+      user_segment: 'all' as const,
+      platform: 'all' as const
+    },
+    send_mode: 'event' as const,
+    event_type: 'free_drink_last_30m',
+    frequency_limit: { per_user_hours: 12 },
+    quiet_hours: { enabled: true, start: '22:00', end: '08:00' },
+    category: 'free_drink' as const,
+    priority: 'medium' as const,
+    created_by: 'admin',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    is_active: true
+  },
+  {
+    id: '3',
+    title_hu: 'Pontjaid jóváírva! 🎉',
+    body_hu: 'Gratulálunk! Pontokat kaptál a látogatásodért!',
+    icon: '🎉',
+    deep_link: 'rork://rewards',
+    targeting: { 
+      user_segment: 'all' as const,
+      platform: 'all' as const
+    },
+    send_mode: 'event' as const,
+    event_type: 'points_earned',
+    frequency_limit: { per_user_hours: 24 },
+    quiet_hours: { enabled: true, start: '22:00', end: '08:00' },
+    category: 'points' as const,
+    priority: 'low' as const,
+    created_by: 'admin',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    is_active: true
+  }
+];
+
 export const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('hu-HU', {
     year: 'numeric',
