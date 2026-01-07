@@ -812,18 +812,9 @@ export type Database = {
           website_url: string
         }[]
       }
-      get_user_venue_ids: {
-        Args: { user_id?: string }
-        Returns: string[]
-      }
-      is_admin: {
-        Args: { user_id?: string }
-        Returns: boolean
-      }
-      validate_opening_hours: {
-        Args: { hours: Json }
-        Returns: boolean
-      }
+      get_user_venue_ids: { Args: { user_id?: string }; Returns: string[] }
+      is_admin: { Args: { user_id?: string }; Returns: boolean }
+      validate_opening_hours: { Args: { hours: Json }; Returns: boolean }
     }
     Enums: {
       venue_plan: "basic" | "standard" | "premium"
