@@ -237,12 +237,82 @@ export type Database = {
         }
         Relationships: []
       }
+      redemption_tokens: {
+        Row: {
+          consumed_at: string | null
+          consumed_by_staff_id: string | null
+          created_at: string
+          device_fingerprint: string | null
+          drink_id: string
+          expires_at: string
+          id: string
+          issued_at: string
+          status: Database["public"]["Enums"]["redemption_token_status"]
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+          user_id: string | null
+          venue_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          consumed_by_staff_id?: string | null
+          created_at?: string
+          device_fingerprint?: string | null
+          drink_id: string
+          expires_at: string
+          id?: string
+          issued_at?: string
+          status?: Database["public"]["Enums"]["redemption_token_status"]
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+          user_id?: string | null
+          venue_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          consumed_by_staff_id?: string | null
+          created_at?: string
+          device_fingerprint?: string | null
+          drink_id?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          status?: Database["public"]["Enums"]["redemption_token_status"]
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+          user_id?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redemption_tokens_drink_id_fkey"
+            columns: ["drink_id"]
+            isOneToOne: false
+            referencedRelation: "venue_drinks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "redemption_tokens_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       redemptions: {
         Row: {
           created_at: string
           drink: string
+          drink_id: string | null
+          external_order_id: string | null
           id: string
           redeemed_at: string
+          staff_id: string | null
+          token_id: string | null
           user_id: string
           value: number
           venue_id: string
@@ -250,8 +320,12 @@ export type Database = {
         Insert: {
           created_at?: string
           drink: string
+          drink_id?: string | null
+          external_order_id?: string | null
           id?: string
           redeemed_at?: string
+          staff_id?: string | null
+          token_id?: string | null
           user_id: string
           value: number
           venue_id: string
@@ -259,13 +333,31 @@ export type Database = {
         Update: {
           created_at?: string
           drink?: string
+          drink_id?: string | null
+          external_order_id?: string | null
           id?: string
           redeemed_at?: string
+          staff_id?: string | null
+          token_id?: string | null
           user_id?: string
           value?: number
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "redemptions_drink_id_fkey"
+            columns: ["drink_id"]
+            isOneToOne: false
+            referencedRelation: "venue_drinks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "redemptions_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "redemption_tokens"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "redemptions_venue_id_fkey"
             columns: ["venue_id"]
@@ -456,6 +548,38 @@ export type Database = {
           {
             foreignKeyName: "saltedge_transactions_matched_venue_id_fkey"
             columns: ["matched_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_rate_limits: {
+        Row: {
+          id: string
+          identifier: string
+          identifier_type: string
+          issued_at: string
+          venue_id: string
+        }
+        Insert: {
+          id?: string
+          identifier: string
+          identifier_type: string
+          issued_at?: string
+          venue_id: string
+        }
+        Update: {
+          id?: string
+          identifier?: string
+          identifier_type?: string
+          issued_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_rate_limits_venue_id_fkey"
+            columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
@@ -817,6 +941,7 @@ export type Database = {
       validate_opening_hours: { Args: { hours: Json }; Returns: boolean }
     }
     Enums: {
+      redemption_token_status: "issued" | "consumed" | "expired" | "revoked"
       venue_plan: "basic" | "standard" | "premium"
       venue_role: "venue_owner" | "venue_staff"
     }
@@ -946,6 +1071,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      redemption_token_status: ["issued", "consumed", "expired", "revoked"],
       venue_plan: ["basic", "standard", "premium"],
       venue_role: ["venue_owner", "venue_staff"],
     },
