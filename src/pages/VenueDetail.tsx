@@ -166,7 +166,7 @@ export default function VenueDetail() {
         </Button>
       </div>
 
-      <div className="mb-8 flex flex-col lg:flex-row items-start justify-between gap-4">
+      <div className="mb-8 flex flex-col lg:flex-row items-start justify-between gap-4" data-tour="venue-header">
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
           <p className="text-cgi-muted-foreground">
@@ -227,7 +227,7 @@ export default function VenueDetail() {
               venue={venue} 
               onSave={handleVenueSave}
               trigger={
-                <Button className="cgi-button-primary">
+                <Button className="cgi-button-primary" data-tour="edit-button">
                   <Edit className="h-4 w-4 mr-2" />
                   Szerkesztés
                 </Button>
@@ -286,7 +286,7 @@ export default function VenueDetail() {
           ) : null;
         })()}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="kpi-cards">
           <KPICard 
             title="Mai forgalom" 
             value={formatCurrency(123456)} 
@@ -328,7 +328,7 @@ export default function VenueDetail() {
 
         <Tabs defaultValue="free-drinks" className="w-full">
           <TabsList className="grid w-full grid-cols-4 cgi-tabs-list">
-            <TabsTrigger value="free-drinks" className="cgi-tabs-trigger">
+            <TabsTrigger value="free-drinks" className="cgi-tabs-trigger" data-tour="free-drinks-tab">
               Ingyenes italok
             </TabsTrigger>
             <TabsTrigger value="business-hours" className="cgi-tabs-trigger">

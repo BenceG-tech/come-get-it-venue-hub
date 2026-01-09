@@ -620,7 +620,7 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2 cursor-help">
+                    <div className="flex items-center space-x-2 cursor-help" data-tour="free-drink-checkbox">
                       <Checkbox
                         checked={newDrink.is_free_drink || false}
                         onCheckedChange={handleFreeDrinkToggle}
@@ -665,6 +665,7 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                           size="sm"
                           variant="outline"
                           className="bg-cgi-muted/50 border-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted"
+                          data-tour="add-time-window"
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Időablak hozzáadása
@@ -709,7 +710,7 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                         endLabel="Befejezés"
                       />
 
-                      <div className="space-y-2">
+                      <div className="space-y-2" data-tour="day-selector">
                         <Label className="text-sm text-cgi-surface-foreground">Napok</Label>
                         <div className="flex flex-wrap gap-1 mb-2">
                           <Button

@@ -16,7 +16,7 @@ function cellActive(windows: FreeDrinkWindow[], dayISO: number, hour: number) {
 
 export default function ScheduleGrid({ windows }: { windows: FreeDrinkWindow[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" data-tour="schedule-grid">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-sm font-medium text-cgi-surface-foreground">Heti ütemterv</span>
         <TooltipProvider>

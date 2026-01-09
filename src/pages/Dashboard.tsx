@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getDataProvider } from "@/lib/dataProvider/providerFactory";
 import { runtimeConfig } from "@/config/runtime";
+import { useTour } from "@/contexts/TourContext";
+import { OnboardingTour } from "@/components/tours/OnboardingTour";
 
 export default function Dashboard() {
   const [effectiveRole, setEffectiveRole] = useState(sessionManager.getEffectiveRole());
@@ -18,6 +20,7 @@ export default function Dashboard() {
   const [apiError, setApiError] = useState<string | null>(null);
   
   const session = sessionManager.getCurrentSession();
+  const { startTour, hasCompletedTour } = useTour();
 
   // Listen for role changes
   useEffect(() => {
@@ -58,6 +61,16 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Auto-start tour for first-time users
+  useEffect(() => {
+    if (session && effectiveRole && !hasCompletedTour('main')) {
+      // Small delay to ensure DOM elements are rendered
+      const timer = setTimeout(() => {
+        startTour('main');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [session, effectiveRole, hasCompletedTour, startTour]);
   if (!session || !effectiveRole) {
     return null;
   }
@@ -81,6 +94,9 @@ export default function Dashboard() {
 
   return (
     <PageLayout>
+      {/* Onboarding Tour */}
+      <OnboardingTour tourName="main" role={effectiveRole} />
+
       {/* API Status */}
       <Card className="cgi-card p-4 mb-4">
         <div className="flex items-center justify-between">
