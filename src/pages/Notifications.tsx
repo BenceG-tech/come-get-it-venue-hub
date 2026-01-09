@@ -59,21 +59,21 @@ export default function Notifications() {
 
   return (
     <PageLayout>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-cgi-surface-foreground">Értesítések</h1>
           <p className="text-cgi-muted-foreground mt-1">
             Push értesítések kezelése a fogyasztói apphoz
           </p>
         </div>
-        <Button onClick={() => { setEditingTemplate(null); setModalOpen(true); }}>
+        <Button onClick={() => { setEditingTemplate(null); setModalOpen(true); }} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Új értesítés
         </Button>
       </div>
 
       {/* Statisztika kártyák */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4">
           <div className="text-sm text-cgi-muted-foreground">Összes sablon</div>
           <div className="text-2xl font-bold text-cgi-surface-foreground">{templates.length}</div>
@@ -114,8 +114,8 @@ export default function Notifications() {
         ) : (
           templates.map(template => (
             <Card key={template.id} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-cgi-surface-foreground">{template.title_hu}</h3>
                     <Badge variant={template.is_active ? 'default' : 'secondary'}>
@@ -138,11 +138,12 @@ export default function Notifications() {
                   </div>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleTestSend(template)}
+                    className="min-h-[44px] min-w-[44px]"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -150,6 +151,7 @@ export default function Notifications() {
                     variant="outline"
                     size="sm"
                     onClick={() => { setEditingTemplate(template); setModalOpen(true); }}
+                    className="min-h-[44px] min-w-[44px]"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -157,6 +159,7 @@ export default function Notifications() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDelete(template.id)}
+                    className="min-h-[44px] min-w-[44px]"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

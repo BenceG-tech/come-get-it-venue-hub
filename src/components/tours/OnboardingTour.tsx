@@ -1,6 +1,7 @@
 import Joyride, { CallBackProps, STATUS, ACTIONS, EVENTS } from 'react-joyride';
 import { useTour } from '@/contexts/TourContext';
 import { getMainTourSteps, venueTourSteps, drinkEditorTourSteps } from './tourSteps';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface OnboardingTourProps {
   tourName: 'main' | 'venue' | 'drinkEditor';
@@ -67,8 +68,23 @@ const locale = {
 
 export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTourProps) {
   const { isRunning, completeTour, skipTour } = useTour();
+  const isMobile = useIsMobile();
   
   const run = isRunning(tourName);
+
+  // Mobile-optimized styles
+  const mobileStyles = {
+    ...tourStyles,
+    options: {
+      ...tourStyles.options,
+      width: 'calc(100vw - 32px)',
+    },
+    tooltip: {
+      ...tourStyles.tooltip,
+      maxWidth: 'calc(100vw - 32px)',
+      margin: '0 16px',
+    },
+  };
 
   // Get the appropriate steps based on tour name
   const getSteps = () => {
@@ -110,11 +126,13 @@ export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTou
       scrollToFirstStep
       spotlightClicks
       disableOverlayClose
-      styles={tourStyles}
+      styles={isMobile ? mobileStyles : tourStyles}
       locale={locale}
       callback={handleCallback}
+      scrollOffset={100}
       floaterProps={{
         disableAnimation: false,
+        placement: isMobile ? 'center' : 'auto',
       }}
     />
   );

@@ -27,7 +27,7 @@ export function PageLayout({ children, className = "py-4 sm:py-8" }: PageLayoutP
         {isAdmin && (
           <div className="absolute inset-0 bg-black/20 pointer-events-none" />
         )}
-        <div className={`cgi-container px-4 sm:px-6 lg:px-8 ${className} relative z-10`}>
+        <div className={`cgi-container px-4 sm:px-6 lg:px-8 pt-14 lg:pt-0 ${className} relative z-10`}>
           {children}
         </div>
       </main>
