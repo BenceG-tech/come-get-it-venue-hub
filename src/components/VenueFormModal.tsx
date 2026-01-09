@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
@@ -19,6 +20,7 @@ import BusinessHoursEditor from './BusinessHoursEditor';
 import VenueMapPreview from './VenueMapPreview';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface VenueFormModalProps {
   venue?: Venue;
@@ -34,6 +36,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string>('');
   const { toast } = useToast();
   const drinkSelectorRef = useRef<EnhancedDrinkSelectorRef>(null);
+  const isMobile = useIsMobile();
   const [formData, setFormData] = useState<Partial<Venue>>({
     name: venue?.name || '',
     address: venue?.address || '',
@@ -295,33 +298,23 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] bg-cgi-surface border-cgi-muted max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-cgi-surface-foreground">
-            {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-10">
-              <TabsTrigger value="basic" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-4">Alapok</TabsTrigger>
-              <TabsTrigger value="contact" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-4">Kontakt</TabsTrigger>
-              <TabsTrigger value="images" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-4">Képek</TabsTrigger>
-              <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-4">Italok</TabsTrigger>
-              <TabsTrigger value="hours" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-4">Nyitva</TabsTrigger>
-              <TabsTrigger value="caps" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-4">Limitek</TabsTrigger>
-            </TabsList>
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Tabs defaultValue="basic" className="w-full">
+        <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-auto min-h-[40px] flex-wrap sm:flex-nowrap p-1">
+          <TabsTrigger value="basic" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Alapok</TabsTrigger>
+          <TabsTrigger value="contact" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Kontakt</TabsTrigger>
+          <TabsTrigger value="images" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Képek</TabsTrigger>
+          <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Italok</TabsTrigger>
+          <TabsTrigger value="hours" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Nyitva</TabsTrigger>
+          <TabsTrigger value="caps" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Limitek</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="basic" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-cgi-surface-foreground">Név *</Label>
-                  <Input
+        <TabsContent value="basic" className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-cgi-surface-foreground">Név *</Label>
+              <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -429,7 +422,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                     A GPS koordináták segítenek a pontos helyszín meghatározásában térképes alkalmazásokban. 
                     Ha nem tölti ki, a rendszer a címből próbálja meghatározni a helyszínt.
                   </p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-cgi-surface-foreground">Szélesség (Latitude)</Label>
                       <Input
@@ -565,7 +558,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             </TabsContent>
 
             <TabsContent value="caps" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-1">
                     <Label htmlFor="daily-cap" className="text-cgi-surface-foreground">Napi limit</Label>
@@ -669,15 +662,48 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-end space-x-4 pt-4 border-t border-cgi-muted">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary" disabled={saving || geocoding}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t border-cgi-muted">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto" disabled={saving || geocoding}>
               Mégse
             </Button>
-            <Button type="submit" className="cgi-button-primary" disabled={saving || geocoding}>
+            <Button type="submit" className="cgi-button-primary w-full sm:w-auto" disabled={saving || geocoding}>
               {geocoding ? 'Geocoding...' : saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
             </Button>
           </div>
         </form>
+  );
+
+  // Use Sheet on mobile, Dialog on desktop
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          {trigger}
+        </SheetTrigger>
+        <SheetContent side="bottom" className="h-[95vh] overflow-y-auto bg-cgi-surface border-cgi-muted p-4">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-cgi-surface-foreground">
+              {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
+            </SheetTitle>
+          </SheetHeader>
+          {formContent}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[900px] bg-cgi-surface border-cgi-muted max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-cgi-surface-foreground">
+            {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
+          </DialogTitle>
+        </DialogHeader>
+        {formContent}
       </DialogContent>
     </Dialog>
   );

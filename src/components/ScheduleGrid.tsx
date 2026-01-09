@@ -1,6 +1,8 @@
 import { FreeDrinkWindow } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import ScheduleGridMobile from './ScheduleGridMobile';
 
 export const days = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 const hours = Array.from({ length: 24 }, (_, i) => i); // 0..23
@@ -15,6 +17,13 @@ function cellActive(windows: FreeDrinkWindow[], dayISO: number, hour: number) {
 }
 
 export default function ScheduleGrid({ windows }: { windows: FreeDrinkWindow[] }) {
+  const isMobile = useIsMobile();
+
+  // On mobile, show a simplified list view
+  if (isMobile) {
+    return <ScheduleGridMobile windows={windows} />;
+  }
+
   return (
     <div className="overflow-x-auto" data-tour="schedule-grid">
       <div className="flex items-center gap-2 mb-2">
