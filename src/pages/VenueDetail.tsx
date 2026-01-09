@@ -286,7 +286,7 @@ export default function VenueDetail() {
           ) : null;
         })()}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="kpi-cards">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="kpi-cards">
           <KPICard 
             title="Mai forgalom" 
             value={formatCurrency(123456)} 
@@ -327,17 +327,17 @@ export default function VenueDetail() {
         </div>
 
         <Tabs defaultValue="free-drinks" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 cgi-tabs-list">
-            <TabsTrigger value="free-drinks" className="cgi-tabs-trigger" data-tour="free-drinks-tab">
+          <TabsList className="w-full overflow-x-auto no-scrollbar flex justify-start gap-1 cgi-tabs-list h-auto min-h-[44px] p-1">
+            <TabsTrigger value="free-drinks" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm" data-tour="free-drinks-tab">
               Ingyenes italok
             </TabsTrigger>
-            <TabsTrigger value="business-hours" className="cgi-tabs-trigger">
+            <TabsTrigger value="business-hours" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm">
               Nyitvatartás
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="cgi-tabs-trigger">
+            <TabsTrigger value="analytics" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm">
               Elemzések
             </TabsTrigger>
-            <TabsTrigger value="settings" className="cgi-tabs-trigger">
+            <TabsTrigger value="settings" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm">
               Beállítások
             </TabsTrigger>
           </TabsList>

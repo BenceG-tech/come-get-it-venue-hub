@@ -15,12 +15,15 @@ import { Sidebar } from "@/components/Sidebar";
 import { ChartCard } from "@/components/ChartCard";
 import { mockAnalyticsData } from "@/lib/mockData";
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import AnalyticsHeatmapMobile from '@/components/AnalyticsHeatmapMobile';
 
 const COLORS = ['#1fb1b7', '#1fb1b7'];
 
 export default function Analytics() {
   const { redemption_timeseries, user_activity, hourly_heatmap } = mockAnalyticsData;
   const [selectedCell, setSelectedCell] = useState<{ day: string; hour: number; value: number } | null>(null);
+  const isMobile = useIsMobile();
   
   const pieData = [
     { name: 'Új felhasználók', value: user_activity.new_users },
@@ -71,7 +74,7 @@ export default function Analytics() {
             className="mb-8"
             tooltip="Ez a grafikon mutatja az italbeváltások számának alakulását az aktuális és az előző hét során. A folyamatos vonal az aktuális hetet, a szaggatott vonal az előző hetet jelöli."
           >
-            <ResponsiveContainer width="100%" height={400}>
+            <ResponsiveContainer width="100%" height={isMobile ? 250 : 400}>
               <LineChart data={redemption_timeseries.current_week}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--cgi-muted))" />
                 <XAxis 
@@ -157,75 +160,79 @@ export default function Analytics() {
               </div>
             </ChartCard>
 
-            {/* Redesigned Hourly Heatmap */}
+            {/* Redesigned Hourly Heatmap - Show mobile version on small screens */}
             <ChartCard 
-              title="Óránkénti csúcsok hőtérképe"
-              tooltip="Ez a hőtérkép a hét minden napjára és 24 órára lebontva mutatja az italbeváltások számát. A sötétebb színek magasabb aktivitást jeleznek. Kattintson egy cellára a részletes adatokért."
+              title="Óránkénti csúcsok"
+              tooltip="Ez a hőtérkép a hét minden napjára és 24 órára lebontva mutatja az italbeváltások számát. A sötétebb színek magasabb aktivitást jeleznek."
             >
-              <div className="space-y-4">
-                {/* Hour Labels */}
-                <div className="overflow-x-auto">
-                  <div className="min-w-[600px]">
-                    <div className="flex mb-2">
-                      <div className="w-12"></div>
-                      {hours.filter((_, i) => i % 3 === 0).map((hour) => (
-                        <div key={hour} className="flex-1 text-center text-xs text-cgi-muted-foreground min-w-[20px]">
-                          {hour}h
-                        </div>
+              {isMobile ? (
+                <AnalyticsHeatmapMobile heatmapData={hourly_heatmap} />
+              ) : (
+                <div className="space-y-4">
+                  {/* Hour Labels */}
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[600px]">
+                      <div className="flex mb-2">
+                        <div className="w-12"></div>
+                        {hours.filter((_, i) => i % 3 === 0).map((hour) => (
+                          <div key={hour} className="flex-1 text-center text-xs text-cgi-muted-foreground min-w-[20px]">
+                            {hour}h
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Heatmap Grid */}
+                      <div className="space-y-1">
+                        {days.map((day, dayIndex) => (
+                          <div key={day} className="flex items-center gap-1">
+                            <div className="w-12 text-xs text-cgi-muted-foreground text-right pr-2 font-medium">
+                              {dayAbbr[dayIndex]}
+                            </div>
+                            <div className="flex gap-px flex-1">
+                              {hourly_heatmap[dayIndex].map((value, hourIndex) => (
+                                <div
+                                  key={`${dayIndex}-${hourIndex}`}
+                                  className="h-6 flex-1 min-w-[8px] rounded-sm border border-cgi-muted/20 cursor-pointer hover:ring-2 hover:ring-cgi-primary transition-all duration-200"
+                                  style={{ backgroundColor: getHeatmapColor(value) }}
+                                  title={`${day} ${hours[hourIndex]}:00 - ${value} beváltás`}
+                                  onClick={() => handleCellClick(dayIndex, hourIndex, value)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex items-center justify-between text-xs text-cgi-muted-foreground">
+                    <span>Kevesebb</span>
+                    <div className="flex gap-1">
+                      {[0, 0.2, 0.4, 0.6, 0.8, 1].map((intensity) => (
+                        <div
+                          key={intensity}
+                          className="h-4 w-4 rounded border border-cgi-muted/20"
+                          style={{ backgroundColor: intensity === 0 ? 'hsl(var(--cgi-muted))' : `rgba(6, 182, 212, ${intensity})` }}
+                        />
                       ))}
                     </div>
-                    
-                    {/* Heatmap Grid */}
-                    <div className="space-y-1">
-                      {days.map((day, dayIndex) => (
-                        <div key={day} className="flex items-center gap-1">
-                          <div className="w-12 text-xs text-cgi-muted-foreground text-right pr-2 font-medium">
-                            {dayAbbr[dayIndex]}
-                          </div>
-                          <div className="flex gap-px flex-1">
-                            {hourly_heatmap[dayIndex].map((value, hourIndex) => (
-                              <div
-                                key={`${dayIndex}-${hourIndex}`}
-                                className="h-6 flex-1 min-w-[8px] rounded-sm border border-cgi-muted/20 cursor-pointer hover:ring-2 hover:ring-cgi-primary transition-all duration-200"
-                                style={{ backgroundColor: getHeatmapColor(value) }}
-                                title={`${day} ${hours[hourIndex]}:00 - ${value} beváltás`}
-                                onClick={() => handleCellClick(dayIndex, hourIndex, value)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <span>Több</span>
                   </div>
-                </div>
 
-                {/* Legend */}
-                <div className="flex items-center justify-between text-xs text-cgi-muted-foreground">
-                  <span>Kevesebb</span>
-                  <div className="flex gap-1">
-                    {[0, 0.2, 0.4, 0.6, 0.8, 1].map((intensity) => (
-                      <div
-                        key={intensity}
-                        className="h-4 w-4 rounded border border-cgi-muted/20"
-                        style={{ backgroundColor: intensity === 0 ? 'hsl(var(--cgi-muted))' : `rgba(6, 182, 212, ${intensity})` }}
-                      />
-                    ))}
-                  </div>
-                  <span>Több</span>
+                  {/* Selected Cell Info */}
+                  {selectedCell && (
+                    <div className="mt-4 p-3 bg-cgi-surface rounded-lg border border-cgi-muted">
+                      <div className="text-sm text-cgi-surface-foreground">
+                        <strong>{selectedCell.day}</strong> {selectedCell.hour}:00 - {selectedCell.hour + 1}:00
+                      </div>
+                      <div className="text-lg font-bold text-cgi-primary">
+                        {selectedCell.value} beváltás
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Selected Cell Info */}
-                {selectedCell && (
-                  <div className="mt-4 p-3 bg-cgi-surface rounded-lg border border-cgi-muted">
-                    <div className="text-sm text-cgi-surface-foreground">
-                      <strong>{selectedCell.day}</strong> {selectedCell.hour}:00 - {selectedCell.hour + 1}:00
-                    </div>
-                    <div className="text-lg font-bold text-cgi-primary">
-                      {selectedCell.value} beváltás
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </ChartCard>
           </div>
         </div>

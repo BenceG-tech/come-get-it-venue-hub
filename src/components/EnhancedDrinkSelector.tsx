@@ -372,8 +372,8 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
             <Card key={drink.id} className="p-4 cgi-card">
               <div className="space-y-3">
                 {/* Basic drink info */}
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 grid grid-cols-3 gap-3 items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Input
                       value={drink.drinkName}
                       onChange={(e) => updateDrink(drink.id, { drinkName: e.target.value })}
@@ -414,7 +414,7 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center justify-end gap-2 mt-2 sm:mt-0">
                     <Button
                       type="button"
                       onClick={() => setExpandedDrink(expandedDrink === drink.id ? null : drink.id)}
@@ -595,7 +595,7 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
         <Label className="text-cgi-surface-foreground font-semibold">Új ital hozzáadása</Label>
         <Card className="p-4 cgi-card">
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Input
                 value={newDrink.drinkName || ''}
                 onChange={(e) => setNewDrink({ ...newDrink, drinkName: e.target.value })}
@@ -620,10 +620,11 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2 cursor-help" data-tour="free-drink-checkbox">
+                    <div className="flex items-center space-x-2 cursor-help min-h-[44px]" data-tour="free-drink-checkbox">
                       <Checkbox
                         checked={newDrink.is_free_drink || false}
                         onCheckedChange={handleFreeDrinkToggle}
+                        className="h-5 w-5"
                       />
                       <span className="text-sm text-cgi-muted-foreground">
                         Ingyenes {newDrink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
