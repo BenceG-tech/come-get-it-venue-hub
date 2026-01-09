@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageUploadInput } from './ImageUploadInput';
 import { useToast } from '@/hooks/use-toast';
 import BusinessHoursEditor from './BusinessHoursEditor';
@@ -566,7 +567,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             <TabsContent value="caps" className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="daily-cap" className="text-cgi-surface-foreground">Napi limit</Label>
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor="daily-cap" className="text-cgi-surface-foreground">Napi limit</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-cgi-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Maximum ennyi ingyenes italt lehet beváltani naponta összesen ezen a helyszínen.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <Input
                     id="daily-cap"
                     type="number"
