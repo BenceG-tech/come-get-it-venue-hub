@@ -1,5 +1,5 @@
 
-import { Sidebar } from "@/components/Sidebar";
+import { PageLayout } from "@/components/PageLayout";
 import { DataTable } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { mockRedemptions, formatCurrency, formatTime } from "@/lib/mockData";
@@ -61,26 +61,21 @@ export default function Redemptions() {
   ];
 
   return (
-    <div className="cgi-page flex">
-      <Sidebar />
-      <main className="flex-1 lg:ml-0 min-h-screen">
-        <div className="cgi-container py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Beváltások</h1>
-            <p className="text-cgi-muted-foreground">
-              A Come Get It alkalmazáson keresztül beváltott italok listája
-            </p>
-          </div>
+    <PageLayout>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Beváltások</h1>
+        <p className="text-cgi-muted-foreground">
+          A Come Get It alkalmazáson keresztül beváltott italok listája
+        </p>
+      </div>
 
-          <div className="cgi-card">
-            <DataTable 
-              data={mockRedemptions}
-              columns={columns}
-              searchPlaceholder="Keresés beváltások között..."
-            />
-          </div>
-        </div>
-      </main>
-    </div>
+      <div className="cgi-card">
+        <DataTable 
+          data={mockRedemptions}
+          columns={columns}
+          searchPlaceholder="Keresés beváltások között..."
+        />
+      </div>
+    </PageLayout>
   );
 }

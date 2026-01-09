@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Sidebar } from "@/components/Sidebar";
+import { PageLayout } from "@/components/PageLayout";
 import { DataTable } from "@/components/DataTable";
 import { RewardFormModal } from "@/components/RewardFormModal";
 import { Badge } from "@/components/ui/badge";
@@ -96,29 +96,24 @@ export default function Rewards() {
   ];
 
   return (
-    <div className="cgi-page flex">
-      <Sidebar />
-      <main className="flex-1 lg:ml-0 min-h-screen">
-        <div className="cgi-container py-8">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Jutalmak</h1>
-              <p className="text-cgi-muted-foreground">
-                A pontgyűjtési rendszer jutalmainak kezelése
-              </p>
-            </div>
-            <RewardFormModal onSubmit={handleCreateReward} />
-          </div>
-
-          <div className="cgi-card">
-            <DataTable 
-              data={rewards}
-              columns={columns}
-              searchPlaceholder="Keresés jutalmak között..."
-            />
-          </div>
+    <PageLayout>
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Jutalmak</h1>
+          <p className="text-cgi-muted-foreground">
+            A pontgyűjtési rendszer jutalmainak kezelése
+          </p>
         </div>
-      </main>
-    </div>
+        <RewardFormModal onSubmit={handleCreateReward} />
+      </div>
+
+      <div className="cgi-card">
+        <DataTable 
+          data={rewards}
+          columns={columns}
+          searchPlaceholder="Keresés jutalmak között..."
+        />
+      </div>
+    </PageLayout>
   );
 }
