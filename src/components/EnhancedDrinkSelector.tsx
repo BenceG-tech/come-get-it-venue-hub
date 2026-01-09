@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Upload, Clock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Trash2, Upload, Clock, HelpCircle } from 'lucide-react';
 import { VenueDrink, FreeDrinkWindow } from '@/lib/types';
 import { SimpleImageInput } from './SimpleImageInput';
 import { TimeRangeInput } from './TimeRangeInput';
@@ -394,15 +395,24 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={drink.is_free_drink}
-                        onCheckedChange={(checked) => updateDrink(drink.id, { is_free_drink: !!checked })}
-                      />
-                      <span className="text-sm text-cgi-muted-foreground">
-                        Ingyenes {drink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
-                      </span>
-                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center space-x-2 cursor-help">
+                            <Checkbox
+                              checked={drink.is_free_drink}
+                              onCheckedChange={(checked) => updateDrink(drink.id, { is_free_drink: !!checked })}
+                            />
+                            <span className="text-sm text-cgi-muted-foreground">
+                              Ingyenes {drink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Ha bejelölöd, ez az ital ingyen lesz elérhető a megadott időablakokban.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
                     <Button
@@ -464,16 +474,26 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                               </span>
                             )}
                           </div>
-                          <Button
-                            type="button"
-                            onClick={() => addTimeWindow(drink.id)}
-                            size="sm"
-                            variant="outline"
-                            className="bg-cgi-muted/50 border-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted"
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Időablak hozzáadása
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  onClick={() => addTimeWindow(drink.id)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-cgi-muted/50 border-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted"
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Időablak hozzáadása
+                                  <HelpCircle className="h-3 w-3 ml-1 opacity-60" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>Több időablakra akkor van szükség, ha az ingyenes ital különböző időszakokban érhető el (pl. reggel 10-12 ÉS este 18-21). Ha végig ugyanaz az időszak, elég egy időablak.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                         
                         {getDrinkWindows(drink.id).length === 0 && (
@@ -597,15 +617,24 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  checked={newDrink.is_free_drink || false}
-                  onCheckedChange={handleFreeDrinkToggle}
-                />
-                <span className="text-sm text-cgi-muted-foreground">
-                  Ingyenes {newDrink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
-                </span>
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center space-x-2 cursor-help">
+                      <Checkbox
+                        checked={newDrink.is_free_drink || false}
+                        onCheckedChange={handleFreeDrinkToggle}
+                      />
+                      <span className="text-sm text-cgi-muted-foreground">
+                        Ingyenes {newDrink.is_free_drink && <Clock className="inline h-3 w-3 ml-1" />}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Ha bejelölöd, ez az ital ingyen lesz elérhető a megadott időablakokban.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             <SimpleImageInput
@@ -627,16 +656,26 @@ export const EnhancedDrinkSelector = forwardRef<EnhancedDrinkSelectorRef, Enhanc
                       </span>
                     )}
                   </div>
-                  <Button
-                    type="button"
-                    onClick={addNewTimeWindow}
-                    size="sm"
-                    variant="outline"
-                    className="bg-cgi-muted/50 border-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Időablak hozzáadása
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          onClick={addNewTimeWindow}
+                          size="sm"
+                          variant="outline"
+                          className="bg-cgi-muted/50 border-cgi-muted text-cgi-surface-foreground hover:bg-cgi-muted"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Időablak hozzáadása
+                          <HelpCircle className="h-3 w-3 ml-1 opacity-60" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Több időablakra akkor van szükség, ha az ingyenes ital különböző időszakokban érhető el (pl. reggel 10-12 ÉS este 18-21). Ha végig ugyanaz az időszak, elég egy időablak.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 
                 {newWindows.length === 0 && (
