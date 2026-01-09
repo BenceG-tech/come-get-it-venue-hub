@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { RouteGuard } from "@/components/RouteGuard";
+import { TourProvider } from "@/contexts/TourContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ConsumerApp from "./pages/ConsumerApp";
@@ -35,11 +36,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Admin login */}
-            <Route path="/" element={<Login />} />
+      <TourProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Admin login */}
+              <Route path="/" element={<Login />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             
             {/* Consumer app */}
@@ -126,7 +128,8 @@ const App = () => {
         <Toaster />
         <Sonner />
       </TooltipProvider>
-    </QueryClientProvider>
+    </TourProvider>
+  </QueryClientProvider>
   );
 };
 

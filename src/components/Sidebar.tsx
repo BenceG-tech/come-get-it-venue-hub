@@ -17,7 +17,8 @@ import {
   TrendingUp,
   ChevronDown,
   Landmark,
-  Bell
+  Bell,
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -27,19 +28,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTour } from "@/contexts/TourContext";
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'] },
-  { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'] },
-  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'] },
-  { name: 'Banki Tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'] },
-  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'] },
-  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'] },
-  { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'] },
-  { name: 'Venue Összehasonlítás', href: '/venues/comparison', icon: TrendingUp, roles: ['cgi_admin'] },
-  { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'] },
-  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'] },
-  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard' },
+  { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions' },
+  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-transactions' },
+  { name: 'Banki Tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'], tourId: 'nav-saltedge' },
+  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards' },
+  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'], tourId: 'nav-analytics' },
+  { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues' },
+  { name: 'Venue Összehasonlítás', href: '/venues/comparison', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-comparison' },
+  { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'], tourId: 'nav-brands' },
+  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications' },
+  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-settings' },
 ];
 
 const roleLabels = {
@@ -56,6 +58,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
+  const { startTour, hasCompletedTour } = useTour();
 
   // Listen for role changes
   useEffect(() => {
@@ -116,7 +119,7 @@ export function Sidebar() {
       `}>
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center gap-2 px-6 border-b border-cgi-muted">
+          <div className="flex h-16 items-center gap-2 px-6 border-b border-cgi-muted" data-tour="sidebar-header">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cgi-secondary">
               <Users className="h-5 w-5 text-cgi-primary" />
             </div>
@@ -137,6 +140,7 @@ export function Sidebar() {
                 <Link
                   key={item.name}
                   to={item.href}
+                  data-tour={item.tourId}
                   className={`cgi-nav-item ${isActive ? 'active' : ''} ${
                     isActive && effectiveRole === 'cgi_admin' ? 'admin-active' : ''
                   }`}
@@ -152,7 +156,7 @@ export function Sidebar() {
           <div className="border-t border-cgi-muted p-4 space-y-4">
             {/* Role Preview Dropdown - Only for admins */}
             {isAdmin && (
-              <div className="mb-4">
+              <div className="mb-4" data-tour="role-switcher">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -213,15 +217,27 @@ export function Sidebar() {
               </div>
             </div>
             
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="w-full justify-start cgi-button-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Kijelentkezés
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => startTour('main')}
+                className="flex-1 justify-start cgi-button-ghost"
+                data-tour="help-button"
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Súgó
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="flex-1 justify-start cgi-button-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Kilépés
+              </Button>
+            </div>
           </div>
         </div>
       </div>
