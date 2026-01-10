@@ -97,8 +97,8 @@ export function AdminDashboard() {
           tooltip="A legjobban teljesítő helyszínek bevétel alapján rangsorolva. Ez segít azonosítani a sikeres partnereket és a legjobb gyakorlatokat."
         >
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockTopVenuesData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+            <BarChart data={mockTopVenuesData} layout="vertical" style={{ backgroundColor: 'transparent' }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={true} vertical={false} />
               <XAxis type="number" stroke="#9ca3af" fontSize={12} />
               <YAxis 
                 dataKey="name" 
@@ -120,6 +120,7 @@ export function AdminDashboard() {
                 dataKey="revenue" 
                 fill="hsl(var(--cgi-role-admin))"
                 radius={[0, 4, 4, 0]}
+                background={{ fill: 'transparent' }}
               />
             </BarChart>
           </ResponsiveContainer>
