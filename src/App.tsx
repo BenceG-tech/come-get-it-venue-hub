@@ -22,6 +22,9 @@ import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
+import POSRedeem from "./pages/pos/POSRedeem";
+import POSHistory from "./pages/pos/POSHistory";
+import { POSGuard } from "@/components/POSGuard";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +123,19 @@ const App = () => {
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <Notifications />
               </RouteGuard>
+            } />
+
+            {/* POS Routes */}
+            <Route path="/pos" element={<Navigate to="/pos/redeem" replace />} />
+            <Route path="/pos/redeem" element={
+              <POSGuard>
+                <POSRedeem />
+              </POSGuard>
+            } />
+            <Route path="/pos/history" element={
+              <POSGuard>
+                <POSHistory />
+              </POSGuard>
             } />
             
             <Route path="*" element={<NotFound />} />

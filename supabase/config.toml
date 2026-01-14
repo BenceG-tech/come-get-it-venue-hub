@@ -165,3 +165,9 @@ verify_jwt = false
 
 [functions.geocode-address]
 verify_jwt = false
+
+[functions.issue-redemption-token]
+verify_jwt = false
+
+[functions.consume-redemption-token]
+verify_jwt = false
