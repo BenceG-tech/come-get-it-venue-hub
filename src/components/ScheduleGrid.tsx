@@ -35,6 +35,7 @@ export default function ScheduleGrid({ windows }: { windows: FreeDrinkWindow[] }
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <p>A kiemelt cellák jelzik, mikor érhető el az ingyenes ital. A sorok a napokat (H-V), az oszlopok az órákat (0-23) jelölik.</p>
+              <p className="mt-1 text-xs text-muted-foreground">💡 Napok formátum: 1=Hétfő, 2=Kedd, 3=Szerda, 4=Csütörtök, 5=Péntek, 6=Szombat, 7=Vasárnap (ISO 8601)</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
