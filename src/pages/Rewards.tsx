@@ -1,43 +1,141 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { DataTable } from "@/components/DataTable";
 import { RewardFormModal } from "@/components/RewardFormModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
-import { mockRewards } from "@/lib/mockData";
-import { Reward } from "@/lib/types";
+import { Edit, Trash2, Gift, Utensils, Star, Percent, PartyPopper, Handshake, Globe } from "lucide-react";
+import { Reward, RewardCategory } from "@/lib/types";
+import { supabaseProvider } from "@/lib/dataProvider/supabaseProvider";
+import { useToast } from "@/hooks/use-toast";
+
+const categoryIcons: Record<RewardCategory, React.ReactNode> = {
+  drink: <Gift className="h-4 w-4" />,
+  food: <Utensils className="h-4 w-4" />,
+  vip: <Star className="h-4 w-4" />,
+  discount: <Percent className="h-4 w-4" />,
+  experience: <PartyPopper className="h-4 w-4" />,
+  partner: <Handshake className="h-4 w-4" />
+};
+
+const categoryLabels: Record<RewardCategory, string> = {
+  drink: 'Ital',
+  food: 'Étel',
+  vip: 'VIP',
+  discount: 'Kedvezmény',
+  experience: 'Élmény',
+  partner: 'Partner'
+};
 
 export default function Rewards() {
-  const [rewards, setRewards] = useState(mockRewards);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const handleCreateReward = (newReward: Omit<Reward, 'id'>) => {
-    const reward: Reward = {
-      ...newReward,
-      id: `rew-${Date.now()}`
-    };
-    setRewards(prev => [...prev, reward]);
+  const fetchRewards = async () => {
+    try {
+      setLoading(true);
+      const data = await supabaseProvider.getList<Reward>('rewards', {
+        orderBy: 'priority',
+        orderDir: 'desc'
+      });
+      setRewards(data);
+    } catch (error) {
+      console.error('Failed to fetch rewards:', error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült betölteni a jutalmakat",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateReward = (updatedReward: Omit<Reward, 'id'>, rewardId: string) => {
-    setRewards(prev => prev.map(reward => 
-      reward.id === rewardId 
-        ? { ...updatedReward, id: rewardId }
-        : reward
-    ));
+  useEffect(() => {
+    fetchRewards();
+  }, []);
+
+  const handleCreateReward = async (newReward: Omit<Reward, 'id'>) => {
+    try {
+      await supabaseProvider.create('rewards', newReward);
+      toast({
+        title: "Siker",
+        description: "Jutalom létrehozva"
+      });
+      fetchRewards();
+    } catch (error) {
+      console.error('Failed to create reward:', error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült létrehozni a jutalmat",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteReward = (rewardId: string) => {
-    setRewards(prev => prev.filter(reward => reward.id !== rewardId));
+  const handleUpdateReward = async (updatedReward: Omit<Reward, 'id'>, rewardId: string) => {
+    try {
+      await supabaseProvider.update('rewards', rewardId, updatedReward);
+      toast({
+        title: "Siker",
+        description: "Jutalom frissítve"
+      });
+      fetchRewards();
+    } catch (error) {
+      console.error('Failed to update reward:', error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült frissíteni a jutalmat",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteReward = async (rewardId: string) => {
+    try {
+      await supabaseProvider.remove('rewards', rewardId);
+      toast({
+        title: "Siker",
+        description: "Jutalom törölve"
+      });
+      fetchRewards();
+    } catch (error) {
+      console.error('Failed to delete reward:', error);
+      toast({
+        title: "Hiba",
+        description: "Nem sikerült törölni a jutalmat",
+        variant: "destructive"
+      });
+    }
   };
 
   const columns = [
     {
       key: 'name' as keyof Reward,
       label: 'Jutalom neve',
-      render: (value: string) => (
-        <span className="font-medium text-cgi-surface-foreground">{value}</span>
+      render: (value: string, item: Reward) => (
+        <div className="flex items-center gap-2">
+          {item.is_global && (
+            <span title="Globális jutalom">
+              <Globe className="h-4 w-4 text-cgi-secondary" />
+            </span>
+          )}
+          <span className="font-medium text-cgi-surface-foreground">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'category' as keyof Reward,
+      label: 'Kategória',
+      render: (value: RewardCategory | undefined) => value ? (
+        <div className="flex items-center gap-1.5">
+          {categoryIcons[value]}
+          <span className="text-cgi-surface-foreground">{categoryLabels[value]}</span>
+        </div>
+      ) : (
+        <span className="text-cgi-muted-foreground">-</span>
       )
     },
     {
@@ -48,6 +146,13 @@ export default function Rewards() {
           <span className="font-medium text-cgi-secondary">{value}</span>
           <span className="text-xs text-cgi-muted-foreground">pt</span>
         </div>
+      )
+    },
+    {
+      key: 'priority' as keyof Reward,
+      label: 'Prioritás',
+      render: (value: number | undefined) => (
+        <span className="text-cgi-surface-foreground">{value ?? 0}</span>
       )
     },
     {
@@ -108,11 +213,17 @@ export default function Rewards() {
       </div>
 
       <div className="cgi-card">
-        <DataTable 
-          data={rewards}
-          columns={columns}
-          searchPlaceholder="Keresés jutalmak között..."
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cgi-primary"></div>
+          </div>
+        ) : (
+          <DataTable 
+            data={rewards}
+            columns={columns}
+            searchPlaceholder="Keresés jutalmak között..."
+          />
+        )}
       </div>
     </PageLayout>
   );

@@ -183,6 +183,8 @@ export interface Transaction {
   venue_id: string;
 }
 
+export type RewardCategory = 'drink' | 'food' | 'vip' | 'discount' | 'experience' | 'partner';
+
 export interface Reward {
   id: string;
   name: string;
@@ -191,9 +193,19 @@ export interface Reward {
   active: boolean;
   description?: string;
   venue_id: string;
-
-  // Already present, retained for completeness
   image_url?: string;
+  
+  // New unified fields
+  category?: RewardCategory;
+  is_global?: boolean;
+  partner_id?: string;
+  partner_name?: string;  // Enriched from partner venue
+  priority?: number;
+  terms_conditions?: string;
+  max_redemptions?: number;
+  current_redemptions?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AnalyticsData {
