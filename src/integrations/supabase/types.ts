@@ -367,44 +367,120 @@ export type Database = {
           },
         ]
       }
+      reward_redemptions: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          redeemed_at: string
+          reward_id: string
+          staff_id: string | null
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          redeemed_at?: string
+          reward_id: string
+          staff_id?: string | null
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          redeemed_at?: string
+          reward_id?: string
+          staff_id?: string | null
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rewards: {
         Row: {
           active: boolean
+          category: string | null
           created_at: string
+          current_redemptions: number | null
           description: string | null
           id: string
           image_url: string | null
+          is_global: boolean | null
+          max_redemptions: number | null
           name: string
+          partner_id: string | null
           points_required: number
+          priority: number | null
+          terms_conditions: string | null
           updated_at: string
           valid_until: string
           venue_id: string
         }
         Insert: {
           active?: boolean
+          category?: string | null
           created_at?: string
+          current_redemptions?: number | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_global?: boolean | null
+          max_redemptions?: number | null
           name: string
+          partner_id?: string | null
           points_required: number
+          priority?: number | null
+          terms_conditions?: string | null
           updated_at?: string
           valid_until: string
           venue_id: string
         }
         Update: {
           active?: boolean
+          category?: string | null
           created_at?: string
+          current_redemptions?: number | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_global?: boolean | null
+          max_redemptions?: number | null
           name?: string
+          partner_id?: string | null
           points_required?: number
+          priority?: number | null
+          terms_conditions?: string | null
           updated_at?: string
           valid_until?: string
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rewards_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rewards_venue_id_fkey"
             columns: ["venue_id"]
