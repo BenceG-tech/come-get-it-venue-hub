@@ -40,10 +40,11 @@ function isWindowActive(
   timezone: string,
   now: Date
 ): boolean {
-  // Get current day (0 = Sunday, 1 = Monday, etc.)
-  const currentDay = now.getDay();
+  // Convert JavaScript day (0=Sunday, 1-6=Monday-Saturday) to ISO day (1=Monday, 7=Sunday)
+  const jsDay = now.getDay(); // 0-6 where 0=Sunday
+  const isoDay = jsDay === 0 ? 7 : jsDay; // Convert to 1-7 where 1=Monday, 7=Sunday
   
-  if (!days.includes(currentDay)) {
+  if (!days.includes(isoDay)) {
     return false;
   }
 
