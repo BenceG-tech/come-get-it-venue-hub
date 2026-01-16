@@ -18,6 +18,7 @@ import Venues from "./pages/Venues";
 import VenueDetail from "./pages/VenueDetail";
 import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
+import Promotions from "./pages/Promotions";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
@@ -104,6 +105,12 @@ const App = () => {
             <Route path="/brands" element={
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <Brands />
+              </RouteGuard>
+            } />
+            
+            <Route path="/promotions" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <Promotions />
               </RouteGuard>
             } />
             

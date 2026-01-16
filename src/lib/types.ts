@@ -122,13 +122,24 @@ export interface Venue {
   };
 }
 
+// Updated Brand interface with Supabase fields
 export interface Brand {
   id: string;
   name: string;
-  logoUrl?: string;
-  contactName?: string;
-  contactEmail?: string;
+  logo_url?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  product_categories?: string[];
+  product_keywords?: string[];
+  contract_start?: string;
+  contract_end?: string;
+  monthly_budget?: number;
+  spent_this_month?: number;
+  is_active?: boolean;
   notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface BrandCampaign {
@@ -321,4 +332,111 @@ export interface NotificationStats {
   clicked_count: number;
   open_rate: number; // %
   click_rate: number; // %
+}
+
+// ===== PROMOTIONS SYSTEM TYPES =====
+
+export type PromotionRuleType = 
+  | 'category_multiplier' 
+  | 'brand_bonus' 
+  | 'time_bonus' 
+  | 'spending_tier' 
+  | 'combo_bonus';
+
+export type PromotionScopeType = 'global' | 'venue_list';
+
+export interface CategoryMultiplierConfig {
+  category: string;
+  multiplier: number;
+}
+
+export interface BrandBonusConfig {
+  brand_id: string;
+  bonus_points: number;
+  discount_percent?: number;
+}
+
+export interface TimeBonusConfig {
+  multiplier: number;
+}
+
+export interface SpendingTierConfig {
+  min_amount: number;
+  bonus_points: number;
+}
+
+export interface ComboBonusConfig {
+  required_categories: string[];
+  bonus_points: number;
+}
+
+export type PromotionRuleConfig = 
+  | CategoryMultiplierConfig 
+  | BrandBonusConfig 
+  | TimeBonusConfig 
+  | SpendingTierConfig 
+  | ComboBonusConfig;
+
+export interface Promotion {
+  id: string;
+  name: string;
+  description?: string;
+  rule_type: PromotionRuleType;
+  rule_config: PromotionRuleConfig;
+  starts_at: string;
+  ends_at: string;
+  active_days?: number[];
+  active_hours?: { start: string; end: string };
+  scope_type?: PromotionScopeType;
+  venue_ids?: string[];
+  sponsor_brand_id?: string;
+  sponsor_brand_name?: string; // Enriched from brands table
+  sponsor_covers_discount?: boolean;
+  max_uses_total?: number;
+  max_uses_per_user?: number;
+  current_uses?: number;
+  priority?: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ===== POS TRANSACTION TYPES =====
+
+export interface POSTransactionItem {
+  name: string;
+  category: string;
+  brand?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+export interface AppliedPromotion {
+  promotion_id: string;
+  promotion_name: string;
+  effect: string;  // "+10 bónusz pont", "2x szorzó"
+}
+
+export interface POSTransaction {
+  id: string;
+  external_order_id: string;
+  venue_id: string;
+  venue_name?: string; // Enriched
+  user_id?: string;
+  items: POSTransactionItem[];
+  subtotal: number;
+  discount_amount: number;
+  total_amount: number;
+  currency: string;
+  base_points: number;
+  bonus_points: number;
+  total_points: number;
+  applied_promotions: AppliedPromotion[];
+  payment_method?: string;
+  staff_id?: string;
+  table_number?: string;
+  transaction_time: string;
+  processed_at?: string;
+  created_at?: string;
 }
