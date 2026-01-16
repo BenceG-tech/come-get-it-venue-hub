@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      brands: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contract_end: string | null
+          contract_start: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          monthly_budget: number | null
+          name: string
+          notes: string | null
+          product_categories: string[] | null
+          product_keywords: string[] | null
+          spent_this_month: number | null
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          monthly_budget?: number | null
+          name: string
+          notes?: string | null
+          product_categories?: string[] | null
+          product_keywords?: string[] | null
+          spent_this_month?: number | null
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          monthly_budget?: number | null
+          name?: string
+          notes?: string | null
+          product_categories?: string[] | null
+          product_keywords?: string[] | null
+          spent_this_month?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       caps: {
         Row: {
           alt_offer_text: string | null
@@ -213,6 +270,124 @@ export type Database = {
         }
         Relationships: []
       }
+      points_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          type: string
+          user_id: string
+          venue_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type: string
+          user_id: string
+          venue_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: string
+          user_id?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_transactions: {
+        Row: {
+          applied_promotions: Json | null
+          base_points: number | null
+          bonus_points: number | null
+          created_at: string
+          currency: string | null
+          discount_amount: number | null
+          external_order_id: string
+          id: string
+          items: Json
+          payment_method: string | null
+          processed_at: string | null
+          staff_id: string | null
+          subtotal: number
+          table_number: string | null
+          total_amount: number
+          total_points: number | null
+          transaction_time: string
+          user_id: string | null
+          venue_id: string
+        }
+        Insert: {
+          applied_promotions?: Json | null
+          base_points?: number | null
+          bonus_points?: number | null
+          created_at?: string
+          currency?: string | null
+          discount_amount?: number | null
+          external_order_id: string
+          id?: string
+          items?: Json
+          payment_method?: string | null
+          processed_at?: string | null
+          staff_id?: string | null
+          subtotal: number
+          table_number?: string | null
+          total_amount: number
+          total_points?: number | null
+          transaction_time: string
+          user_id?: string | null
+          venue_id: string
+        }
+        Update: {
+          applied_promotions?: Json | null
+          base_points?: number | null
+          bonus_points?: number | null
+          created_at?: string
+          currency?: string | null
+          discount_amount?: number | null
+          external_order_id?: string
+          id?: string
+          items?: Json
+          payment_method?: string | null
+          processed_at?: string | null
+          staff_id?: string | null
+          subtotal?: number
+          table_number?: string | null
+          total_amount?: number
+          total_points?: number | null
+          transaction_time?: string
+          user_id?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -236,6 +411,83 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      promotions: {
+        Row: {
+          active_days: number[] | null
+          active_hours: Json | null
+          created_at: string
+          current_uses: number | null
+          description: string | null
+          ends_at: string
+          id: string
+          is_active: boolean
+          max_uses_per_user: number | null
+          max_uses_total: number | null
+          name: string
+          priority: number | null
+          rule_config: Json
+          rule_type: string
+          scope_type: string | null
+          sponsor_brand_id: string | null
+          sponsor_covers_discount: boolean | null
+          starts_at: string
+          updated_at: string
+          venue_ids: string[] | null
+        }
+        Insert: {
+          active_days?: number[] | null
+          active_hours?: Json | null
+          created_at?: string
+          current_uses?: number | null
+          description?: string | null
+          ends_at: string
+          id?: string
+          is_active?: boolean
+          max_uses_per_user?: number | null
+          max_uses_total?: number | null
+          name: string
+          priority?: number | null
+          rule_config: Json
+          rule_type: string
+          scope_type?: string | null
+          sponsor_brand_id?: string | null
+          sponsor_covers_discount?: boolean | null
+          starts_at: string
+          updated_at?: string
+          venue_ids?: string[] | null
+        }
+        Update: {
+          active_days?: number[] | null
+          active_hours?: Json | null
+          created_at?: string
+          current_uses?: number | null
+          description?: string | null
+          ends_at?: string
+          id?: string
+          is_active?: boolean
+          max_uses_per_user?: number | null
+          max_uses_total?: number | null
+          name?: string
+          priority?: number | null
+          rule_config?: Json
+          rule_type?: string
+          scope_type?: string | null
+          sponsor_brand_id?: string | null
+          sponsor_covers_discount?: boolean | null
+          starts_at?: string
+          updated_at?: string
+          venue_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_sponsor_brand_id_fkey"
+            columns: ["sponsor_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       redemption_tokens: {
         Row: {
@@ -706,6 +958,66 @@ export type Database = {
           },
         ]
       }
+      user_points: {
+        Row: {
+          balance: number
+          created_at: string
+          last_transaction_at: string | null
+          lifetime_earned: number
+          lifetime_spent: number
+          total_spend: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          last_transaction_at?: string | null
+          lifetime_earned?: number
+          lifetime_spent?: number
+          total_spend?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          last_transaction_at?: string | null
+          lifetime_earned?: number
+          lifetime_spent?: number
+          total_spend?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_qr_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token_hash: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token_hash: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token_hash?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       venue_drinks: {
         Row: {
           abv: number | null
@@ -1014,6 +1326,19 @@ export type Database = {
       }
       get_user_venue_ids: { Args: { user_id?: string }; Returns: string[] }
       is_admin: { Args: { user_id?: string }; Returns: boolean }
+      modify_user_points: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_spend_amount?: number
+          p_type: string
+          p_user_id: string
+          p_venue_id?: string
+        }
+        Returns: number
+      }
       validate_opening_hours: { Args: { hours: Json }; Returns: boolean }
     }
     Enums: {

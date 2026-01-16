@@ -171,3 +171,18 @@ verify_jwt = false
 
 [functions.consume-redemption-token]
 verify_jwt = false
+
+[functions.generate-user-qr]
+verify_jwt = false
+
+[functions.validate-user-qr]
+verify_jwt = false
+
+[functions.get-user-points]
+verify_jwt = false
+
+[functions.redeem-reward]
+verify_jwt = false
+
+[functions.goorderz-webhook]
+verify_jwt = false
