@@ -454,7 +454,7 @@ export default function Brands() {
                   <div className="space-y-2">
                     <Label className="text-cgi-surface-foreground">Kategóriák</Label>
                     <TagInput
-                      value={brandForm.product_categories}
+                      tags={brandForm.product_categories || []}
                       onChange={(tags) => setBrandForm(prev => ({ ...prev, product_categories: tags }))}
                       placeholder="Új kategória..."
                     />
@@ -462,7 +462,7 @@ export default function Brands() {
                   <div className="space-y-2">
                     <Label className="text-cgi-surface-foreground">Kulcsszavak</Label>
                     <TagInput
-                      value={brandForm.product_keywords}
+                      tags={brandForm.product_keywords || []}
                       onChange={(tags) => setBrandForm(prev => ({ ...prev, product_keywords: tags }))}
                       placeholder="Új kulcsszó..."
                     />

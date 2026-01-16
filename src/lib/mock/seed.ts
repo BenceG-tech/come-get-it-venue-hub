@@ -170,17 +170,17 @@ export async function seedData() {
     {
       id: 'brand-1',
       name: 'Premium Whiskey Co.',
-      logoUrl: 'https://example.com/logo1.png',
-      contactName: 'John Smith',
-      contactEmail: 'john@premiumwhiskey.com',
+      logo_url: 'https://example.com/logo1.png',
+      contact_name: 'John Smith',
+      contact_email: 'john@premiumwhiskey.com',
       notes: 'Premium whiskey brand partnership'
     },
     {
       id: 'brand-2',
       name: 'Craft Beer Brewery',
-      logoUrl: 'https://example.com/logo2.png',
-      contactName: 'Jane Doe',
-      contactEmail: 'jane@craftbeer.com',
+      logo_url: 'https://example.com/logo2.png',
+      contact_name: 'Jane Doe',
+      contact_email: 'jane@craftbeer.com',
       notes: 'Local craft beer collaboration'
     }
   ];
