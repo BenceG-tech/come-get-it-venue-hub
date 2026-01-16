@@ -478,14 +478,14 @@ export function PromotionFormModal({ isOpen, onClose, onSuccess, promotion, bran
               <div className="space-y-2">
                 <Label className="text-cgi-surface-foreground">Szponzor márka</Label>
                 <Select 
-                  value={form.sponsor_brand_id} 
-                  onValueChange={(v) => setForm(p => ({ ...p, sponsor_brand_id: v }))}
+                  value={form.sponsor_brand_id || "none"} 
+                  onValueChange={(v) => setForm(p => ({ ...p, sponsor_brand_id: v === "none" ? "" : v }))}
                 >
                   <SelectTrigger className="cgi-input">
                     <SelectValue placeholder="Nincs" />
                   </SelectTrigger>
                   <SelectContent className="bg-cgi-surface border-cgi-muted">
-                    <SelectItem value="">Nincs</SelectItem>
+                    <SelectItem value="none">Nincs</SelectItem>
                     {brands.map(brand => (
                       <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
                     ))}
