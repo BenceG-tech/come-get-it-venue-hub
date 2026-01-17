@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DataProvider } from "./index";
 import { normalizeBusinessHours } from "@/lib/businessHours";
+import type { Database } from "@/integrations/supabase/types";
+
+type TableName = keyof Database["public"]["Tables"];
 
 type ListFilters = {
   // filtering
@@ -307,8 +310,8 @@ export const supabaseProvider: DataProvider & {
   async getList<T>(resource: string, filters?: ListFilters): Promise<T[]> {
     console.log("[supabaseProvider] getList", resource, filters);
     
-    // Base select
-    let query = supabase.from(resource).select("*");
+    // Base select - use any to avoid deep type instantiation
+    let query = (supabase.from(resource as any) as any).select("*");
 
     // Filters
     if (filters) {
@@ -509,8 +512,7 @@ export const supabaseProvider: DataProvider & {
       return enriched as T;
     }
 
-    const { data, error } = await supabase
-      .from(resource)
+    const { data, error } = await (supabase.from(resource as any) as any)
       .select("*")
       .eq("id", id)
       .single();
@@ -582,8 +584,7 @@ export const supabaseProvider: DataProvider & {
       return enriched as T;
     }
 
-    const { data: rows, error } = await supabase
-      .from(resource)
+    const { data: rows, error } = await (supabase.from(resource as any) as any)
       .insert((data as any))
       .select()
       .single();
@@ -665,8 +666,7 @@ export const supabaseProvider: DataProvider & {
       return enriched as T;
     }
 
-    const { data: row, error } = await supabase
-      .from(resource)
+    const { data: row, error } = await (supabase.from(resource as any) as any)
       .update(data as any)
       .eq("id", id)
       .select()
@@ -680,7 +680,7 @@ export const supabaseProvider: DataProvider & {
 
   async remove(resource: string, id: string): Promise<void> {
     console.log("[supabaseProvider] remove", resource, id);
-    const { error } = await supabase.from(resource).delete().eq("id", id);
+    const { error } = await (supabase.from(resource as any) as any).delete().eq("id", id);
     if (error) {
       logSbError("remove", error);
       throw error;
@@ -689,7 +689,7 @@ export const supabaseProvider: DataProvider & {
 
   async upsertMany<T>(resource: string, data: T[]): Promise<T[]> {
     console.log("[supabaseProvider] upsertMany", resource, data?.length);
-    const { data: rows, error } = await supabase.from(resource).upsert(data as any).select();
+    const { data: rows, error } = await (supabase.from(resource as any) as any).upsert(data as any).select();
     if (error) {
       logSbError("upsertMany", error);
       throw error;
@@ -700,7 +700,7 @@ export const supabaseProvider: DataProvider & {
   // Optional method for count (not part of DataProvider interface)
   async getCount(resource: string, filters?: ListFilters): Promise<number> {
     console.log("[supabaseProvider] getCount", resource, filters);
-    let query = supabase.from(resource).select("*", { count: "exact", head: true });
+    let query = (supabase.from(resource as any) as any).select("*", { count: "exact", head: true });
 
     if (filters) {
       if (filters.venue_id) {

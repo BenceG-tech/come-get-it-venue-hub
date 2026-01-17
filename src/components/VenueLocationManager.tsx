@@ -50,7 +50,12 @@ export default function VenueLocationManager({ venue, onUpdate }: VenueLocationM
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLocations(data || []);
+      // Cast status to the expected union type
+      const typedLocations: VenueLocation[] = (data || []).map(loc => ({
+        ...loc,
+        status: loc.status as 'pending' | 'active' | 'inactive'
+      }));
+      setLocations(typedLocations);
     } catch (error: any) {
       console.error('Failed to load venue locations:', error);
       toast({

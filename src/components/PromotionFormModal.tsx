@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Promotion, Brand, PromotionRuleType, PromotionRuleConfig } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Json } from '@/integrations/supabase/types';
 
 interface PromotionFormModalProps {
   isOpen: boolean;
@@ -135,11 +136,11 @@ export function PromotionFormModal({ isOpen, onClose, onSuccess, promotion, bran
         name: form.name,
         description: form.description || null,
         rule_type: form.rule_type,
-        rule_config: buildRuleConfig(),
+        rule_config: buildRuleConfig() as unknown as Json,
         starts_at: new Date(form.starts_at).toISOString(),
         ends_at: new Date(form.ends_at).toISOString(),
         active_days: form.active_days,
-        active_hours: { start: form.active_hours_start, end: form.active_hours_end },
+        active_hours: { start: form.active_hours_start, end: form.active_hours_end } as Json,
         scope_type: form.scope_type,
         venue_ids: form.scope_type === 'venue_list' ? form.venue_ids : null,
         sponsor_brand_id: form.sponsor_brand_id || null,

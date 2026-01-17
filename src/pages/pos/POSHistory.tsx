@@ -29,7 +29,7 @@ interface Redemption {
   token_id: string | null;
   redemption_tokens: {
     token_prefix: string;
-  }[] | null;
+  } | null;
 }
 
 interface Venue {
@@ -152,7 +152,7 @@ export default function POSHistory() {
         if (error) {
           console.error("Error loading redemptions:", error);
         } else {
-          setRedemptions(data || []);
+          setRedemptions((data || []) as Redemption[]);
         }
 
         // Get today's count for summary
@@ -284,9 +284,9 @@ export default function POSHistory() {
                         </div>
                         <div>
                           <p className="font-medium text-foreground">{redemption.drink}</p>
-                          {redemption.redemption_tokens?.[0]?.token_prefix && (
+                          {redemption.redemption_tokens?.token_prefix && (
                             <Badge variant="outline" className="text-xs">
-                              {redemption.redemption_tokens[0].token_prefix}
+                              {redemption.redemption_tokens.token_prefix}
                             </Badge>
                           )}
                         </div>
