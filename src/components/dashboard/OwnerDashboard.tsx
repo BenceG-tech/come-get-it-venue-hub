@@ -2,22 +2,32 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
-import { Receipt, DollarSign, Users, TrendingUp, Gift, Settings, ArrowUpRight } from "lucide-react";
-import { 
-  mockOwnerKPIData, 
-  mockTrendData, 
-  mockDrinkData, 
-  formatCurrency 
-} from "@/lib/mockData";
+import { Receipt, DollarSign, Users, TrendingUp, Gift, Settings, ArrowUpRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useDashboardStats, formatCurrency } from "@/hooks/useDashboardStats";
 
 export function OwnerDashboard() {
+  // TODO: Get venue_id from session/context when available
+  const venueId = undefined; // Will use first venue or all venues
+  const { data: stats, isLoading } = useDashboardStats('owner', venueId);
+
+  const kpiData = {
+    daily_redemptions: stats?.daily_redemptions ?? 0,
+    daily_revenue: stats?.daily_revenue ?? 0,
+    returning_rate: stats?.returning_rate ?? 0,
+    avg_basket_value: stats?.avg_basket_value ?? 0,
+  };
+
+  const trendData = stats?.trends ?? [];
+  const topDrinksData = stats?.top_drinks ?? [];
+
   return (
     <div className="space-y-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Helyszín Dashboard</h1>
         <p className="text-cgi-muted-foreground">
           Saját venue teljesítmény és menedzsment
+          {isLoading && <Loader2 className="inline-block ml-2 h-4 w-4 animate-spin" />}
         </p>
       </div>
 
@@ -25,28 +35,28 @@ export function OwnerDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title="Mai beváltások"
-          value={mockOwnerKPIData.daily_redemptions}
+          value={isLoading ? "..." : kpiData.daily_redemptions.toLocaleString()}
           change={{ value: 12, isPositive: true }}
           icon={Receipt}
           tooltip="Az Ön helyszínén ma beváltott italok száma. Ez az adat valós időben frissül és segít nyomon követni a napi teljesítményt."
         />
         <KPICard
           title="Napi forgalom"
-          value={formatCurrency(mockOwnerKPIData.daily_revenue)}
+          value={isLoading ? "..." : formatCurrency(kpiData.daily_revenue)}
           change={{ value: 8, isPositive: true }}
           icon={DollarSign}
           tooltip="A mai nap teljes bevétele az italbeváltásokból és egyéb vásárlásokból. Tartalmazza mind a fizetős, mind az ingyenes italok elszámolását."
         />
         <KPICard
           title="Visszatérő arány"
-          value={`${mockOwnerKPIData.returning_rate}%`}
+          value={isLoading ? "..." : `${kpiData.returning_rate}%`}
           change={{ value: 5, isPositive: true }}
           icon={Users}
           tooltip="A visszatérő vendégek aránya az összes mai látogatóhoz képest. Magasabb érték erősebb vendéglojalitást jelez."
         />
         <KPICard
           title="Átlag kosárérték"
-          value={formatCurrency(mockOwnerKPIData.avg_basket_value)}
+          value={isLoading ? "..." : formatCurrency(kpiData.avg_basket_value)}
           change={{ value: 15, isPositive: true }}
           icon={TrendingUp}
           tooltip="Az egy látogató által átlagosan elköltött összeg. Ez tartalmazza az italokat és egyéb termékeket is."
@@ -59,36 +69,42 @@ export function OwnerDashboard() {
           title="Heti trend - Saját venue"
           tooltip="Az elmúlt hét beváltásainak alakulása. Segít azonosítani a forgalmi mintákat és a legnépszerűbb napokat."
         >
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={mockTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#9ca3af"
-                fontSize={12}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}
-              />
-              <YAxis stroke="#9ca3af" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1f1f1f', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#f3f4f6'
-                }}
-                formatter={(value: any) => [value, 'Beváltások']}
-                labelFormatter={(label) => new Date(label).toLocaleDateString('hu-HU')}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="redemptions" 
-                stroke="#1fb1b7" 
-                strokeWidth={2}
-                dot={{ fill: '#1fb1b7', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: '#1fb1b7', strokeWidth: 2 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {isLoading ? (
+            <div className="h-[300px] flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-cgi-muted-foreground" />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#9ca3af"
+                  fontSize={12}
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}
+                />
+                <YAxis stroke="#9ca3af" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1f1f1f', 
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#f3f4f6'
+                  }}
+                  formatter={(value: any) => [value, 'Beváltások']}
+                  labelFormatter={(label) => new Date(label).toLocaleDateString('hu-HU')}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="redemptions" 
+                  stroke="#1fb1b7" 
+                  strokeWidth={2}
+                  dot={{ fill: '#1fb1b7', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#1fb1b7', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
 
         {/* Top Drinks for Venue */}
@@ -96,33 +112,43 @@ export function OwnerDashboard() {
           title="Top 5 ital - Saját venue"
           tooltip="Az Ön helyszínének legnépszerűbb italai beváltások száma szerint. Hasznos a menü optimalizálásához és készletgazdálkodáshoz."
         >
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={mockDrinkData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-              <XAxis type="number" stroke="#9ca3af" fontSize={12} />
-              <YAxis 
-                dataKey="name" 
-                type="category" 
-                stroke="#9ca3af" 
-                fontSize={12}
-                width={80}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1f1f1f', 
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#f3f4f6'
-                }}
-                formatter={(value: any) => [value, 'Beváltások']}
-              />
-              <Bar 
-                dataKey="count" 
-                fill="#1fb1b7"
-                radius={[0, 4, 4, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {isLoading ? (
+            <div className="h-[300px] flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-cgi-muted-foreground" />
+            </div>
+          ) : topDrinksData.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-cgi-muted-foreground">
+              Nincs még adat
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={topDrinksData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+                <XAxis type="number" stroke="#9ca3af" fontSize={12} />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  stroke="#9ca3af" 
+                  fontSize={12}
+                  width={80}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1f1f1f', 
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#f3f4f6'
+                  }}
+                  formatter={(value: any) => [value, 'Beváltások']}
+                />
+                <Bar 
+                  dataKey="count" 
+                  fill="#1fb1b7"
+                  radius={[0, 4, 4, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
       </div>
 

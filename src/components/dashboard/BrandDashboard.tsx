@@ -1,23 +1,18 @@
 import { Card } from "@/components/ui/card";
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
-import { BarChart3, TrendingUp, Target, Award } from "lucide-react";
+import { BarChart3, TrendingUp, Target, Award, Loader2 } from "lucide-react";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 export function BrandDashboard() {
-  // Mock data for brand dashboard
-  const mockKPIData = {
-    totalPartnerVenues: 15,
-    activeCampaigns: 3,
-    monthlyReach: 2500,
-    conversionRate: 12.5
-  };
+  const { data: stats, isLoading } = useDashboardStats('brand');
 
-  const mockTrendData = [
-    { month: 'Jan', value: 1800 },
-    { month: 'Feb', value: 2100 },
-    { month: 'Mar', value: 2300 },
-    { month: 'Apr', value: 2500 },
-  ];
+  const kpiData = {
+    totalPartnerVenues: stats?.total_partner_venues ?? 0,
+    activeCampaigns: stats?.active_campaigns ?? 0,
+    monthlyReach: stats?.monthly_reach ?? 0,
+    conversionRate: stats?.conversion_rate ?? 0
+  };
 
   return (
     <div className="space-y-6">
@@ -25,6 +20,7 @@ export function BrandDashboard() {
         <h1 className="text-3xl font-bold text-cgi-surface-foreground">Brand Dashboard</h1>
         <p className="text-cgi-muted-foreground mt-2">
           Manage your brand partnerships and campaigns
+          {isLoading && <Loader2 className="inline-block ml-2 h-4 w-4 animate-spin" />}
         </p>
       </div>
 
@@ -32,22 +28,22 @@ export function BrandDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="Partner Venues"
-          value={mockKPIData.totalPartnerVenues.toString()}
+          value={isLoading ? "..." : kpiData.totalPartnerVenues.toString()}
           icon={Target}
         />
         <KPICard
           title="Active Campaigns"
-          value={mockKPIData.activeCampaigns.toString()}
+          value={isLoading ? "..." : kpiData.activeCampaigns.toString()}
           icon={BarChart3}
         />
         <KPICard
           title="Monthly Reach"
-          value={mockKPIData.monthlyReach.toLocaleString()}
+          value={isLoading ? "..." : kpiData.monthlyReach.toLocaleString()}
           icon={TrendingUp}
         />
         <KPICard
           title="Conversion Rate"
-          value={`${mockKPIData.conversionRate}%`}
+          value={isLoading ? "..." : `${kpiData.conversionRate}%`}
           icon={Award}
         />
       </div>
