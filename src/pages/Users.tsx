@@ -1,26 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Search, 
-  Users as UsersIcon, 
+import {
+  Search,
+  Users as UsersIcon,
   ChevronRight,
   TrendingUp,
   Gift,
   Calendar,
-  Clock
+  Clock,
+  BarChart3,
+  ListFilter,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
+
+// Chart components
+import { UserActivityChart } from "@/components/UserActivityChart";
+import { UserRetentionChart } from "@/components/UserRetentionChart";
+import { RedemptionTrendsChart } from "@/components/RedemptionTrendsChart";
+import { TopVenuesChart } from "@/components/TopVenuesChart";
+import { UserAnalyticsHeatmap } from "@/components/UserAnalyticsHeatmap";
 
 interface UserListItem {
   id: string;
@@ -46,44 +54,69 @@ interface UsersResponse {
   offset: number;
 }
 
+interface AnalyticsData {
+  daily_active_users: { date: string; count: number }[];
+  weekly_active_users: { week_start: string; count: number }[];
+  retention_cohorts: {
+    cohort_week: string;
+    cohort_size: number;
+    week_0: number;
+    week_1?: number;
+    week_2?: number;
+    week_3?: number;
+    week_4?: number;
+  }[];
+  redemption_trends: { date: string; count: number; unique_users: number }[];
+  top_venues: {
+    venue_id: string;
+    venue_name: string;
+    redemption_count: number;
+    unique_users: number;
+  }[];
+  hourly_activity: number[][];
+  summary: {
+    total_users: number;
+    active_today: number;
+    active_7_days: number;
+    active_30_days: number;
+    total_redemptions: number;
+    avg_sessions_per_user: number;
+    avg_redemptions_per_user: number;
+  };
+}
+
 export default function Users() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<"analytics" | "users">("analytics");
 
   // Debounce search
-  useState(() => {
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
-  });
+  }, [search]);
 
+  // Fetch users list
   const { data, isLoading, error } = useQuery<UsersResponse>({
     queryKey: ["users", debouncedSearch, statusFilter],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("get-users", {
-        body: null,
-        headers: {},
-      });
-
-      if (error) throw error;
-      
-      // The edge function expects query params, but invoke sends body
-      // So we'll use the full URL approach for now
       const params = new URLSearchParams({
         search: debouncedSearch,
         status: statusFilter,
         limit: "50",
-        offset: "0"
+        offset: "0",
       });
 
+      const session = await supabase.auth.getSession();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-users?${params}`,
+        `https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/get-users?${params}`,
         {
           headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            "Content-Type": "application/json"
-          }
+            Authorization: `Bearer ${session.data.session?.access_token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -93,17 +126,54 @@ export default function Users() {
       }
 
       return response.json();
-    }
+    },
+    enabled: activeTab === "users",
+  });
+
+  // Fetch analytics data
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery<AnalyticsData>({
+    queryKey: ["user-analytics"],
+    queryFn: async () => {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/get-user-analytics?days=30`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.data.session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch analytics");
+      }
+
+      return response.json();
+    },
+    enabled: activeTab === "analytics",
   });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Aktív</Badge>;
+        return (
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+            Aktív
+          </Badge>
+        );
       case "inactive":
-        return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30">Inaktív</Badge>;
+        return (
+          <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30">
+            Inaktív
+          </Badge>
+        );
       case "new":
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Új</Badge>;
+        return (
+          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+            Új
+          </Badge>
+        );
       default:
         return null;
     }
@@ -118,6 +188,16 @@ export default function Users() {
       .slice(0, 2);
   };
 
+  const summary = analyticsData?.summary || {
+    total_users: data?.total || 0,
+    active_today: 0,
+    active_7_days: data?.users?.filter((u) => u.status === "active").length || 0,
+    active_30_days: 0,
+    total_redemptions: data?.users?.reduce((sum, u) => sum + u.total_redemptions, 0) || 0,
+    avg_sessions_per_user: 0,
+    avg_redemptions_per_user: 0,
+  };
+
   return (
     <PageLayout>
       <div className="space-y-6">
@@ -127,20 +207,26 @@ export default function Users() {
             <UsersIcon className="h-6 w-6 text-cgi-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-cgi-surface-foreground">Felhasználók</h1>
-            <p className="text-sm text-cgi-muted-foreground">Regisztrált felhasználók kezelése és monitorozása</p>
+            <h1 className="text-2xl font-bold text-cgi-surface-foreground">
+              Felhasználók
+            </h1>
+            <p className="text-sm text-cgi-muted-foreground">
+              Regisztrált felhasználók kezelése és monitorozása
+            </p>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="cgi-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">Összes felhasználó</p>
+                  <p className="text-sm text-cgi-muted-foreground">
+                    Összes felhasználó
+                  </p>
                   <p className="text-2xl font-bold text-cgi-surface-foreground">
-                    {data?.total || 0}
+                    {summary.total_users}
                   </p>
                 </div>
                 <UsersIcon className="h-8 w-8 text-cgi-primary opacity-50" />
@@ -152,9 +238,11 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">Aktív (7 nap)</p>
+                  <p className="text-sm text-cgi-muted-foreground">
+                    Aktív (7 nap)
+                  </p>
                   <p className="text-2xl font-bold text-green-400">
-                    {data?.users.filter(u => u.status === "active").length || 0}
+                    {summary.active_7_days}
                   </p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-green-400 opacity-50" />
@@ -166,9 +254,9 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">Új (7 nap)</p>
+                  <p className="text-sm text-cgi-muted-foreground">Ma aktív</p>
                   <p className="text-2xl font-bold text-blue-400">
-                    {data?.users.filter(u => u.status === "new").length || 0}
+                    {summary.active_today}
                   </p>
                 </div>
                 <Calendar className="h-8 w-8 text-blue-400 opacity-50" />
@@ -180,9 +268,11 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">Összes beváltás</p>
+                  <p className="text-sm text-cgi-muted-foreground">
+                    Összes beváltás
+                  </p>
                   <p className="text-2xl font-bold text-cgi-secondary">
-                    {data?.users.reduce((sum, u) => sum + u.total_redemptions, 0) || 0}
+                    {summary.total_redemptions}
                   </p>
                 </div>
                 <Gift className="h-8 w-8 text-cgi-secondary opacity-50" />
@@ -191,135 +281,236 @@ export default function Users() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card className="cgi-card">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cgi-muted-foreground" />
-                <Input
-                  placeholder="Keresés név vagy email alapján..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 cgi-input"
+        {/* Main Tab Navigation */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as "analytics" | "users")}
+        >
+          <TabsList className="bg-cgi-muted/30">
+            <TabsTrigger
+              value="analytics"
+              className="data-[state=active]:bg-cgi-primary gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Analitika
+            </TabsTrigger>
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-cgi-primary gap-2"
+            >
+              <ListFilter className="h-4 w-4" />
+              Felhasználók
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Analytics Tab */}
+        {activeTab === "analytics" && (
+          <div className="space-y-6">
+            {analyticsLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i} className="cgi-card">
+                    <CardContent className="pt-6">
+                      <Skeleton className="h-[300px] w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : analyticsData ? (
+              <>
+                {/* DAU Chart - Full Width */}
+                <UserActivityChart
+                  dailyData={analyticsData.daily_active_users}
+                  weeklyData={analyticsData.weekly_active_users}
                 />
-              </div>
 
-              <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-                <TabsList className="bg-cgi-muted/30">
-                  <TabsTrigger value="all" className="data-[state=active]:bg-cgi-primary">
-                    Összes
-                  </TabsTrigger>
-                  <TabsTrigger value="active" className="data-[state=active]:bg-green-500">
-                    Aktív
-                  </TabsTrigger>
-                  <TabsTrigger value="inactive" className="data-[state=active]:bg-gray-500">
-                    Inaktív
-                  </TabsTrigger>
-                  <TabsTrigger value="new" className="data-[state=active]:bg-blue-500">
-                    Új
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </CardContent>
-        </Card>
+                {/* 2-Column Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <UserRetentionChart cohorts={analyticsData.retention_cohorts} />
+                  <RedemptionTrendsChart data={analyticsData.redemption_trends} />
+                </div>
 
-        {/* Users List */}
-        <Card className="cgi-card">
-          <CardHeader>
-            <CardTitle className="text-cgi-surface-foreground">Felhasználók listája</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                    <Skeleton className="h-8 w-20" />
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-center py-8 text-red-400">
-                Hiba történt a felhasználók betöltése közben
-              </div>
-            ) : data?.users.length === 0 ? (
-              <div className="text-center py-8 text-cgi-muted-foreground">
-                Nincs találat a keresési feltételekre
-              </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <TopVenuesChart venues={analyticsData.top_venues} />
+                  <UserAnalyticsHeatmap heatmapData={analyticsData.hourly_activity} />
+                </div>
+              </>
             ) : (
-              <div className="space-y-2">
-                {data?.users.map((user) => (
-                  <div
-                    key={user.id}
-                    onClick={() => navigate(`/users/${user.id}`)}
-                    className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20 hover:bg-cgi-muted/40 cursor-pointer transition-colors group"
-                  >
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={user.avatar_url || undefined} />
-                      <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary">
-                        {getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-cgi-surface-foreground truncate">
-                          {user.name}
-                        </p>
-                        {getStatusBadge(user.status)}
-                        {user.is_admin && (
-                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-                            Admin
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-cgi-muted-foreground truncate">
-                        {user.email || "Nincs email"}
-                      </p>
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-6 text-sm">
-                      <div className="text-center">
-                        <p className="font-medium text-cgi-secondary">{user.points_balance}</p>
-                        <p className="text-xs text-cgi-muted-foreground">pont</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-cgi-surface-foreground">{user.total_redemptions}</p>
-                        <p className="text-xs text-cgi-muted-foreground">beváltás</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium text-cgi-surface-foreground">{user.total_sessions}</p>
-                        <p className="text-xs text-cgi-muted-foreground">munkamenet</p>
-                      </div>
-                    </div>
-
-                    <div className="hidden lg:block text-right text-sm">
-                      {user.last_seen_at ? (
-                        <div className="flex items-center gap-1 text-cgi-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(user.last_seen_at), {
-                            addSuffix: true,
-                            locale: hu
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-cgi-muted-foreground">Soha</span>
-                      )}
-                    </div>
-
-                    <ChevronRight className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors" />
+              <Card className="cgi-card">
+                <CardContent className="pt-6">
+                  <div className="text-center py-8 text-cgi-muted-foreground">
+                    Nincs elegendő adat az analitikához
                   </div>
-                ))}
-              </div>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === "users" && (
+          <>
+            {/* Filters */}
+            <Card className="cgi-card">
+              <CardContent className="pt-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cgi-muted-foreground" />
+                    <Input
+                      placeholder="Keresés név vagy email alapján..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-10 cgi-input"
+                    />
+                  </div>
+
+                  <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+                    <TabsList className="bg-cgi-muted/30">
+                      <TabsTrigger
+                        value="all"
+                        className="data-[state=active]:bg-cgi-primary"
+                      >
+                        Összes
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="active"
+                        className="data-[state=active]:bg-green-500"
+                      >
+                        Aktív
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="inactive"
+                        className="data-[state=active]:bg-gray-500"
+                      >
+                        Inaktív
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="new"
+                        className="data-[state=active]:bg-blue-500"
+                      >
+                        Új
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Users List */}
+            <Card className="cgi-card">
+              <CardHeader>
+                <CardTitle className="text-cgi-surface-foreground">
+                  Felhasználók listája
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20"
+                      >
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                        <Skeleton className="h-8 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8 text-red-400">
+                    Hiba történt a felhasználók betöltése közben
+                  </div>
+                ) : data?.users.length === 0 ? (
+                  <div className="text-center py-8 text-cgi-muted-foreground">
+                    Nincs találat a keresési feltételekre
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {data?.users.map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => navigate(`/users/${user.id}`)}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20 hover:bg-cgi-muted/40 cursor-pointer transition-colors group"
+                      >
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary">
+                            {getInitials(user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-cgi-surface-foreground truncate">
+                              {user.name}
+                            </p>
+                            {getStatusBadge(user.status)}
+                            {user.is_admin && (
+                              <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                Admin
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-cgi-muted-foreground truncate">
+                            {user.email || "Nincs email"}
+                          </p>
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-6 text-sm">
+                          <div className="text-center">
+                            <p className="font-medium text-cgi-secondary">
+                              {user.points_balance}
+                            </p>
+                            <p className="text-xs text-cgi-muted-foreground">
+                              pont
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="font-medium text-cgi-surface-foreground">
+                              {user.total_redemptions}
+                            </p>
+                            <p className="text-xs text-cgi-muted-foreground">
+                              beváltás
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="font-medium text-cgi-surface-foreground">
+                              {user.total_sessions}
+                            </p>
+                            <p className="text-xs text-cgi-muted-foreground">
+                              munkamenet
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="hidden lg:block text-right text-sm">
+                          {user.last_seen_at ? (
+                            <div className="flex items-center gap-1 text-cgi-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(user.last_seen_at), {
+                                addSuffix: true,
+                                locale: hu,
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-cgi-muted-foreground">Soha</span>
+                          )}
+                        </div>
+
+                        <ChevronRight className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </PageLayout>
   );

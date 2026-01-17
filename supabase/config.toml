@@ -1,5 +1,8 @@
 project_id = "nrxfiblssxwzeziomlvc"
 
+[functions.get-user-analytics]
+verify_jwt = false
+
 [api]
 enabled = true
 port = 54321
