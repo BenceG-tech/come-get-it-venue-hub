@@ -146,7 +146,7 @@ export default function UserDetail() {
 
   if (isLoading) {
     return (
-      <PageLayout title="Felhasználó" icon={User}>
+      <PageLayout>
         <div className="space-y-6">
           <Skeleton className="h-48 w-full" />
           <div className="grid grid-cols-4 gap-4">
@@ -162,7 +162,7 @@ export default function UserDetail() {
 
   if (error || !data) {
     return (
-      <PageLayout title="Felhasználó" icon={User}>
+      <PageLayout>
         <div className="text-center py-12">
           <p className="text-red-400 mb-4">Hiba történt a felhasználó betöltése közben</p>
           <Button onClick={() => navigate("/users")} variant="outline">
@@ -177,11 +177,7 @@ export default function UserDetail() {
   const { user, points, stats, recent_activity, free_drink_redemptions, reward_redemptions, venue_affinity } = data;
 
   return (
-    <PageLayout
-      title={user.name}
-      description="Felhasználói profil és aktivitás"
-      icon={User}
-    >
+    <PageLayout>
       <div className="space-y-6">
         {/* Back button */}
         <Button
