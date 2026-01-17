@@ -2,22 +2,28 @@ import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Receipt, Clock, Pause, Play, TrendingUp } from "lucide-react";
-import { 
-  mockStaffKPIData, 
-  mockTodayRedemptions,
-  mockTodayTopDrinks,
-  formatCurrency,
-  formatTime
-} from "@/lib/mockData";
+import { Receipt, Clock, Pause, Play, TrendingUp, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useDashboardStats, formatCurrency, formatTime } from "@/hooks/useDashboardStats";
 
 export function StaffDashboard() {
   const [isFreeDrinkPaused, setIsFreeDrinkPaused] = useState(false);
+  
+  // TODO: Get venue_id from session/context when available
+  const venueId = undefined;
+  const { data: stats, isLoading } = useDashboardStats('staff', venueId);
 
   const handleToggleFreeDrink = () => {
     setIsFreeDrinkPaused(!isFreeDrinkPaused);
   };
+
+  const kpiData = {
+    today_redemptions: stats?.today_redemptions ?? 0,
+    cap_usage: stats?.cap_usage ?? 0,
+  };
+
+  const recentRedemptions = stats?.recent_redemptions ?? [];
+  const topDrinks = stats?.top_drinks ?? [];
 
   return (
     <div className="space-y-8">
@@ -25,6 +31,7 @@ export function StaffDashboard() {
         <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Operatív Dashboard</h1>
         <p className="text-cgi-muted-foreground">
           Mai állapot és gyors műveletek
+          {isLoading && <Loader2 className="inline-block ml-2 h-4 w-4 animate-spin" />}
         </p>
       </div>
 
@@ -32,7 +39,7 @@ export function StaffDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <KPICard
           title="Mai beváltások"
-          value={mockStaffKPIData.today_redemptions}
+          value={isLoading ? "..." : kpiData.today_redemptions.toLocaleString()}
           change={{ value: 8, isPositive: true }}
           icon={Receipt}
           tooltip="Az aktuális nap során az italbeváltó alkalmazáson keresztül beváltott italok teljes száma. Ez mutatja a napi forgalom aktivitását."
@@ -46,7 +53,7 @@ export function StaffDashboard() {
         />
         <KPICard
           title="Cap kihasználtság"
-          value={`${mockStaffKPIData.cap_usage}%`}
+          value={isLoading ? "..." : `${kpiData.cap_usage}%`}
           change={{ value: 12, isPositive: true }}
           icon={TrendingUp}
           tooltip="A napi italbeváltási limit kihasználtsága százalékban. A cap védi a helyszínt a túlzott ingyenes italfogyasztástól."
@@ -97,26 +104,36 @@ export function StaffDashboard() {
           title="Mai beváltások - Élő feed"
           tooltip="Valós idejű lista a mai beváltásokról. Új és visszatérő felhasználók megkülönböztetésével, az italok értékével és helyszínével."
         >
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {mockTodayRedemptions.map((redemption) => (
-              <div key={redemption.id} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-cgi-surface-foreground">{redemption.drink}</span>
-                    <Badge variant={redemption.user_type === 'new' ? 'default' : 'secondary'} className="text-xs">
-                      {redemption.user_type === 'new' ? 'Új' : 'Visszatérő'}
-                    </Badge>
+          {isLoading ? (
+            <div className="h-80 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-cgi-muted-foreground" />
+            </div>
+          ) : recentRedemptions.length === 0 ? (
+            <div className="h-80 flex items-center justify-center text-cgi-muted-foreground">
+              Nincs még mai beváltás
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {recentRedemptions.map((redemption) => (
+                <div key={redemption.id} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-cgi-surface-foreground">{redemption.drink}</span>
+                      <Badge variant={redemption.user_type === 'new' ? 'default' : 'secondary'} className="text-xs">
+                        {redemption.user_type === 'new' ? 'Új' : 'Visszatérő'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-cgi-muted-foreground">
+                      {formatTime(redemption.time)}
+                    </p>
                   </div>
-                  <p className="text-sm text-cgi-muted-foreground">
-                    {redemption.location} • {formatTime(redemption.time)}
-                  </p>
+                  <div className="text-right">
+                    <p className="font-medium">{formatCurrency(redemption.value)}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">{formatCurrency(redemption.value)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </ChartCard>
 
         {/* Today's Top Drinks */}
@@ -124,22 +141,32 @@ export function StaffDashboard() {
           title="Mai top italok"
           tooltip="A mai nap legnépszerűbb italai beváltások száma és generált bevétel szerint rangsorolva. Segít a készletgazdálkodásban."
         >
-          <div className="space-y-3">
-            {mockTodayTopDrinks.map((drink, index) => (
-              <div key={drink.name} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
-                    <span className="text-sm font-medium text-cgi-secondary">#{index + 1}</span>
+          {isLoading ? (
+            <div className="h-80 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-cgi-muted-foreground" />
+            </div>
+          ) : topDrinks.length === 0 ? (
+            <div className="h-80 flex items-center justify-center text-cgi-muted-foreground">
+              Nincs még adat
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {topDrinks.map((drink, index) => (
+                <div key={drink.name} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
+                      <span className="text-sm font-medium text-cgi-secondary">#{index + 1}</span>
+                    </div>
+                    <span className="font-medium text-cgi-surface-foreground">{drink.name}</span>
                   </div>
-                  <span className="font-medium text-cgi-surface-foreground">{drink.name}</span>
+                  <div className="text-right">
+                    <p className="font-medium">{drink.count} db</p>
+                    <p className="text-sm text-cgi-muted-foreground">{formatCurrency(drink.revenue)}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">{drink.count} db</p>
-                  <p className="text-sm text-cgi-muted-foreground">{formatCurrency(drink.revenue)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </ChartCard>
       </div>
     </div>
