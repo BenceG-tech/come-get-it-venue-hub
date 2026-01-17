@@ -390,24 +390,42 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
+          device_info: Json | null
+          email: string | null
           id: string
           is_admin: boolean
+          last_seen_at: string | null
           name: string
+          phone: string | null
+          signup_source: string | null
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
+          device_info?: Json | null
+          email?: string | null
           id: string
           is_admin?: boolean
+          last_seen_at?: string | null
           name: string
+          phone?: string | null
+          signup_source?: string | null
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
+          device_info?: Json | null
+          email?: string | null
           id?: string
           is_admin?: boolean
+          last_seen_at?: string | null
           name?: string
+          phone?: string | null
+          signup_source?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -951,6 +969,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_activity_logs: {
+        Row: {
+          app_version: string | null
+          created_at: string | null
+          device_info: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_id: string
+          venue_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string | null
+          device_info?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id: string
+          venue_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string | null
+          device_info?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
