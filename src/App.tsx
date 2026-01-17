@@ -20,6 +20,8 @@ import VenueComparison from "./pages/VenueComparison";
 import Brands from "./pages/Brands";
 import Promotions from "./pages/Promotions";
 import Notifications from "./pages/Notifications";
+import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
@@ -129,6 +131,18 @@ const App = () => {
             <Route path="/notifications" element={
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <Notifications />
+              </RouteGuard>
+            } />
+
+            <Route path="/users" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <Users />
+              </RouteGuard>
+            } />
+
+            <Route path="/users/:userId" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <UserDetail />
               </RouteGuard>
             } />
 

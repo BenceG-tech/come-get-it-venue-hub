@@ -119,12 +119,19 @@ export default function Users() {
   };
 
   return (
-    <PageLayout
-      title="Felhasználók"
-      description="Regisztrált felhasználók kezelése és monitorozása"
-      icon={UsersIcon}
-    >
+    <PageLayout>
       <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 rounded-lg bg-cgi-primary/20">
+            <UsersIcon className="h-6 w-6 text-cgi-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-cgi-surface-foreground">Felhasználók</h1>
+            <p className="text-sm text-cgi-muted-foreground">Regisztrált felhasználók kezelése és monitorozása</p>
+          </div>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="cgi-card">
