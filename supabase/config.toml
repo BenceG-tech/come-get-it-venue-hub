@@ -132,3 +132,6 @@ verify_jwt = false
 
 [functions.get-users]
 verify_jwt = false
+
+[functions.void-redemption]
+verify_jwt = false
