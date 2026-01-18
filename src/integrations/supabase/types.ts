@@ -580,8 +580,10 @@ export type Database = {
           drink_id: string | null
           external_order_id: string | null
           id: string
+          metadata: Json | null
           redeemed_at: string
           staff_id: string | null
+          status: string
           token_id: string | null
           user_id: string
           value: number
@@ -593,8 +595,10 @@ export type Database = {
           drink_id?: string | null
           external_order_id?: string | null
           id?: string
+          metadata?: Json | null
           redeemed_at?: string
           staff_id?: string | null
+          status?: string
           token_id?: string | null
           user_id: string
           value: number
@@ -606,8 +610,10 @@ export type Database = {
           drink_id?: string | null
           external_order_id?: string | null
           id?: string
+          metadata?: Json | null
           redeemed_at?: string
           staff_id?: string | null
+          status?: string
           token_id?: string | null
           user_id?: string
           value?: number
