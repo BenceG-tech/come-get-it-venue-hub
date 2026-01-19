@@ -75,10 +75,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get the redemption
+    // Get the redemption with metadata for merge
     const { data: redemption, error: fetchError } = await supabase
       .from("redemptions")
-      .select("id, venue_id, redeemed_at, status")
+      .select("id, venue_id, redeemed_at, status, metadata")
       .eq("id", redemption_id)
       .single();
 
@@ -89,10 +89,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if already voided
-    if (redemption.status === "void") {
+    // Check if redemption can be voided (only success status allowed)
+    if (redemption.status !== "success") {
       return new Response(
-        JSON.stringify({ error: "Redemption is already voided" }),
+        JSON.stringify({ error: `Cannot void redemption with status: ${redemption.status}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -120,17 +120,37 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Perform the void
+    // Rate limit: max 10 voids per user per minute
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { data: recentVoids, error: rateLimitError } = await supabase
+      .from("redemptions")
+      .select("id")
+      .eq("status", "void")
+      .gte("metadata->>voided_at", oneMinuteAgo)
+      .eq("metadata->>voided_by", user.id);
+
+    if (!rateLimitError && recentVoids && recentVoids.length >= 10) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Maximum 10 voids per minute." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Perform the void with metadata merge (P0 fix - prevent data loss)
     const voidedAt = new Date().toISOString();
+    const existingMetadata = (redemption.metadata as Record<string, unknown>) || {};
+    const mergedMetadata = {
+      ...existingMetadata,
+      voided_at: voidedAt,
+      voided_by: user.id,
+      void_reason: reason.trim(),
+    };
+
     const { error: updateError } = await supabase
       .from("redemptions")
       .update({
         status: "void",
-        metadata: {
-          voided_at: voidedAt,
-          voided_by: user.id,
-          void_reason: reason.trim(),
-        },
+        metadata: mergedMetadata,
       })
       .eq("id", redemption_id);
 
