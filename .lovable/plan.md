@@ -1,223 +1,273 @@
 
-# Terv: Adat Érték Fokozása & TodayRedemptionStatus Integráció
+# Terv: UserQuickView Modal & Prediktív Analitika Panel
 
-## 1. RÉSZ: TodayRedemptionStatus Integráció a UserVenueAffinity-be
+## Összefoglaló
 
-### Jelenlegi helyzet
-A `TodayRedemptionStatus` komponens létezik és működik, de nincs integrálva a `UserVenueAffinity` komponensbe. A felhasználó helyszínek tabján nem látszik, hogy az adott helyen ma már váltott-e be ingyen italt.
-
-### Szükséges változtatások
-
-**1.1 get-user-stats-extended edge function bővítése**
-
-Új mező a venue_affinity-ben:
-```typescript
-venue_affinity: Array<{
-  // ... meglévő mezők ...
-  today_redemption: {
-    redeemed: boolean;
-    redeemed_at?: string;
-    drink_name?: string;
-  } | null;
-  next_window: { start: string; end: string } | null;
-}>
-```
-
-Implementáció:
-- Lekérdezzük a mai redemptions-t venue-nként
-- Lekérdezzük a free_drink_windows táblából a következő ablakot
-
-**1.2 UserVenueAffinity komponens módosítása**
-
-- Import `TodayRedemptionStatus` komponenst
-- Props interface bővítése a `today_redemption` és `next_window` mezőkkel
-- Minden venue kártyába beillesztjük a `TodayRedemptionStatus` komponenst
+Két új komponenst hozunk létre:
+1. **UserQuickView Modal** - A Users listából egy kattintásra megnyíló gyorsnézet modal
+2. **UserPredictions Panel** - Jövőbeli előrejelzések panel a UserDetail oldalra
 
 ---
 
-## 2. RÉSZ: Adat Érték Fokozása - Új Funkciók
+## 1. RÉSZ: UserQuickView Modal
 
-### 2.1 Prediktív Analitika Panel
+### Koncepció
 
-Új kártya a UserDetail áttekintés tabján:
+A Users lista minden sorához egy "szem" ikont adunk, amely egy modált nyit meg a felhasználó teljes összefoglalójával - anélkül, hogy el kellene navigálni a részletes profilba.
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  🔮 JÖVŐBELI ELŐREJELZÉS                                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  📊 KÖVETKEZŐ 30 NAP BECSLÉSE:                                              │
-│  • Várható beváltások: 8-12 db                                             │
-│  • Várható költés: 32.000-45.000 Ft                                        │
-│  • Legvalószínűbb helyszín: Vinozza (78%)                                  │
-│  • Legvalószínűbb időpont: Péntek 17:00-19:00                              │
-│                                                                             │
-│  🎯 OPTIMÁLIS PUSH IDŐPONT:                                                 │
-│  Csütörtök 14:30 - "Emlékeztető a holnapi happy hour-ra"                   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 2.2 Összehasonlító Metrikák
-
-User vs Platform átlag összehasonlítás:
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  📊 ÖSSZEHASONLÍTÁS A PLATFORM ÁTLAGGAL                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Beváltások/hó:     12 db    ▲ +156% vs átlag (4.7 db)                     │
-│  Költés/beváltás:   4.050 Ft ▲ +85% vs átlag (2.190 Ft)                    │
-│  Látogatott helyek: 4 db     ▲ +100% vs átlag (2 db)                       │
-│  ROI:               2.7x     ▼ -10% vs átlag (3.0x)                        │
-│                                                                             │
-│  💡 ÉRTÉKELÉS: Kiemelkedően aktív felhasználó, de alacsonyabb ROI.         │
-│     Javaslat: Premium ajánlatokkal ösztönözni a magasabb költést.          │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 2.3 Cross-Venue Kapcsolatok Vizualizáció
-
-Melyik helyszíneket látogató userek látogatják még:
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  🔗 HELYSZÍN KAPCSOLATOK                                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Ha valaki Vinozza-t látogat, nagy eséllyel megy még:                      │
-│  • BuBu (67% átfedés)                                                       │
-│  • A KERT Bisztró (45% átfedés)                                            │
-│  • Tapas Bar (32% átfedés)                                                 │
-│                                                                             │
-│  Ez a user mintázata:                                                       │
-│  Vinozza → BuBu → A KERT (tipikus péntek esti útvonal)                     │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 2.4 Korai Figyelmeztető Rendszer
-
-Churn risk részletesebb lebontása:
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  ⚠️ KORAI FIGYELMEZTETÉSEK                                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  🟡 KÖZEPES KOCKÁZAT - Figyelj rá!                                          │
-│                                                                             │
-│  Miért?                                                                     │
-│  • 12 napja nem volt beváltás (átlag: 5 naponta)                           │
-│  • App megnyitások csökkentek 60%-kal                                      │
-│  • Push értesítéseket nem nyitja meg (utolsó 3-ból 0)                      │
-│                                                                             │
-│  Javasolt akció:                                                            │
-│  [🎁 Személyes ajánlat küldése] [📧 Email kampány]                          │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 3. RÉSZ: UX Egyszerűsítés
-
-### 3.1 Összevont Gyorsnézet Mód
-
-Egy kattintással teljes user összefoglaló:
+### Modal tartalma
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  👤 KISS PÉTER - GYORSNÉZET                                    [Bezárás ✕] │
 ├─────────────────────────────────────────────────────────────────────────────┤
+│  PROFIL                                                                     │
+│  📧 kiss.peter@email.com | 📱 +36 30 123 4567 | Tag: 45 napja              │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  📊 ALAP                    💰 PÉNZÜGYI              🎯 STÁTUSZ             │
-│  ├─ 45 napja tag           ├─ 48.500 Ft költés      ├─ 🟢 Aktív            │
-│  ├─ 23 beváltás            ├─ 2.7x ROI              ├─ Heti VIP @ Vinozza  │
-│  └─ 4 helyszín             └─ 12.000 Ft LTV         └─ Alacsony churn      │
+│  ├─ 23 beváltás            ├─ 48.500 Ft költés      ├─ 🟢 Aktív            │
+│  ├─ 4 helyszín             ├─ 2.7x ROI              ├─ Alacsony churn      │
+│  └─ 156 pont               └─ 12.000 Ft LTV         └─ 78 engagement       │
 │                                                                             │
-│  📅 MA                                                                      │
-│  ├─ Vinozza: ✅ 14:32 (Peroni)                                             │
-│  ├─ BuBu: ⏳ Még nem váltott (ablak: 16:00-18:00)                          │
-│  └─ A KERT: ⏳ Még nem váltott (ablak: 17:00-20:00)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  📅 MAI ÁLLAPOT                                                            │
+│                                                                             │
+│  Vinozza: ✅ 14:32 (Peroni)                                                │
+│  BuBu: ⏳ Még nem váltott (ablak: 16:00-18:00)                             │
+│  A KERT: ⏳ Még nem váltott (ablak: 17:00-20:00)                            │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  🏆 TOP ITALOK                                                              │
+│  1. Peroni (8x) • 2. Dreher (5x) • 3. Spritzer (3x)                        │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  [👤 Teljes profil] [📤 Push küldése] [🎁 Jutalom] [📊 Export]             │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Kontextus-érzékeny Navigáció
+### Technikai megoldás
 
-- Beváltásoknál: user kattintható → profil
-- Profilnál: venue kattintható → venue részletek
-- Venue-nál: top userek listája kattintható → profil
-
-### 3.3 Keresés & Szűrés Javítása
-
-Globális keresés minden listán:
-- Felhasználó név, email, telefon
-- Helyszín név, cím
-- Beváltás dátum, ital
+Az adatokat a már létező `get-user-stats-extended` edge function-ból töltjük be a modal megnyitásakor.
 
 ---
 
-## 4. RÉSZ: Technikai Implementáció
+## 2. RÉSZ: Prediktív Analitika Panel (UserPredictions)
 
-### 4.1 Módosítandó fájlok
+### Koncepció
+
+Egy új panel a UserDetail Áttekintés tabján, ami becslést ad a felhasználó következő 30 napjára.
+
+### Panel tartalma
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🔮 JÖVŐBELI ELŐREJELZÉS (30 NAP)                         [ℹ️ Magyarázat]  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
+│  │ VÁRHATÓ         │  │ BECSÜLT         │  │ LEGVALÓSZÍNŰBB  │             │
+│  │ BEVÁLTÁSOK      │  │ KÖLTÉS          │  │ HELYSZÍN        │             │
+│  │                 │  │                 │  │                 │             │
+│  │   8-12 db       │  │  32.000-45.000  │  │  Vinozza (78%)  │             │
+│  │ ±3 az átlagtól  │  │       Ft        │  │  BuBu (45%)     │             │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
+│                                                                             │
+│  🎯 OPTIMÁLIS PUSH IDŐPONT                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  📅 Csütörtök 14:30                                                 │   │
+│  │  💡 "Emlékeztető a holnapi happy hour-ra Vinozza-ban"               │   │
+│  │                                                [📤 Push küldése]    │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  📊 SZÁMÍTÁS ALAPJA:                                                        │
+│  • Átlagos látogatások/hó: 10 db                                           │
+│  • Leggyakoribb nap: Péntek (67%)                                          │
+│  • Leggyakoribb időpont: 17:00-19:00 (45%)                                 │
+│  • Mintázat megbízhatósága: Magas (4+ hét adat)                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Predikció számítási logika
+
+A predikció az edge function-ben a meglévő adatokból számolható:
+
+1. **Várható beváltások (30 nap)**:
+   - `redemptions_last_30_days` alapján, ±20% variancia
+
+2. **Becsült költés**:
+   - `user_spend_per_redemption × várható beváltások`
+
+3. **Legvalószínűbb helyszín**:
+   - `venue_affinity` első 3 eleme, százalékos arányban
+
+4. **Optimális push időpont**:
+   - `hourly_heatmap` és `preferred_days` alapján
+
+---
+
+## 3. RÉSZ: Implementálandó Fájlok
+
+### Új fájlok
+
+| Fájl | Leírás |
+|------|--------|
+| `src/components/user/UserQuickView.tsx` | Modal komponens gyorsnézethez |
+| `src/components/user/UserPredictions.tsx` | Prediktív analitika panel |
+
+### Módosítandó fájlok
 
 | Fájl | Változás |
 |------|----------|
-| `supabase/functions/get-user-stats-extended/index.ts` | today_redemption + next_window mezők |
-| `src/components/user/UserVenueAffinity.tsx` | TodayRedemptionStatus integráció |
-| `src/components/user/index.ts` | Export lista frissítés |
-
-### 4.2 Új komponensek
-
-| Komponens | Leírás |
-|-----------|--------|
-| `UserPredictions.tsx` | Jövőbeli előrejelzések panel |
-| `UserComparison.tsx` | Platform átlag összehasonlítás |
-| `ChurnWarningPanel.tsx` | Korai figyelmeztető rendszer |
-| `UserQuickView.tsx` | Összevont gyorsnézet modal |
-
-### 4.3 Edge function bővítések
-
-| Funkció | Új endpoint/bővítés |
-|---------|---------------------|
-| `get-user-stats-extended` | today_redemption, next_window per venue |
-| `get-platform-averages` | ÚJ - átlagok a összehasonlításhoz |
-| `get-user-predictions` | ÚJ - ML alapú előrejelzések |
+| `src/pages/Users.tsx` | "Gyorsnézet" gomb hozzáadása minden user sorhoz + modal state |
+| `src/pages/UserDetail.tsx` | UserPredictions integrálása az Áttekintés tabra |
+| `src/components/user/index.ts` | Új komponensek exportálása |
+| `supabase/functions/get-user-stats-extended/index.ts` | `predictions` mező hozzáadása |
 
 ---
 
-## 5. RÉSZ: Implementációs Prioritás
+## 4. RÉSZ: Edge Function Bővítés
 
-| Prioritás | Feladat | Komplexitás |
-|-----------|---------|-------------|
-| **P0** | TodayRedemptionStatus integráció UserVenueAffinity-be | Alacsony |
-| **P0** | get-user-stats-extended bővítés (today_redemption) | Közepes |
-| **P1** | Platform átlag összehasonlítás | Közepes |
-| **P1** | Churn warning részletes panel | Közepes |
-| **P2** | Prediktív analitika | Magas |
-| **P2** | Cross-venue kapcsolatok | Magas |
-| **P2** | UserQuickView modal | Közepes |
+### Új `predictions` mező a response-ban:
+
+```typescript
+predictions: {
+  expected_redemptions_30_days: {
+    min: number;
+    max: number;
+    average: number;
+  };
+  estimated_spend_30_days: {
+    min: number;
+    max: number;
+  };
+  likely_venues: Array<{
+    venue_id: string;
+    venue_name: string;
+    probability: number;
+  }>;
+  likely_day: {
+    day: number;
+    day_name: string;
+    probability: number;
+  };
+  likely_hour: {
+    hour: number;
+    probability: number;
+  };
+  optimal_push: {
+    day_name: string;
+    time: string;
+    suggested_message: string;
+  } | null;
+  confidence: "low" | "medium" | "high";
+  data_weeks: number;
+}
+```
+
+### Számítási logika (edge function-ben):
+
+```typescript
+// 1. Várható beváltások
+const avgPerMonth = redemptions.filter(r => 
+  new Date(r.redeemed_at).getTime() > thirtyDaysAgo
+).length;
+const expectedRedemptions = {
+  min: Math.max(0, avgPerMonth - 3),
+  max: avgPerMonth + 3,
+  average: avgPerMonth
+};
+
+// 2. Várható költés
+const spendPerRedemption = totalSpend / totalRedemptions || 0;
+const estimatedSpend = {
+  min: expectedRedemptions.min * spendPerRedemption,
+  max: expectedRedemptions.max * spendPerRedemption
+};
+
+// 3. Valószínű helyszínek (venue_affinity alapján)
+const totalVisits = venueAffinity.reduce((s, v) => s + v.visit_count, 0);
+const likelyVenues = venueAffinity.slice(0, 3).map(v => ({
+  venue_id: v.venue_id,
+  venue_name: v.venue_name,
+  probability: Math.round((v.visit_count / totalVisits) * 100)
+}));
+
+// 4. Valószínű nap/óra (hourly_heatmap alapján)
+// Megkeressük a legnagyobb értéket a heatmap-ban
+
+// 5. Optimális push időpont
+// A legvalószínűbb nap előtt 1 nappal, délután
+```
 
 ---
 
-## 6. RÉSZ: Várható Eredmények
+## 5. RÉSZ: Users Oldal - Gyorsnézet Gomb
 
-### Átláthatóság javulása
-- Azonnal látszik a mai beváltási státusz venue-nként
-- Egy helyen minden fontos információ
+### Változások a user lista sorban:
 
-### Adat érték növekedés
-- Platform összehasonlítás mutatja a user relatív értékét
-- Prediktív metrikák segítenek a proaktív akcióban
-- Cross-venue kapcsolatok új marketing lehetőségeket nyitnak
+```tsx
+// Jelenlegi: Kattintás = navigálás profilba
+<div onClick={() => navigate(`/users/${user.id}`)}>
+  ...
+  <ChevronRight />
+</div>
 
-### Kezelhetőség javulása
-- Gyorsnézet mód gyors áttekintéshez
-- Kontextus-érzékeny navigáció mindenhol
-- Egyértelmű tooltipek minden új funkcióhoz
+// Új: Külön "Gyorsnézet" gomb + kattintás = navigálás
+<div>
+  ...
+  <Button
+    variant="ghost"
+    size="icon"
+    onClick={(e) => {
+      e.stopPropagation();
+      setQuickViewUserId(user.id);
+    }}
+  >
+    <Eye className="h-4 w-4" />
+  </Button>
+  <ChevronRight onClick={() => navigate(`/users/${user.id}`)} />
+</div>
+```
+
+---
+
+## 6. RÉSZ: Implementációs Sorrend
+
+| Lépés | Feladat | Prioritás |
+|-------|---------|-----------|
+| 1 | `get-user-stats-extended` bővítése predictions mezővel | P0 |
+| 2 | `UserPredictions.tsx` komponens létrehozása | P0 |
+| 3 | `UserDetail.tsx` - UserPredictions integrálása | P0 |
+| 4 | `UserQuickView.tsx` modal komponens létrehozása | P0 |
+| 5 | `Users.tsx` - Gyorsnézet gomb és modal integrálása | P0 |
+| 6 | `index.ts` exportok frissítése | P0 |
+
+---
+
+## 7. RÉSZ: UI/UX Részletek
+
+### UserQuickView Modal
+- Dialog komponens használata (már importálva van a projektben)
+- Skeleton loading amíg az adatok betöltődnek
+- Action gombok: "Teljes profil", "Push küldése", "Jutalom küldése"
+- Ma minden venue-nál TodayRedemptionStatus komponens
+
+### UserPredictions Panel
+- Vizuális kiemelés a fő metrikáknál (gradient háttér)
+- Confidence badge (Alacsony/Közepes/Magas megbízhatóság)
+- Tooltip minden metrikánál a számítási módszer magyarázatával
+- "Push küldése" gomb az optimális push ajánlásnál
+
+---
+
+## 8. RÉSZ: Várható Eredmény
+
+1. **Gyorsabb áttekintés**: A Users listából egy kattintásra teljes összefoglaló
+2. **Proaktív döntéshozatal**: A predikciók segítenek megelőzni a churn-t
+3. **Célzott marketing**: Az optimális push időpontok növelik a megnyitási arányt
+4. **Átláthatóság**: A számítási logika magyarázva van tooltipekben
