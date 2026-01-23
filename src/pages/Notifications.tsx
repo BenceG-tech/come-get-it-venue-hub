@@ -3,8 +3,10 @@ import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, Send } from 'lucide-react';
 import { NotificationFormModal } from '@/components/NotificationFormModal';
+import { NotificationAnalyticsDashboard } from '@/components/NotificationAnalyticsDashboard';
 import { NotificationTemplate } from '@/lib/types';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { useToast } from '@/hooks/use-toast';
@@ -71,6 +73,18 @@ export default function Notifications() {
           Új értesítés
         </Button>
       </div>
+
+      <Tabs defaultValue="templates" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="templates">Sablonok</TabsTrigger>
+          <TabsTrigger value="analytics">Statisztikák</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analytics">
+          <NotificationAnalyticsDashboard />
+        </TabsContent>
+
+        <TabsContent value="templates">
 
       {/* Statisztika kártyák */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -169,6 +183,9 @@ export default function Notifications() {
           ))
         )}
       </div>
+
+      </TabsContent>
+      </Tabs>
 
       {/* Form Modal */}
       <NotificationFormModal

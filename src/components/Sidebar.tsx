@@ -18,7 +18,8 @@ import {
   ChevronDown,
   Landmark,
   Bell,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -43,6 +44,7 @@ const navigation = [
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues' },
   { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'], tourId: 'nav-brands' },
   { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications' },
+  { name: 'Audit Napló', href: '/audit-log', icon: FileText, roles: ['cgi_admin'], tourId: 'nav-audit-log' },
   { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-settings' },
 ];
 
