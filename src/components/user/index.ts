@@ -24,3 +24,4 @@ export { UserBulkActionsToolbar } from "./UserBulkActionsToolbar";
 export { BulkNotificationModal } from "./BulkNotificationModal";
 export { BulkBonusPointsModal } from "./BulkBonusPointsModal";
 export { UserTagsManager } from "./UserTagsManager";
+export { SingleBonusPointsModal } from "./SingleBonusPointsModal";

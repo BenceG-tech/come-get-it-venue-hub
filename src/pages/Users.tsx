@@ -576,65 +576,144 @@ export default function Users() {
                       {data?.users.map((user) => (
                         <div
                           key={user.id}
-                          className={`flex items-center gap-4 p-4 rounded-lg transition-colors group cursor-pointer ${
+                          className={`p-3 md:p-4 rounded-lg transition-colors group cursor-pointer ${
                             selectedUserIds.has(user.id)
                               ? "bg-cgi-primary/10 border border-cgi-primary/30"
                               : "bg-cgi-muted/20 hover:bg-cgi-muted/40"
                           }`}
                         >
-                          {/* Checkbox */}
-                          <Checkbox
-                            checked={selectedUserIds.has(user.id)}
-                            onCheckedChange={(checked) =>
-                              handleSelectUser(user.id, !!checked)
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            className="data-[state=checked]:bg-cgi-primary"
-                            aria-label={`${user.name} kijelölése`}
-                          />
+                          {/* Top Row - Avatar, Info, Actions */}
+                          <div className="flex items-center gap-3">
+                            {/* Checkbox */}
+                            <Checkbox
+                              checked={selectedUserIds.has(user.id)}
+                              onCheckedChange={(checked) =>
+                                handleSelectUser(user.id, !!checked)
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              className="data-[state=checked]:bg-cgi-primary shrink-0"
+                              aria-label={`${user.name} kijelölése`}
+                            />
 
-                          {/* Avatar & Info - Clickable for navigation */}
-                          <div
-                            className="flex items-center gap-4 flex-1 min-w-0"
-                            onClick={() => navigate(`/users/${user.id}`)}
-                          >
-                            <Avatar className="h-12 w-12">
+                            {/* Avatar */}
+                            <Avatar 
+                              className="h-10 w-10 md:h-12 md:w-12 shrink-0"
+                              onClick={() => navigate(`/users/${user.id}`)}
+                            >
                               <AvatarImage src={user.avatar_url || undefined} />
-                              <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary">
+                              <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary text-sm md:text-base">
                                 {getInitials(user.name)}
                               </AvatarFallback>
                             </Avatar>
 
-                            <div className="flex-1 min-w-0">
+                            {/* User Info */}
+                            <div
+                              className="flex-1 min-w-0"
+                              onClick={() => navigate(`/users/${user.id}`)}
+                            >
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-cgi-surface-foreground truncate">
+                                <p className="font-medium text-cgi-surface-foreground truncate text-sm md:text-base">
                                   {user.name}
                                 </p>
-                                {getStatusBadge(user.status)}
                                 {user.is_admin && (
-                                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
                                     Admin
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-cgi-muted-foreground truncate">
+                              <p className="text-xs md:text-sm text-cgi-muted-foreground truncate">
                                 {user.email || "Nincs email"}
                               </p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                {getStatusBadge(user.status)}
+                                {/* Last seen - Mobile only */}
+                                {user.last_seen_at && (
+                                  <span className="text-xs text-cgi-muted-foreground md:hidden flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDistanceToNow(new Date(user.last_seen_at), {
+                                      addSuffix: true,
+                                      locale: hu,
+                                    })}
+                                  </span>
+                                )}
+                              </div>
                             </div>
+
+                            {/* Stats - Desktop */}
+                            <div className="hidden md:flex items-center gap-6 text-sm">
+                              <div className="text-center">
+                                <p className="font-medium text-cgi-secondary">
+                                  {user.points_balance.toLocaleString("hu-HU")}
+                                </p>
+                                <p className="text-xs text-cgi-muted-foreground">
+                                  pont
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <p className="font-medium text-cgi-surface-foreground">
+                                  {user.total_redemptions}
+                                </p>
+                                <p className="text-xs text-cgi-muted-foreground">
+                                  beváltás
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <p className="font-medium text-cgi-surface-foreground">
+                                  {user.total_sessions}
+                                </p>
+                                <p className="text-xs text-cgi-muted-foreground">
+                                  munkamenet
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Last Seen - Large Screens */}
+                            <div className="hidden lg:block text-right text-sm">
+                              {user.last_seen_at ? (
+                                <div className="flex items-center gap-1 text-cgi-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDistanceToNow(new Date(user.last_seen_at), {
+                                    addSuffix: true,
+                                    locale: hu,
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="text-cgi-muted-foreground">Soha</span>
+                              )}
+                            </div>
+
+                            {/* Quick View Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickViewUserId(user.id);
+                              }}
+                              title="Gyorsnézet"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+
+                            <ChevronRight
+                              className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors shrink-0"
+                              onClick={() => navigate(`/users/${user.id}`)}
+                            />
                           </div>
 
-                          {/* Stats - Desktop */}
-                          <div className="hidden md:flex items-center gap-6 text-sm">
+                          {/* Bottom Row - Stats (Mobile only) */}
+                          <div className="flex items-center justify-around mt-3 pt-3 border-t border-cgi-muted/20 md:hidden">
                             <div className="text-center">
-                              <p className="font-medium text-cgi-secondary">
-                                {user.points_balance}
+                              <p className="font-medium text-cgi-secondary text-sm">
+                                {user.points_balance.toLocaleString("hu-HU")}
                               </p>
                               <p className="text-xs text-cgi-muted-foreground">
                                 pont
                               </p>
                             </div>
                             <div className="text-center">
-                              <p className="font-medium text-cgi-surface-foreground">
+                              <p className="font-medium text-cgi-surface-foreground text-sm">
                                 {user.total_redemptions}
                               </p>
                               <p className="text-xs text-cgi-muted-foreground">
@@ -642,7 +721,7 @@ export default function Users() {
                               </p>
                             </div>
                             <div className="text-center">
-                              <p className="font-medium text-cgi-surface-foreground">
+                              <p className="font-medium text-cgi-surface-foreground text-sm">
                                 {user.total_sessions}
                               </p>
                               <p className="text-xs text-cgi-muted-foreground">
@@ -650,40 +729,6 @@ export default function Users() {
                               </p>
                             </div>
                           </div>
-
-                          {/* Last Seen - Large Screens */}
-                          <div className="hidden lg:block text-right text-sm">
-                            {user.last_seen_at ? (
-                              <div className="flex items-center gap-1 text-cgi-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                {formatDistanceToNow(new Date(user.last_seen_at), {
-                                  addSuffix: true,
-                                  locale: hu,
-                                })}
-                              </div>
-                            ) : (
-                              <span className="text-cgi-muted-foreground">Soha</span>
-                            )}
-                          </div>
-
-                          {/* Quick View Button */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setQuickViewUserId(user.id);
-                            }}
-                            title="Gyorsnézet"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-
-                          <ChevronRight
-                            className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors"
-                            onClick={() => navigate(`/users/${user.id}`)}
-                          />
                         </div>
                       ))}
                     </div>

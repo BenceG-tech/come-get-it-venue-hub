@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -31,6 +31,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, format } from "date-fns";
 import { hu } from "date-fns/locale";
+import { ManualNotificationModal } from "./ManualNotificationModal";
+import { SingleBonusPointsModal } from "./SingleBonusPointsModal";
 
 interface UserQuickViewProps {
   userId: string | null;
@@ -86,6 +88,8 @@ interface ExtendedUserStats {
 
 export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps) {
   const navigate = useNavigate();
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showBonusModal, setShowBonusModal] = useState(false);
 
   const { data, isLoading, error } = useQuery<ExtendedUserStats>({
     queryKey: ["user-quick-view", userId],
@@ -335,10 +339,7 @@ export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => {
-                  // TODO: Implement push sending
-                  onOpenChange(false);
-                }}
+                onClick={() => setShowNotificationModal(true)}
               >
                 <Bell className="h-4 w-4 mr-2" />
                 Push küldése
@@ -346,10 +347,7 @@ export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => {
-                  // TODO: Implement reward sending
-                  onOpenChange(false);
-                }}
+                onClick={() => setShowBonusModal(true)}
               >
                 <Award className="h-4 w-4 mr-2" />
                 Jutalom
@@ -358,6 +356,24 @@ export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps
           </div>
         ) : null}
       </DialogContent>
+
+      {/* Sub-modals */}
+      {data && (
+        <>
+          <ManualNotificationModal
+            userId={data.user.id}
+            userName={data.user.name}
+            open={showNotificationModal}
+            onOpenChange={setShowNotificationModal}
+          />
+          <SingleBonusPointsModal
+            userId={data.user.id}
+            userName={data.user.name}
+            open={showBonusModal}
+            onOpenChange={setShowBonusModal}
+          />
+        </>
+      )}
     </Dialog>
   );
 }
