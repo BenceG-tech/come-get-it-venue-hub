@@ -33,6 +33,28 @@ async function hashToken(token: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Get today's start in Europe/Budapest timezone
+function getTodayStartBudapest(now: Date): Date {
+  // Get the date string in Budapest timezone
+  const budapestDateStr = now.toLocaleDateString('en-CA', { 
+    timeZone: 'Europe/Budapest' 
+  }); // Returns "YYYY-MM-DD"
+  
+  // Parse and create a UTC date for the start of that day in Budapest
+  // Budapest is UTC+1 in winter, UTC+2 in summer
+  const [year, month, day] = budapestDateStr.split('-').map(Number);
+  
+  // Create a date object and adjust for Budapest timezone
+  const budapestMidnight = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  
+  // Get the offset for Budapest at this time
+  const budapestOffset = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Budapest' })).getTime() - 
+                         new Date(now.toLocaleString('en-US', { timeZone: 'UTC' })).getTime();
+  
+  // Subtract the offset to get UTC time that corresponds to midnight in Budapest
+  return new Date(budapestMidnight.getTime() - budapestOffset);
+}
+
 // Check if current time is within a free drink window
 function isWindowActive(
   days: number[],
@@ -85,6 +107,8 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
+    const todayStart = getTodayStartBudapest(now);
+    const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
     // 1. Check if venue exists and is active
     const { data: venue, error: venueError } = await supabase
@@ -193,65 +217,65 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. USER DAILY LIMIT CHECK - 1 free drink per day per venue per user
-    // This check uses user_id if provided, otherwise device_fingerprint
+    // 5. GLOBAL USER DAILY LIMIT CHECK - 1 free drink per day per user (GLOBALLY, not per venue!)
+    // This is the core rule: a user can only redeem 1 free drink per day across ALL venues
     const identifier = user_id || device_fingerprint;
     const identifierType = user_id ? "user_id" : "device_fingerprint";
     
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
+    console.log(`Checking global daily limit for ${identifierType}: ${identifier}`);
+    console.log(`Today start (Budapest): ${todayStart.toISOString()}`);
     
-    // Check redemptions table for user's daily limit at this venue
-    let userTodayRedemptionQuery = supabase
-      .from("redemptions")
-      .select("*", { count: "exact", head: true })
-      .eq("venue_id", venue_id)
-      .gte("redeemed_at", todayStart.toISOString());
-    
-    // If we have user_id, check by user_id; otherwise check by device fingerprint
+    // Check redemptions table for user's GLOBAL daily limit (not venue-specific!)
     if (user_id) {
-      userTodayRedemptionQuery = userTodayRedemptionQuery.eq("user_id", user_id);
+      const { count: globalTodayCount, error: globalCheckError } = await supabase
+        .from("redemptions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user_id)
+        .eq("status", "success")
+        .gte("redeemed_at", todayStart.toISOString());
+      
+      if (globalCheckError) {
+        console.error("Error checking global daily limit:", globalCheckError);
+      }
+      
+      console.log(`User ${user_id} has ${globalTodayCount || 0} redemptions today (globally)`);
+      
+      if (globalTodayCount && globalTodayCount >= 1) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
+            code: "USER_GLOBAL_DAILY_LIMIT",
+            next_available: tomorrowStart.toISOString()
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     } else {
-      // For device fingerprint, we need to check redemption_tokens that were consumed
-      // This is a fallback for anonymous users
+      // For device fingerprint (anonymous users), check consumed tokens GLOBALLY
       const { count: tokenRedemptions } = await supabase
         .from("redemption_tokens")
         .select("*", { count: "exact", head: true })
-        .eq("venue_id", venue_id)
         .eq("device_fingerprint", device_fingerprint)
         .eq("status", "consumed")
         .gte("consumed_at", todayStart.toISOString());
+      
+      console.log(`Device ${device_fingerprint} has ${tokenRedemptions || 0} consumed tokens today (globally)`);
       
       if (tokenRedemptions && tokenRedemptions >= 1) {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: "Ma már beváltottál ingyen italt ezen a helyszínen. Próbáld újra holnap!",
-            code: "USER_DAILY_LIMIT",
-            next_available: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString()
-          }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-    
-    if (user_id) {
-      const { count: userTodayCount } = await userTodayRedemptionQuery;
-      
-      if (userTodayCount && userTodayCount >= 1) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Ma már beváltottál ingyen italt ezen a helyszínen. Próbáld újra holnap!",
-            code: "USER_DAILY_LIMIT",
-            next_available: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString()
+            error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
+            code: "USER_GLOBAL_DAILY_LIMIT",
+            next_available: tomorrowStart.toISOString()
           }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    // 6. Check venue caps
+    // 6. Check venue caps (this is venue-specific, separate from user limit)
     const { data: caps } = await supabase
       .from("caps")
       .select("daily, hourly, on_exhaust, alt_offer_text")

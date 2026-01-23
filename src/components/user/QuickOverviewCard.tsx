@@ -106,16 +106,23 @@ export function QuickOverviewCard({
 
         {/* Bottom row - Today's activity & badges */}
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-cgi-muted/30">
-          {/* Today's activity */}
+          {/* Today's activity - max 1 per day globally */}
           <div className="flex items-center gap-2 text-sm">
             <Zap className="h-4 w-4 text-amber-400" />
             <span className="text-cgi-muted-foreground">MA:</span>
             {todayStats.redemptions > 0 ? (
-              <span className="text-cgi-surface-foreground">
-                {todayStats.redemptions} beváltás
+              <span className="text-cgi-surface-foreground flex items-center gap-1">
+                {todayStats.redemptions > 1 ? (
+                  <>
+                    <span className="text-amber-500">{todayStats.redemptions} beváltás</span>
+                    <InfoTooltip content="Figyelem: Az adatok tesztből származhatnak. Valós esetben max 1 beváltás/nap összesen." />
+                  </>
+                ) : (
+                  <span>1 beváltás</span>
+                )}
                 {todayStats.venues.length > 0 && (
                   <span className="text-cgi-muted-foreground">
-                    {" "}({todayStats.venues.slice(0, 2).join(", ")}{todayStats.venues.length > 2 ? "..." : ""})
+                    {" "}@ {todayStats.venues[0]}
                   </span>
                 )}
               </span>
