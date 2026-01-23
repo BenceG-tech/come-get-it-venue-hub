@@ -469,6 +469,57 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_milestones: {
+        Row: {
+          achieved_at: string
+          admin_dismissed: boolean | null
+          admin_notified: boolean | null
+          created_at: string | null
+          id: string
+          milestone_type: string
+          reward_message: string | null
+          reward_sent: boolean | null
+          reward_sent_at: string | null
+          reward_type: string | null
+          total_spend: number | null
+          user_id: string
+          venue_id: string
+          visit_count: number
+        }
+        Insert: {
+          achieved_at?: string
+          admin_dismissed?: boolean | null
+          admin_notified?: boolean | null
+          created_at?: string | null
+          id?: string
+          milestone_type: string
+          reward_message?: string | null
+          reward_sent?: boolean | null
+          reward_sent_at?: string | null
+          reward_type?: string | null
+          total_spend?: number | null
+          user_id: string
+          venue_id: string
+          visit_count: number
+        }
+        Update: {
+          achieved_at?: string
+          admin_dismissed?: boolean | null
+          admin_notified?: boolean | null
+          created_at?: string | null
+          id?: string
+          milestone_type?: string
+          reward_message?: string | null
+          reward_sent?: boolean | null
+          reward_sent_at?: string | null
+          reward_type?: string | null
+          total_spend?: number | null
+          user_id?: string
+          venue_id?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
       notification_logs: {
         Row: {
           body: string

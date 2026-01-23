@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
+import { LoyaltyAlertsPanel } from "@/components/dashboard/LoyaltyAlertsPanel";
 
 interface VenueActivity {
   venue_id: string;
@@ -403,6 +404,9 @@ export default function CommandCenter() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Loyalty Alerts Panel */}
+        <LoyaltyAlertsPanel />
       </div>
     </PageLayout>
   );

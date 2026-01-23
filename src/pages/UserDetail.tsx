@@ -36,7 +36,9 @@ import {
   UserVenueAffinity,
   AINotificationSuggestions,
   UserBehaviorStory,
-  BehaviorPatternBadges
+  BehaviorPatternBadges,
+  UserRevenueImpact,
+  EnhancedRedemptionCard
 } from "@/components/user";
 
 interface ExtendedUserStats {
@@ -297,16 +299,21 @@ export default function UserDetail() {
           </TabsList>
 
           <TabsContent value="overview">
+            {/* Revenue Impact - Top of Overview */}
+            <UserRevenueImpact userId={userId!} />
+            
             {/* User Behavior Story - AI generated narrative */}
-            <UserBehaviorStory 
-              userId={userId!} 
-              userName={user.name}
-              onGenerateNotification={() => {
-                // Switch to AI tab
-                const aiTab = document.querySelector('[value="ai"]') as HTMLElement;
-                aiTab?.click();
-              }}
-            />
+            <div className="mt-4">
+              <UserBehaviorStory 
+                userId={userId!} 
+                userName={user.name}
+                onGenerateNotification={() => {
+                  // Switch to AI tab
+                  const aiTab = document.querySelector('[value="ai"]') as HTMLElement;
+                  aiTab?.click();
+                }}
+              />
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
               <UserWeeklyTrends data={weekly_trends} />

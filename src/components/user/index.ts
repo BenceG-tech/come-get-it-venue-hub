@@ -9,3 +9,5 @@ export { AINotificationSuggestions } from "./AINotificationSuggestions";
 export { UserBehaviorStory } from "./UserBehaviorStory";
 export { BehaviorPatternBadges } from "./BehaviorPatternBadges";
 export { NextActionPredictor } from "./NextActionPredictor";
+export { UserRevenueImpact } from "./UserRevenueImpact";
+export { EnhancedRedemptionCard } from "./EnhancedRedemptionCard";
