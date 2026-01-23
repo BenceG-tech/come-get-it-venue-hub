@@ -130,6 +130,47 @@ Deno.serve(async (req) => {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    // Calculate current week vs previous week redemption timeseries
+    const oneWeekAgo = new Date(now);
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const twoWeeksAgo = new Date(now);
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    const currentWeekRedemptions = redemption_trends
+      .filter(r => new Date(r.date) >= oneWeekAgo)
+      .map(r => ({ date: r.date, redemptions: r.count }));
+    
+    const previousWeekRedemptions = redemption_trends
+      .filter(r => new Date(r.date) >= twoWeeksAgo && new Date(r.date) < oneWeekAgo)
+      .map(r => ({ date: r.date, redemptions: r.count }));
+
+    // Calculate new vs returning users based on first redemption date
+    const userFirstRedemption = new Map<string, string>();
+    (redemptionData || []).forEach(r => {
+      const existing = userFirstRedemption.get(r.user_id);
+      if (!existing || r.redeemed_at < existing) {
+        userFirstRedemption.set(r.user_id, r.redeemed_at);
+      }
+    });
+
+    let newUsers = 0;
+    let returningUsers = 0;
+    const usersCountedThisWeek = new Set<string>();
+    
+    (redemptionData || [])
+      .filter(r => new Date(r.redeemed_at) >= oneWeekAgo)
+      .forEach(r => {
+        if (usersCountedThisWeek.has(r.user_id)) return;
+        usersCountedThisWeek.add(r.user_id);
+        
+        const firstRedemptionDate = userFirstRedemption.get(r.user_id);
+        if (firstRedemptionDate && new Date(firstRedemptionDate) >= oneWeekAgo) {
+          newUsers++;
+        } else {
+          returningUsers++;
+        }
+      });
+
     // 4. Top Venues by Redemptions
     const venueRedemptions = new Map<string, { count: number; users: Set<string> }>();
     (redemptionData || []).forEach((r) => {
@@ -285,6 +326,15 @@ Deno.serve(async (req) => {
         top_venues,
         hourly_activity: hourlyActivity,
         summary,
+        // New fields for Analytics.tsx compatibility
+        redemption_timeseries: {
+          current_week: currentWeekRedemptions,
+          previous_week: previousWeekRedemptions,
+        },
+        user_activity: {
+          new_users: newUsers,
+          returning_users: returningUsers,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
