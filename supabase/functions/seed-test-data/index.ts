@@ -74,14 +74,17 @@ function getHourWeight(hour: number): number {
   return 0.1;
 }
 
-function generateRandomDate(maxDaysAgo: number): Date {
+function getDateKey(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function generateRandomDateWithHour(daysAgo: number): Date {
   const now = new Date();
-  const randomDays = randomInt(0, maxDaysAgo);
-  const date = new Date(now.getTime() - randomDays * 24 * 60 * 60 * 1000);
+  const date = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
   
   // Adjust for day weight - prefer weekends
   const dayWeight = getDayWeight(date.getDay());
-  if (Math.random() > dayWeight && randomDays > 1) {
+  if (Math.random() > dayWeight && daysAgo > 1) {
     // Move to Friday or Saturday
     const daysToWeekend = (5 - date.getDay() + 7) % 7 || 7;
     if (daysToWeekend <= 2) {
@@ -136,16 +139,23 @@ serve(async (req) => {
 
     const userId = EXISTING_USER_ID;
 
-    // 1. Create redemptions (200+)
-    console.log("Creating redemptions...");
+    // Track used venue+date combinations to enforce 1 redemption per day per venue
+    // Key format: "venue_id:YYYY-MM-DD"
+    const usedVenueDays = new Set<string>();
+
+    // 1. Create redemptions respecting 1 per day per venue rule
+    console.log("Creating redemptions with 1/day/venue rule...");
     const redemptionsToInsert: any[] = [];
     
-    // Generate 200 redemptions with realistic distribution
-    for (let i = 0; i < 200; i++) {
+    // Generate up to 100 valid redemptions (since we're limited by 30 days * 5 venues = 150 max)
+    let attempts = 0;
+    const maxAttempts = 500;
+    const targetRedemptions = 100;
+    
+    while (redemptionsToInsert.length < targetRedemptions && attempts < maxAttempts) {
+      attempts++;
+      
       const venue = weightedRandomVenue();
-      const venueDrinks = DRINKS.filter(d => d.venue_id === venue.id);
-      const drink = venueDrinks.length > 0 ? randomChoice(venueDrinks) : null;
-      const drinkName = drink ? drink.name : randomChoice(DRINK_NAMES);
       
       // Time distribution: 40% last 7 days, 25% 8-14 days, 20% 15-21 days, 15% 22-30 days
       let daysAgo: number;
@@ -155,7 +165,21 @@ serve(async (req) => {
       else if (timeRand < 0.85) daysAgo = randomInt(15, 21);
       else daysAgo = randomInt(22, 30);
       
-      const redeemDate = generateRandomDate(daysAgo);
+      const redeemDate = generateRandomDateWithHour(daysAgo);
+      const dateKey = getDateKey(redeemDate);
+      const venueDay = `${venue.id}:${dateKey}`;
+      
+      // Skip if this venue+day combo was already used
+      if (usedVenueDays.has(venueDay)) {
+        continue;
+      }
+      
+      // Mark as used
+      usedVenueDays.add(venueDay);
+      
+      const venueDrinks = DRINKS.filter(d => d.venue_id === venue.id);
+      const drink = venueDrinks.length > 0 ? randomChoice(venueDrinks) : null;
+      const drinkName = drink ? drink.name : randomChoice(DRINK_NAMES);
       
       redemptionsToInsert.push({
         user_id: userId,
@@ -182,14 +206,14 @@ serve(async (req) => {
       throw redemptionError;
     }
     results.redemptions = redemptionsToInsert.length;
-    console.log(`Created ${results.redemptions} redemptions`);
+    console.log(`Created ${results.redemptions} redemptions (respecting 1/day/venue rule)`);
 
     // 2. Create activity logs (500+)
     console.log("Creating activity logs...");
     const activityLogsToInsert: any[] = [];
     
     for (let i = 0; i < 500; i++) {
-      const eventDate = generateRandomDate(30);
+      const eventDate = generateRandomDateWithHour(randomInt(0, 30));
       const eventType = randomChoice(ACTIVITY_TYPES);
       const venue = eventType === "venue_view" ? weightedRandomVenue() : null;
       
@@ -249,7 +273,7 @@ serve(async (req) => {
     // Earning transactions
     for (let i = 0; i < 80; i++) {
       const venue = weightedRandomVenue();
-      const earnDate = generateRandomDate(30);
+      const earnDate = generateRandomDateWithHour(randomInt(0, 30));
       
       pointsTransactionsToInsert.push({
         user_id: userId,
@@ -264,7 +288,7 @@ serve(async (req) => {
     
     // Spending transactions
     for (let i = 0; i < 20; i++) {
-      const spendDate = generateRandomDate(25);
+      const spendDate = generateRandomDateWithHour(randomInt(0, 25));
       
       pointsTransactionsToInsert.push({
         user_id: userId,
@@ -290,9 +314,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Test data seeded successfully",
+        message: "Test data seeded successfully (with 1 drink/day/venue rule)",
         results,
         userId,
+        note: "Redemptions now respect the 1 drink per day per venue per user rule"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

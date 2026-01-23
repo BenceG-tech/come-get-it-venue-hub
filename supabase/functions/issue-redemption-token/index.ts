@@ -9,6 +9,7 @@ interface IssueTokenRequest {
   venue_id: string;
   drink_id?: string;
   device_fingerprint: string;
+  user_id?: string; // Optional: for authenticated users
 }
 
 // Generate random string
@@ -74,7 +75,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: IssueTokenRequest = await req.json();
-    const { venue_id, drink_id, device_fingerprint } = body;
+    const { venue_id, drink_id, device_fingerprint, user_id } = body;
 
     if (!venue_id || !device_fingerprint) {
       return new Response(
@@ -192,7 +193,65 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Check venue caps
+    // 5. USER DAILY LIMIT CHECK - 1 free drink per day per venue per user
+    // This check uses user_id if provided, otherwise device_fingerprint
+    const identifier = user_id || device_fingerprint;
+    const identifierType = user_id ? "user_id" : "device_fingerprint";
+    
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    
+    // Check redemptions table for user's daily limit at this venue
+    let userTodayRedemptionQuery = supabase
+      .from("redemptions")
+      .select("*", { count: "exact", head: true })
+      .eq("venue_id", venue_id)
+      .gte("redeemed_at", todayStart.toISOString());
+    
+    // If we have user_id, check by user_id; otherwise check by device fingerprint
+    if (user_id) {
+      userTodayRedemptionQuery = userTodayRedemptionQuery.eq("user_id", user_id);
+    } else {
+      // For device fingerprint, we need to check redemption_tokens that were consumed
+      // This is a fallback for anonymous users
+      const { count: tokenRedemptions } = await supabase
+        .from("redemption_tokens")
+        .select("*", { count: "exact", head: true })
+        .eq("venue_id", venue_id)
+        .eq("device_fingerprint", device_fingerprint)
+        .eq("status", "consumed")
+        .gte("consumed_at", todayStart.toISOString());
+      
+      if (tokenRedemptions && tokenRedemptions >= 1) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Ma már beváltottál ingyen italt ezen a helyszínen. Próbáld újra holnap!",
+            code: "USER_DAILY_LIMIT",
+            next_available: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString()
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    
+    if (user_id) {
+      const { count: userTodayCount } = await userTodayRedemptionQuery;
+      
+      if (userTodayCount && userTodayCount >= 1) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Ma már beváltottál ingyen italt ezen a helyszínen. Próbáld újra holnap!",
+            code: "USER_DAILY_LIMIT",
+            next_available: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000).toISOString()
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // 6. Check venue caps
     const { data: caps } = await supabase
       .from("caps")
       .select("daily, hourly, on_exhaust, alt_offer_text")
@@ -200,10 +259,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (caps) {
-      // Count today's redemptions
-      const todayStart = new Date(now);
-      todayStart.setHours(0, 0, 0, 0);
-      
+      // Count today's redemptions for venue cap
       const { count: todayCount } = await supabase
         .from("redemptions")
         .select("*", { count: "exact", head: true })
@@ -245,7 +301,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 6. Generate token
+    // 7. Generate token
     const tokenPrefix = generateRandomString(6).toUpperCase();
     const tokenSecret = generateRandomString(32);
     const fullToken = `CGI-${tokenPrefix}-${tokenSecret}`;
@@ -254,7 +310,7 @@ Deno.serve(async (req) => {
     // Token expires in 2 minutes
     const expiresAt = new Date(now.getTime() + 2 * 60 * 1000);
 
-    // 7. Save token to database
+    // 8. Save token to database
     const { error: insertError } = await supabase
       .from("redemption_tokens")
       .insert({
@@ -263,6 +319,7 @@ Deno.serve(async (req) => {
         venue_id: venue_id,
         drink_id: drinkData.id,
         device_fingerprint: device_fingerprint,
+        user_id: user_id || null, // Store user_id if available
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         status: "issued",
@@ -276,7 +333,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 8. Record rate limit
+    // 9. Record rate limit
     await supabase
       .from("token_rate_limits")
       .insert({
@@ -286,7 +343,7 @@ Deno.serve(async (req) => {
         issued_at: now.toISOString(),
       });
 
-    // 9. Return success response
+    // 10. Return success response
     return new Response(
       JSON.stringify({
         success: true,

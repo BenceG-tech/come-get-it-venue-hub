@@ -1,4 +1,5 @@
 export { UserScorecard } from "./UserScorecard";
+export { ManualNotificationModal } from "./ManualNotificationModal";
 export { UserWeeklyTrends } from "./UserWeeklyTrends";
 export { UserDrinkPreferences } from "./UserDrinkPreferences";
 export { UserActivityHeatmap } from "./UserActivityHeatmap";
