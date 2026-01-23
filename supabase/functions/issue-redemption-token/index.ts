@@ -106,6 +106,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate device_fingerprint format (16-256 chars, alphanumeric + hyphens)
+    const fingerprintRegex = /^[a-zA-Z0-9\-]{16,256}$/;
+    if (!fingerprintRegex.test(device_fingerprint)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid device fingerprint format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const now = new Date();
     const todayStart = getTodayStartBudapest(now);
     const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);

@@ -121,15 +121,33 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit: max 10 voids per user per minute
+    // Note: Using a more reliable query approach - fetch recent voids and filter in code
     const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
     const { data: recentVoids, error: rateLimitError } = await supabase
       .from("redemptions")
-      .select("id")
+      .select("id, metadata")
       .eq("status", "void")
-      .gte("metadata->>voided_at", oneMinuteAgo)
-      .eq("metadata->>voided_by", user.id);
+      .gte("created_at", new Date(Date.now() - 60000).toISOString());
 
-    if (!rateLimitError && recentVoids && recentVoids.length >= 10) {
+    // Fail securely if rate limit check fails
+    if (rateLimitError) {
+      console.error("Rate limit check failed:", rateLimitError);
+      return new Response(
+        JSON.stringify({ error: "Rate limit validation failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Filter voids by this user in the last minute
+    const userRecentVoids = (recentVoids || []).filter((v) => {
+      const metadata = v.metadata as Record<string, unknown> | null;
+      if (!metadata) return false;
+      const voidedAt = metadata.voided_at as string | undefined;
+      const voidedBy = metadata.voided_by as string | undefined;
+      return voidedBy === user.id && voidedAt && voidedAt >= oneMinuteAgo;
+    });
+
+    if (userRecentVoids.length >= 10) {
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded. Maximum 10 voids per minute." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }

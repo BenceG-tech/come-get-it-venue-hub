@@ -53,6 +53,17 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Validate timestamp to prevent replay attacks (reject if older than 5 minutes)
+    const requestTime = parseInt(timestamp, 10)
+    const now = Date.now()
+    if (isNaN(requestTime) || Math.abs(now - requestTime) > 5 * 60 * 1000) {
+      console.error('Request timestamp too old or invalid:', timestamp)
+      return new Response('Request expired', { 
+        status: 401,
+        headers: corsHeaders 
+      })
+    }
+
     const body = await req.text()
     console.log('Webhook body:', body)
 
@@ -97,11 +108,11 @@ Deno.serve(async (req) => {
     console.log('Parsed event:', event)
 
     // Initialize Supabase client with service role key
-    const supabaseUrl = 'https://nrxfiblssxwzeziomlvc.supabase.co'
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
-    if (!serviceKey) {
-      console.error('SUPABASE_SERVICE_ROLE_KEY not configured')
+    if (!supabaseUrl || !serviceKey) {
+      console.error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured')
       return new Response('Server configuration error', { 
         status: 500,
         headers: corsHeaders 
