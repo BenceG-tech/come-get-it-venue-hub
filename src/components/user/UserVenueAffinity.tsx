@@ -5,6 +5,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
 import { VenueLink } from "@/components/ui/entity-links";
 import { MobileTooltip, InfoTooltip } from "@/components/ui/mobile-tooltip";
+import { TodayRedemptionStatus } from "./TodayRedemptionStatus";
 
 interface VenueAffinityData {
   venue_id: string;
@@ -14,6 +15,12 @@ interface VenueAffinityData {
   last_visit: string | null;
   preferred_days: number[];
   preferred_hours: number[];
+  today_redemption?: {
+    redeemed: boolean;
+    redeemed_at?: string;
+    drink_name?: string;
+  } | null;
+  next_window?: { start: string; end: string } | null;
 }
 
 interface UserVenueAffinityProps {
@@ -62,7 +69,7 @@ export function UserVenueAffinity({ venues }: UserVenueAffinityProps) {
         <CardTitle className="text-cgi-surface-foreground flex items-center gap-2">
           <MapPin className="h-5 w-5 text-cgi-primary" />
           Helyszín affinitás
-          <InfoTooltip content="A felhasználó kedvenc helyszínei látogatás szám alapján rangsorolva. Kattints a helyszín nevére a részletekhez." />
+          <InfoTooltip content="A felhasználó kedvenc helyszínei látogatás szám alapján rangsorolva. Látható a mai beváltási státusz is - egy felhasználó naponta 1 ingyen italt válthat be helyszínenként." />
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -132,6 +139,21 @@ export function UserVenueAffinity({ venues }: UserVenueAffinityProps) {
                       </Badge>
                     )}
                   </div>
+
+                  {/* Today's Redemption Status */}
+                  {venue.today_redemption && (
+                    <div className="mt-3">
+                      <TodayRedemptionStatus
+                        data={{
+                          redeemed: venue.today_redemption.redeemed,
+                          redeemed_at: venue.today_redemption.redeemed_at,
+                          drink_name: venue.today_redemption.drink_name,
+                          next_window: venue.next_window
+                        }}
+                        venueName={venue.venue_name}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

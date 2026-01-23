@@ -14,3 +14,5 @@ export { EnhancedRedemptionCard } from "./EnhancedRedemptionCard";
 export { SystemRulesPanel } from "./SystemRulesPanel";
 export { QuickOverviewCard } from "./QuickOverviewCard";
 export { TodayRedemptionStatus } from "./TodayRedemptionStatus";
+export { UserComparison } from "./UserComparison";
+export { ChurnWarningPanel } from "./ChurnWarningPanel";

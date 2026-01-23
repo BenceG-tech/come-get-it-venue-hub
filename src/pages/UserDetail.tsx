@@ -41,7 +41,9 @@ import {
   UserRevenueImpact,
   EnhancedRedemptionCard,
   SystemRulesPanel,
-  QuickOverviewCard
+  QuickOverviewCard,
+  UserComparison,
+  ChurnWarningPanel
 } from "@/components/user";
 import { VenueLink } from "@/components/ui/entity-links";
 import {
@@ -71,7 +73,9 @@ interface ExtendedUserStats {
   scores: {
     engagement_score: number;
     churn_risk: "low" | "medium" | "high";
+    churn_factors?: string[];
     ltv: number;
+    roi?: number;
     preference_profile: string[];
   };
   stats: {
@@ -87,6 +91,18 @@ interface ExtendedUserStats {
     app_opens_last_7_days: number;
     redemptions_last_30_days: number;
   };
+  platform_comparison?: {
+    user_redemptions_per_month: number;
+    user_spend_per_redemption: number;
+    user_venues_visited: number;
+    user_roi: number;
+    platform_avg: {
+      avg_redemptions_per_month: number;
+      avg_spend_per_redemption: number;
+      avg_venues_visited: number;
+      avg_roi: number;
+    };
+  };
   weekly_trends: Array<{ week: string; sessions: number; redemptions: number }>;
   hourly_heatmap: number[][];
   drink_preferences: Array<{ drink_name: string; category: string | null; count: number }>;
@@ -98,6 +114,12 @@ interface ExtendedUserStats {
     last_visit: string | null;
     preferred_days: number[];
     preferred_hours: number[];
+    today_redemption?: {
+      redeemed: boolean;
+      redeemed_at?: string;
+      drink_name?: string;
+    } | null;
+    next_window?: { start: string; end: string } | null;
   }>;
   points_flow: {
     earnings_by_type: Record<string, number>;
@@ -226,7 +248,7 @@ export default function UserDetail() {
     );
   }
 
-  const { user, points, scores, stats, weekly_trends, hourly_heatmap, drink_preferences, venue_affinity, points_flow, recent_activity, free_drink_redemptions, reward_redemptions, notification_history } = data;
+  const { user, points, scores, stats, weekly_trends, hourly_heatmap, drink_preferences, venue_affinity, points_flow, recent_activity, free_drink_redemptions, reward_redemptions, notification_history, platform_comparison } = data;
 
   return (
     <PageLayout>
@@ -358,8 +380,40 @@ export default function UserDetail() {
           </TabsList>
 
           <TabsContent value="overview">
+            {/* Churn Warning Panel - Show for medium/high risk */}
+            {(scores.churn_risk === "medium" || scores.churn_risk === "high") && (
+              <div className="mb-4">
+                <ChurnWarningPanel
+                  churnRisk={scores.churn_risk}
+                  churnFactors={scores.churn_factors || []}
+                  daysSinceLastActivity={stats.days_since_last_activity}
+                  onSendOffer={() => {
+                    const aiTab = document.querySelector('[value="ai"]') as HTMLElement;
+                    aiTab?.click();
+                  }}
+                  onSendPush={() => {
+                    const notifTab = document.querySelector('[value="notifications"]') as HTMLElement;
+                    notifTab?.click();
+                  }}
+                />
+              </div>
+            )}
+
             {/* Revenue Impact - Top of Overview */}
             <UserRevenueImpact userId={userId!} />
+            
+            {/* Platform Comparison */}
+            {platform_comparison && (
+              <div className="mt-4">
+                <UserComparison
+                  userRedemptionsPerMonth={platform_comparison.user_redemptions_per_month}
+                  userSpendPerRedemption={platform_comparison.user_spend_per_redemption}
+                  userVenuesVisited={platform_comparison.user_venues_visited}
+                  userRoi={platform_comparison.user_roi}
+                  platformAvg={platform_comparison.platform_avg}
+                />
+              </div>
+            )}
             
             {/* User Behavior Story - AI generated narrative */}
             <div className="mt-4">

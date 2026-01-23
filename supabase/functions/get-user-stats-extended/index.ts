@@ -13,12 +13,25 @@ interface VenueAffinity {
   last_visit: string | null;
   preferred_days: number[];
   preferred_hours: number[];
+  today_redemption: {
+    redeemed: boolean;
+    redeemed_at?: string;
+    drink_name?: string;
+  } | null;
+  next_window: { start: string; end: string } | null;
 }
 
 interface DrinkPreference {
   drink_name: string;
   category: string | null;
   count: number;
+}
+
+interface PlatformAverages {
+  avg_redemptions_per_month: number;
+  avg_spend_per_redemption: number;
+  avg_venues_visited: number;
+  avg_roi: number;
 }
 
 Deno.serve(async (req) => {
@@ -73,7 +86,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parallel data fetching
+    // Get today's date boundaries
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    // Parallel data fetching - including today's redemptions and free drink windows
     const [
       profileResult,
       pointsResult,
@@ -81,7 +99,10 @@ Deno.serve(async (req) => {
       redemptionsResult,
       rewardRedemptionsResult,
       notificationLogsResult,
-      pointsTransactionsResult
+      pointsTransactionsResult,
+      todayRedemptionsResult,
+      freeDrinkWindowsResult,
+      platformStatsResult
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).single(),
       supabase.from("user_points").select("*").eq("user_id", userId).single(),
@@ -89,7 +110,17 @@ Deno.serve(async (req) => {
       supabase.from("redemptions").select(`*, venues:venue_id (name), venue_drinks:drink_id (category)`).eq("user_id", userId).order("redeemed_at", { ascending: false }),
       supabase.from("reward_redemptions").select(`*, rewards:reward_id (name, points_required), venues:venue_id (name)`).eq("user_id", userId).order("redeemed_at", { ascending: false }),
       supabase.from("notification_logs").select("*").eq("user_id", userId).order("sent_at", { ascending: false }).limit(20),
-      supabase.from("points_transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50)
+      supabase.from("points_transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+      // Today's redemptions for this user
+      supabase.from("redemptions")
+        .select("venue_id, drink, redeemed_at")
+        .eq("user_id", userId)
+        .gte("redeemed_at", todayStart.toISOString())
+        .lt("redeemed_at", todayEnd.toISOString()),
+      // All free drink windows
+      supabase.from("free_drink_windows").select("venue_id, days, start_time, end_time"),
+      // Platform-wide stats for comparison
+      supabase.from("user_points").select("total_spend, lifetime_earned")
     ]);
 
     const profile = profileResult.data;
@@ -106,6 +137,42 @@ Deno.serve(async (req) => {
     const rewardRedemptions = rewardRedemptionsResult.data || [];
     const notificationLogs = notificationLogsResult.data || [];
     const pointsTransactions = pointsTransactionsResult.data || [];
+    const todayRedemptions = todayRedemptionsResult.data || [];
+    const freeDrinkWindows = freeDrinkWindowsResult.data || [];
+    const allUserPoints = platformStatsResult.data || [];
+
+    // Calculate platform averages
+    const platformAverages: PlatformAverages = calculatePlatformAverages(allUserPoints, redemptions.length);
+
+    // Build today's redemption lookup by venue
+    const todayRedemptionByVenue: Record<string, { redeemed: boolean; redeemed_at?: string; drink_name?: string }> = {};
+    todayRedemptions.forEach(r => {
+      todayRedemptionByVenue[r.venue_id] = {
+        redeemed: true,
+        redeemed_at: r.redeemed_at,
+        drink_name: r.drink
+      };
+    });
+
+    // Build next window lookup by venue
+    const currentDay = now.getDay(); // 0 = Sunday
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    const nextWindowByVenue: Record<string, { start: string; end: string } | null> = {};
+    freeDrinkWindows.forEach(w => {
+      // Check if window is active today
+      if (w.days.includes(currentDay)) {
+        const startTime = w.start_time.slice(0, 5);
+        const endTime = w.end_time.slice(0, 5);
+        
+        // Only show if window is in the future or currently active
+        if (endTime > currentTime) {
+          if (!nextWindowByVenue[w.venue_id] || startTime < nextWindowByVenue[w.venue_id]!.start) {
+            nextWindowByVenue[w.venue_id] = { start: startTime, end: endTime };
+          }
+        }
+      }
+    });
 
     // Calculate session stats
     const appOpenEvents = activityLogs.filter(l => l.event_type === "app_open");
@@ -123,7 +190,7 @@ Deno.serve(async (req) => {
     const registrationDate = new Date(profile.created_at);
     const daysSinceRegistration = Math.floor((Date.now() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Venue affinity with detailed info
+    // Venue affinity with detailed info including today status
     const venueData: Record<string, VenueAffinity> = {};
     redemptions.forEach(r => {
       const venueId = r.venue_id;
@@ -138,7 +205,9 @@ Deno.serve(async (req) => {
           first_visit: r.redeemed_at,
           last_visit: r.redeemed_at,
           preferred_days: [],
-          preferred_hours: []
+          preferred_hours: [],
+          today_redemption: todayRedemptionByVenue[venueId] || { redeemed: false },
+          next_window: nextWindowByVenue[venueId] || null
         };
       }
       
@@ -179,40 +248,66 @@ Deno.serve(async (req) => {
       .slice(0, 5);
 
     // Engagement Score (0-100)
-    // Based on: recent activity, redemptions, session frequency, return rate
-    const now = Date.now();
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     
     const recentSessions = appOpenEvents.filter(e => new Date(e.created_at).getTime() > sevenDaysAgo).length;
     const recentRedemptions = redemptions.filter(r => new Date(r.redeemed_at).getTime() > thirtyDaysAgo).length;
     const totalRedemptions = redemptions.length;
     
     // Score components (each 0-25)
-    const sessionScore = Math.min(25, recentSessions * 5); // 5 sessions = max
-    const redemptionScore = Math.min(25, recentRedemptions * 3); // 8 redemptions = max
-    const loyaltyScore = Math.min(25, totalRedemptions * 2); // 12+ total = max
+    const sessionScore = Math.min(25, recentSessions * 5);
+    const redemptionScore = Math.min(25, recentRedemptions * 3);
+    const loyaltyScore = Math.min(25, totalRedemptions * 2);
     const recencyScore = profile.last_seen_at 
-      ? Math.max(0, 25 - Math.floor((now - new Date(profile.last_seen_at).getTime()) / (24 * 60 * 60 * 1000)))
+      ? Math.max(0, 25 - Math.floor((Date.now() - new Date(profile.last_seen_at).getTime()) / (24 * 60 * 60 * 1000)))
       : 0;
     
     const engagementScore = Math.round(sessionScore + redemptionScore + loyaltyScore + recencyScore);
 
-    // Churn Risk: low / medium / high
+    // Churn Risk with detailed factors
     const daysSinceLastActivity = profile.last_seen_at
-      ? Math.floor((now - new Date(profile.last_seen_at).getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.floor((Date.now() - new Date(profile.last_seen_at).getTime()) / (1000 * 60 * 60 * 24))
       : null;
     
     let churnRisk: "low" | "medium" | "high" = "low";
+    const churnFactors: string[] = [];
+    
     if (daysSinceLastActivity === null || daysSinceLastActivity > 30) {
       churnRisk = "high";
+      churnFactors.push(`${daysSinceLastActivity || 30}+ napja nem volt beváltás`);
     } else if (daysSinceLastActivity > 14) {
       churnRisk = "medium";
+      churnFactors.push(`${daysSinceLastActivity} napja nem volt aktivitás`);
+    }
+    
+    // Check for decreasing activity
+    const thisWeekSessions = appOpenEvents.filter(e => new Date(e.created_at).getTime() > sevenDaysAgo).length;
+    const lastWeekSessions = appOpenEvents.filter(e => {
+      const t = new Date(e.created_at).getTime();
+      return t > sevenDaysAgo - 7 * 24 * 60 * 60 * 1000 && t <= sevenDaysAgo;
+    }).length;
+    
+    if (lastWeekSessions > 0 && thisWeekSessions < lastWeekSessions * 0.5) {
+      if (churnRisk === "low") churnRisk = "medium";
+      const decrease = Math.round((1 - thisWeekSessions / lastWeekSessions) * 100);
+      churnFactors.push(`App megnyitások ${decrease}%-kal csökkentek`);
+    }
+    
+    // Check notification engagement
+    const recentNotifications = notificationLogs.slice(0, 5);
+    const openedNotifications = recentNotifications.filter(n => n.opened_at).length;
+    if (recentNotifications.length >= 3 && openedNotifications === 0) {
+      churnFactors.push(`Push értesítéseket nem nyitja meg (utolsó ${recentNotifications.length}-ból 0)`);
     }
 
-    // LTV (Lifetime Value) - simple calculation
+    // LTV (Lifetime Value)
     const totalSpend = points?.total_spend || 0;
-    const ltv = totalSpend + (totalRedemptions * 1500); // Assume avg drink value 1500 Ft
+    const ltv = totalSpend + (totalRedemptions * 1500);
+
+    // ROI calculation
+    const freeDrinkValue = totalRedemptions * 1500;
+    const roi = freeDrinkValue > 0 ? totalSpend / freeDrinkValue : 0;
 
     // Preference Profile tags
     const preferenceProfile: string[] = [];
@@ -233,8 +328,8 @@ Deno.serve(async (req) => {
     // Weekly trend data (last 4 weeks)
     const weeklyTrends: { week: string; sessions: number; redemptions: number }[] = [];
     for (let i = 0; i < 4; i++) {
-      const weekStart = new Date(now - (i + 1) * 7 * 24 * 60 * 60 * 1000);
-      const weekEnd = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
+      const weekStart = new Date(Date.now() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
+      const weekEnd = new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000);
       const weekLabel = `W-${i}`;
       
       const weekSessions = appOpenEvents.filter(e => {
@@ -303,7 +398,9 @@ Deno.serve(async (req) => {
       scores: {
         engagement_score: engagementScore,
         churn_risk: churnRisk,
+        churn_factors: churnFactors,
         ltv: ltv,
+        roi: roi,
         preference_profile: preferenceProfile
       },
       stats: {
@@ -318,6 +415,13 @@ Deno.serve(async (req) => {
         days_since_last_activity: daysSinceLastActivity,
         app_opens_last_7_days: recentSessions,
         redemptions_last_30_days: recentRedemptions
+      },
+      platform_comparison: {
+        user_redemptions_per_month: recentRedemptions,
+        user_spend_per_redemption: totalRedemptions > 0 ? Math.round(totalSpend / totalRedemptions) : 0,
+        user_venues_visited: venueAffinity.length,
+        user_roi: roi,
+        platform_avg: platformAverages
       },
       weekly_trends: weeklyTrends,
       hourly_heatmap: hourlyHeatmap,
@@ -396,4 +500,24 @@ function getModes(arr: number[]): number[] {
     .filter(([, count]) => count === maxCount)
     .map(([val]) => parseInt(val))
     .slice(0, 3);
+}
+
+// Helper: Calculate platform averages
+function calculatePlatformAverages(allUserPoints: any[], userRedemptionCount: number): PlatformAverages {
+  const totalUsers = allUserPoints.length || 1;
+  const totalSpend = allUserPoints.reduce((sum, u) => sum + (u.total_spend || 0), 0);
+  const totalEarned = allUserPoints.reduce((sum, u) => sum + (u.lifetime_earned || 0), 0);
+  
+  // Rough estimates based on available data
+  const avgRedemptionsPerMonth = 4.7; // Placeholder - would need redemptions table aggregate
+  const avgSpendPerRedemption = totalUsers > 0 ? Math.round(totalSpend / (totalUsers * 5)) : 2190;
+  const avgVenuesVisited = 2; // Placeholder
+  const avgRoi = 3.0; // Placeholder
+  
+  return {
+    avg_redemptions_per_month: avgRedemptionsPerMonth,
+    avg_spend_per_redemption: avgSpendPerRedemption,
+    avg_venues_visited: avgVenuesVisited,
+    avg_roi: avgRoi
+  };
 }
