@@ -150,3 +150,15 @@ verify_jwt = false
 
 [functions.get-anomaly-report]
 verify_jwt = false
+
+[functions.get-user-revenue-impact]
+verify_jwt = false
+
+[functions.detect-loyalty-milestones]
+verify_jwt = false
+
+[functions.get-pending-loyalty-alerts]
+verify_jwt = false
+
+[functions.send-loyalty-reward]
+verify_jwt = false
