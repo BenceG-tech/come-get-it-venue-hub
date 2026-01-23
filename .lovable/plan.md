@@ -1,253 +1,223 @@
 
-# Terv: Felhasználók UX Fejlesztés + Adat Exportálás
+# Terv: Adat Érték Fokozása & TodayRedemptionStatus Integráció
 
-## Azonosított Problémák
+## 1. RÉSZ: TodayRedemptionStatus Integráció a UserVenueAffinity-be
 
-A UserDetail oldal és kapcsolódó komponensek áttekintése után a következő fejlesztési lehetőségeket azonosítottam:
+### Jelenlegi helyzet
+A `TodayRedemptionStatus` komponens létezik és működik, de nincs integrálva a `UserVenueAffinity` komponensbe. A felhasználó helyszínek tabján nem látszik, hogy az adott helyen ma már váltott-e be ingyen italt.
 
-### 1. Érthetőségi problémák
-- **Engagement Score**: Mit jelent pontosan? 0-100 skála de nincs magyarázat
-- **LTV (Élettartam Érték)**: Hogyan számítódik? 
-- **Viselkedési minták**: Badge-ek vannak, de nincs kontextus
-- **ROI**: Mit jelent a "Return on Investment" ebben a kontextusban?
+### Szükséges változtatások
 
-### 2. "1 free drink / nap / helyszín" szabály nem látható
-- A rendszerben van `per_user_daily` limit a `caps` táblában
-- DE ez nincs vizualizálva a felhasználó profiljában
-- Nem látszik, hogy "ma már váltott itt ingyen italt" vagy "még nem váltott"
+**1.1 get-user-stats-extended edge function bővítése**
 
-### 3. Hiányzó Export funkciók
-- Users oldalon nincs export gomb
-- UserDetail oldalon nincs export
-- Redemptions oldalon nincs export
-- Analytics adatok nem exportálhatók
+Új mező a venue_affinity-ben:
+```typescript
+venue_affinity: Array<{
+  // ... meglévő mezők ...
+  today_redemption: {
+    redeemed: boolean;
+    redeemed_at?: string;
+    drink_name?: string;
+  } | null;
+  next_window: { start: string; end: string } | null;
+}>
+```
 
-### 4. Navigációs és kontextus hiányok
-- Beváltásoknál nincs kattintható venue link
-- Pontok tabon nincs venue kapcsolat
+Implementáció:
+- Lekérdezzük a mai redemptions-t venue-nként
+- Lekérdezzük a free_drink_windows táblából a következő ablakot
+
+**1.2 UserVenueAffinity komponens módosítása**
+
+- Import `TodayRedemptionStatus` komponenst
+- Props interface bővítése a `today_redemption` és `next_window` mezőkkel
+- Minden venue kártyába beillesztjük a `TodayRedemptionStatus` komponenst
 
 ---
 
-## Megoldási Terv
+## 2. RÉSZ: Adat Érték Fokozása - Új Funkciók
 
-### 1. RÉSZ: "Szabályok" Info Panel
+### 2.1 Prediktív Analitika Panel
 
-Új panel a UserDetail oldalon, ami elmagyarázza a rendszer működését:
+Új kártya a UserDetail áttekintés tabján:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  ℹ️ RENDSZER SZABÁLYOK                                          [Bezárás ✕] │
+│  🔮 JÖVŐBELI ELŐREJELZÉS                                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  🍺 INGYEN ITAL SZABÁLYOK:                                                  │
-│  • Egy felhasználó naponta 1 ingyen italt válthat be helyszínenként        │
-│  • Az ingyen ital csak az aktív időablakokban érhető el                    │
-│  • 5 perc várakozás szükséges két token kérés között                       │
+│  📊 KÖVETKEZŐ 30 NAP BECSLÉSE:                                              │
+│  • Várható beváltások: 8-12 db                                             │
+│  • Várható költés: 32.000-45.000 Ft                                        │
+│  • Legvalószínűbb helyszín: Vinozza (78%)                                  │
+│  • Legvalószínűbb időpont: Péntek 17:00-19:00                              │
 │                                                                             │
-│  📊 METRIKÁK MAGYARÁZATA:                                                   │
-│  • Engagement Score: Aktivitási szint 0-100 (beváltások + app használat)   │
-│  • LTV: Becsült élettartam érték (eddigi + várható költés)                 │
-│  • ROI: Megtérülés = Tényleges költés / Ingyen italok értéke               │
-│  • Churn Risk: Lemorzsolódási kockázat az inaktivitás alapján              │
-│                                                                             │
-│  🏆 LOJALITÁS MÉRFÖLDKÖVEK:                                                 │
-│  • Heti VIP: 5+ látogatás / hét ugyanazon helyszínen                       │
-│  • Havi VIP: 10+ látogatás / hónap ugyanazon helyszínen                    │
-│  • Platina: 50+ összesített látogatás egy helyszínen                       │
+│  🎯 OPTIMÁLIS PUSH IDŐPONT:                                                 │
+│  Csütörtök 14:30 - "Emlékeztető a holnapi happy hour-ra"                   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. RÉSZ: "Mai állapot" kártya (per helyszín)
+### 2.2 Összehasonlító Metrikák
 
-A UserDetail Helyszínek tabján minden venue mellett látható:
+User vs Platform átlag összehasonlítás:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  🥇 Vinozza                                                      23 beváltás │
+│  📊 ÖSSZEHASONLÍTÁS A PLATFORM ÁTLAGGAL                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  📅 MAI ÁLLAPOT:                                                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  ✅ Ma már beváltott: 14:32-kor (Peroni)                            │   │
-│  │  ❌ Következő lehetőség: holnap                                     │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  Beváltások/hó:     12 db    ▲ +156% vs átlag (4.7 db)                     │
+│  Költés/beváltás:   4.050 Ft ▲ +85% vs átlag (2.190 Ft)                    │
+│  Látogatott helyek: 4 db     ▲ +100% vs átlag (2 db)                       │
+│  ROI:               2.7x     ▼ -10% vs átlag (3.0x)                        │
 │                                                                             │
-│  VAGY ha még nem váltott:                                                   │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  ⏳ Ma még nem váltott be ingyen italt                              │   │
-│  │  🕐 Következő ablak: 16:00 - 18:00                                  │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  💡 ÉRTÉKELÉS: Kiemelkedően aktív felhasználó, de alacsonyabb ROI.         │
+│     Javaslat: Premium ajánlatokkal ösztönözni a magasabb költést.          │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3. RÉSZ: CSV/Excel Export Funkciók
+### 2.3 Cross-Venue Kapcsolatok Vizualizáció
 
-#### 3.1 Users Lista Export
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  FELHASZNÁLÓK                                    [🔍 Keresés] [📥 Export ▼] │
-├─────────────────────────────────────────────────────────────────────────────┤
-                                                            │
-                                                   ┌────────┴────────┐
-                                                   │ 📊 CSV Export   │
-                                                   │ 📑 Excel Export │
-                                                   │ 📋 Csak kijelölt│
-                                                   └─────────────────┘
-```
-
-Export tartalom:
-- Név, Email, Telefon
-- Regisztráció dátuma
-- Pont egyenleg, Lifetime pontok
-- Összes beváltás
-- Státusz (aktív/inaktív)
-- Utolsó aktivitás
-
-#### 3.2 UserDetail Export
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  ← Vissza     Kiss Péter                             [📥 Export] [⚙️]      │
-├─────────────────────────────────────────────────────────────────────────────┤
-                                          │
-                                 ┌────────┴────────────────┐
-                                 │ 📊 Teljes profil (CSV)  │
-                                 │ 🍺 Csak beváltások      │
-                                 │ 📊 Csak pontok          │
-                                 │ 📈 Analitikai adatok    │
-                                 └─────────────────────────┘
-```
-
-#### 3.3 Redemptions Export
-A meglévő Redemptions oldal export gomb hozzáadása.
-
-### 4. RÉSZ: Tooltipek Kiegészítése
-
-| Komponens | Hely | Hiányzó Tooltip |
-|-----------|------|-----------------|
-| UserScorecard | Engagement Score | ✅ Már van |
-| UserScorecard | LTV | Képlet hozzáadása |
-| UserRevenueImpact | ROI | Mit jelent, hogyan számítjuk |
-| UserPointsFlow | Források | Mi az egyes típusok jelentése |
-| UserVenueAffinity | "Beváltás" szám | Ez a free drink beváltások száma |
-| BehaviorPatternBadges | Klaszter | Mi az a klaszter, miért fontos |
-
-### 5. RÉSZ: Beváltások tab javítása
-
-A jelenlegi beváltások tab a UserDetail-on eléggé egyszerű. Bővítések:
+Melyik helyszíneket látogató userek látogatják még:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  🍺 Ingyen italok (12)                                      [📥 Export]    │
+│  🔗 HELYSZÍN KAPCSOLATOK                                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌────────────────────────────────────────────────────────────────────┐    │
-│  │ 🍻 Peroni                              📍 Vinozza →               │    │
-│  │ 2024.01.15 14:32                       1.500 Ft                    │    │
-│  │                                                                     │    │
-│  │ 📊 KONTEXTUS:                                                       │    │
-│  │ [3. ezen a héten] [8. ebben a hónapban] [45. összesen]             │    │
-│  │                                                                     │    │
-│  │ 💳 KAPCSOLÓDÓ KÖLTÉS: 8.500 Ft (ROI: 5.7x)                         │    │
-│  └────────────────────────────────────────────────────────────────────┘    │
+│  Ha valaki Vinozza-t látogat, nagy eséllyel megy még:                      │
+│  • BuBu (67% átfedés)                                                       │
+│  • A KERT Bisztró (45% átfedés)                                            │
+│  • Tapas Bar (32% átfedés)                                                 │
+│                                                                             │
+│  Ez a user mintázata:                                                       │
+│  Vinozza → BuBu → A KERT (tipikus péntek esti útvonal)                     │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 6. RÉSZ: Összefoglaló Dashboard Kártya
+### 2.4 Korai Figyelmeztető Rendszer
 
-Új "Gyors áttekintés" kártya a UserDetail tetején:
+Churn risk részletesebb lebontása:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  📋 GYORS ÁTTEKINTÉS                                                        │
+│  ⚠️ KORAI FIGYELMEZTETÉSEK                                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐│
-│  │ 🗓️ TAG     │ │ 🍺 BEVÁLTÁS│ │ 💰 KÖLTÉS  │ │ 📊 ROI     │ │ 🎯 KEDVENC ││
-│  │ 45 napja  │ │ 23 db      │ │ 48.500 Ft  │ │ 2.7x       │ │ Vinozza    ││
-│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘│
+│  🟡 KÖZEPES KOCKÁZAT - Figyelj rá!                                          │
 │                                                                             │
-│  ⚡ MA: 2 beváltás (Vinozza, BuBu) | 📍 3 helyszínen aktív | 🔥 Heti VIP   │
+│  Miért?                                                                     │
+│  • 12 napja nem volt beváltás (átlag: 5 naponta)                           │
+│  • App megnyitások csökkentek 60%-kal                                      │
+│  • Push értesítéseket nem nyitja meg (utolsó 3-ból 0)                      │
+│                                                                             │
+│  Javasolt akció:                                                            │
+│  [🎁 Személyes ajánlat küldése] [📧 Email kampány]                          │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Technikai Implementáció
+## 3. RÉSZ: UX Egyszerűsítés
 
-### Új Komponensek
+### 3.1 Összevont Gyorsnézet Mód
+
+Egy kattintással teljes user összefoglaló:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  👤 KISS PÉTER - GYORSNÉZET                                    [Bezárás ✕] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  📊 ALAP                    💰 PÉNZÜGYI              🎯 STÁTUSZ             │
+│  ├─ 45 napja tag           ├─ 48.500 Ft költés      ├─ 🟢 Aktív            │
+│  ├─ 23 beváltás            ├─ 2.7x ROI              ├─ Heti VIP @ Vinozza  │
+│  └─ 4 helyszín             └─ 12.000 Ft LTV         └─ Alacsony churn      │
+│                                                                             │
+│  📅 MA                                                                      │
+│  ├─ Vinozza: ✅ 14:32 (Peroni)                                             │
+│  ├─ BuBu: ⏳ Még nem váltott (ablak: 16:00-18:00)                          │
+│  └─ A KERT: ⏳ Még nem váltott (ablak: 17:00-20:00)                         │
+│                                                                             │
+│  [👤 Teljes profil] [📤 Push küldése] [🎁 Jutalom] [📊 Export]             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Kontextus-érzékeny Navigáció
+
+- Beváltásoknál: user kattintható → profil
+- Profilnál: venue kattintható → venue részletek
+- Venue-nál: top userek listája kattintható → profil
+
+### 3.3 Keresés & Szűrés Javítása
+
+Globális keresés minden listán:
+- Felhasználó név, email, telefon
+- Helyszín név, cím
+- Beváltás dátum, ital
+
+---
+
+## 4. RÉSZ: Technikai Implementáció
+
+### 4.1 Módosítandó fájlok
+
+| Fájl | Változás |
+|------|----------|
+| `supabase/functions/get-user-stats-extended/index.ts` | today_redemption + next_window mezők |
+| `src/components/user/UserVenueAffinity.tsx` | TodayRedemptionStatus integráció |
+| `src/components/user/index.ts` | Export lista frissítés |
+
+### 4.2 Új komponensek
 
 | Komponens | Leírás |
 |-----------|--------|
-| `SystemRulesPanel.tsx` | Összecsukható info panel a szabályokkal |
-| `TodayRedemptionStatus.tsx` | Per-venue mai beváltás állapot |
-| `ExportDropdown.tsx` | Újrahasználható export menü |
-| `QuickOverviewCard.tsx` | Gyors összefoglaló kártya |
-| `EnhancedRedemptionList.tsx` | Bővített beváltás lista kontextussal |
+| `UserPredictions.tsx` | Jövőbeli előrejelzések panel |
+| `UserComparison.tsx` | Platform átlag összehasonlítás |
+| `ChurnWarningPanel.tsx` | Korai figyelmeztető rendszer |
+| `UserQuickView.tsx` | Összevont gyorsnézet modal |
 
-### Export Utility Függvények
+### 4.3 Edge function bővítések
 
-```typescript
-// src/lib/exportUtils.ts
-export function exportToCSV(data: any[], filename: string): void;
-export function exportUsersToCSV(users: UserListItem[]): void;
-export function exportUserProfileToCSV(userData: ExtendedUserStats): void;
-export function exportRedemptionsToCSV(redemptions: Redemption[]): void;
-export function exportAnalyticsToCSV(analytics: AnalyticsData): void;
-```
-
-### Módosítandó Komponensek
-
-1. **UserDetail.tsx**
-   - "Szabályok" info gomb header-be
-   - "Export" dropdown a header-be
-   - QuickOverviewCard beillesztése
-
-2. **UserVenueAffinity.tsx**
-   - TodayRedemptionStatus hozzáadása minden venue-hoz
-   - Tooltip kiegészítések
-
-3. **Users.tsx**
-   - Export gomb hozzáadása
-   - Bulk export lehetőség
-
-4. **Redemptions.tsx**
-   - Export gomb hozzáadása
-
-5. **UserScorecard.tsx** / egyéb komponensek
-   - Tooltipek bővítése részletesebb magyarázatokkal
-
-### API Bővítések
-
-A `get-user-stats-extended` edge function bővítése:
-- `today_redemptions_by_venue`: Per-venue mai beváltások
-- `can_redeem_today`: Per-venue lehet-e még ma váltani
+| Funkció | Új endpoint/bővítés |
+|---------|---------------------|
+| `get-user-stats-extended` | today_redemption, next_window per venue |
+| `get-platform-averages` | ÚJ - átlagok a összehasonlításhoz |
+| `get-user-predictions` | ÚJ - ML alapú előrejelzések |
 
 ---
 
-## Implementációs Prioritás
+## 5. RÉSZ: Implementációs Prioritás
 
 | Prioritás | Feladat | Komplexitás |
 |-----------|---------|-------------|
-| **P0** | Export utility + Users CSV export | Alacsony |
-| **P0** | UserDetail Export dropdown | Alacsony |
-| **P0** | SystemRulesPanel (info gomb) | Alacsony |
-| **P1** | TodayRedemptionStatus per venue | Közepes |
-| **P1** | QuickOverviewCard | Közepes |
-| **P1** | Tooltipek bővítése | Alacsony |
-| **P2** | EnhancedRedemptionList kontextussal | Közepes |
-| **P2** | Redemptions export | Alacsony |
+| **P0** | TodayRedemptionStatus integráció UserVenueAffinity-be | Alacsony |
+| **P0** | get-user-stats-extended bővítés (today_redemption) | Közepes |
+| **P1** | Platform átlag összehasonlítás | Közepes |
+| **P1** | Churn warning részletes panel | Közepes |
+| **P2** | Prediktív analitika | Magas |
+| **P2** | Cross-venue kapcsolatok | Magas |
+| **P2** | UserQuickView modal | Közepes |
 
 ---
 
-## Várható Eredmény
+## 6. RÉSZ: Várható Eredmények
 
-1. **Érthetőbb rendszer**: A "Szabályok" panel elmagyarázza hogyan működik minden
-2. **Napi limit átláthatóság**: Látszik, melyik helyszínen váltott már ma
-3. **Adat hozzáférhetőség**: Minden fontos adat exportálható CSV-be
-4. **Jobb UX**: Tooltipek mindenhol, kontextus minden adatnál
-5. **Gyorsabb áttekintés**: Összefoglaló kártya a legfontosabb adatokkal
+### Átláthatóság javulása
+- Azonnal látszik a mai beváltási státusz venue-nként
+- Egy helyen minden fontos információ
+
+### Adat érték növekedés
+- Platform összehasonlítás mutatja a user relatív értékét
+- Prediktív metrikák segítenek a proaktív akcióban
+- Cross-venue kapcsolatok új marketing lehetőségeket nyitnak
+
+### Kezelhetőség javulása
+- Gyorsnézet mód gyors áttekintéshez
+- Kontextus-érzékeny navigáció mindenhol
+- Egyértelmű tooltipek minden új funkcióhoz
