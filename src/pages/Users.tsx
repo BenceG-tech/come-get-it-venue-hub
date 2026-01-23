@@ -5,11 +5,13 @@ import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExportDropdown } from "@/components/ExportDropdown";
 import { InfoTooltip } from "@/components/ui/mobile-tooltip";
+import { UserQuickView } from "@/components/user";
 import {
   Search,
   Users as UsersIcon,
@@ -20,6 +22,7 @@ import {
   Clock,
   BarChart3,
   ListFilter,
+  Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
@@ -94,6 +97,7 @@ export default function Users() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"analytics" | "users">("analytics");
+  const [quickViewUserId, setQuickViewUserId] = useState<string | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -532,6 +536,20 @@ export default function Users() {
                           )}
                         </div>
 
+                        {/* Quick View Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickViewUserId(user.id);
+                          }}
+                          title="Gyorsnézet"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
                         <ChevronRight className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors" />
                       </div>
                     ))}
@@ -541,6 +559,13 @@ export default function Users() {
             </Card>
           </>
         )}
+
+        {/* QuickView Modal */}
+        <UserQuickView
+          userId={quickViewUserId}
+          open={!!quickViewUserId}
+          onOpenChange={(open) => !open && setQuickViewUserId(null)}
+        />
       </div>
     </PageLayout>
   );

@@ -43,7 +43,8 @@ import {
   SystemRulesPanel,
   QuickOverviewCard,
   UserComparison,
-  ChurnWarningPanel
+  ChurnWarningPanel,
+  UserPredictions
 } from "@/components/user";
 import { VenueLink } from "@/components/ui/entity-links";
 import {
@@ -103,6 +104,38 @@ interface ExtendedUserStats {
       avg_roi: number;
     };
   };
+  predictions?: {
+    expected_redemptions_30_days: {
+      min: number;
+      max: number;
+      average: number;
+    };
+    estimated_spend_30_days: {
+      min: number;
+      max: number;
+    };
+    likely_venues: Array<{
+      venue_id: string;
+      venue_name: string;
+      probability: number;
+    }>;
+    likely_day: {
+      day: number;
+      day_name: string;
+      probability: number;
+    };
+    likely_hour: {
+      hour: number;
+      probability: number;
+    };
+    optimal_push: {
+      day_name: string;
+      time: string;
+      suggested_message: string;
+    } | null;
+    confidence: "low" | "medium" | "high";
+    data_weeks: number;
+  } | null;
   weekly_trends: Array<{ week: string; sessions: number; redemptions: number }>;
   hourly_heatmap: number[][];
   drink_preferences: Array<{ drink_name: string; category: string | null; count: number }>;
@@ -432,6 +465,12 @@ export default function UserDetail() {
               <UserWeeklyTrends data={weekly_trends} />
               <UserDrinkPreferences preferences={drink_preferences} />
             </div>
+
+            {/* Predictions Panel */}
+            <div className="mt-4">
+              <UserPredictions predictions={data.predictions || null} />
+            </div>
+
             <div className="mt-4">
               <UserActivityHeatmap heatmapData={hourly_heatmap} />
             </div>

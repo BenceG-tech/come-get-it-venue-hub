@@ -16,3 +16,5 @@ export { QuickOverviewCard } from "./QuickOverviewCard";
 export { TodayRedemptionStatus } from "./TodayRedemptionStatus";
 export { UserComparison } from "./UserComparison";
 export { ChurnWarningPanel } from "./ChurnWarningPanel";
+export { UserPredictions } from "./UserPredictions";
+export { UserQuickView } from "./UserQuickView";
