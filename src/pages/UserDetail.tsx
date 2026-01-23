@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExportDropdown } from "@/components/ExportDropdown";
 import {
   ArrowLeft,
   Calendar,
@@ -38,8 +39,16 @@ import {
   UserBehaviorStory,
   BehaviorPatternBadges,
   UserRevenueImpact,
-  EnhancedRedemptionCard
+  EnhancedRedemptionCard,
+  SystemRulesPanel,
+  QuickOverviewCard
 } from "@/components/user";
+import { VenueLink } from "@/components/ui/entity-links";
+import {
+  exportUserProfileToCSV,
+  exportUserRedemptionsToCSV,
+  exportUserPointsToCSV
+} from "@/lib/exportUtils";
 
 interface ExtendedUserStats {
   user: {
@@ -159,7 +168,7 @@ export default function UserDetail() {
     queryKey: ["user-stats-extended", userId],
     queryFn: async () => {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-stats-extended?user_id=${userId}`,
+        `https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/get-user-stats-extended?user_id=${userId}`,
         {
           headers: {
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -222,10 +231,39 @@ export default function UserDetail() {
   return (
     <PageLayout>
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/users")} className="cgi-button-ghost">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Vissza a felhasználókhoz
-        </Button>
+        {/* Back button and actions */}
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={() => navigate("/users")} className="cgi-button-ghost">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Vissza a felhasználókhoz
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <SystemRulesPanel />
+            <ExportDropdown
+              options={[
+                {
+                  label: "Teljes profil (CSV)",
+                  onClick: () => exportUserProfileToCSV({
+                    user: { name: user.name, email: user.email, phone: user.phone, created_at: user.created_at },
+                    points,
+                    scores,
+                    stats
+                  })
+                },
+                {
+                  label: "Csak beváltások",
+                  onClick: () => exportUserRedemptionsToCSV(user.name, free_drink_redemptions, reward_redemptions)
+                },
+                {
+                  label: "Csak pontok",
+                  onClick: () => exportUserPointsToCSV(user.name, points_flow.recent_transactions)
+                }
+              ]}
+              tooltipContent="Felhasználói adatok exportálása CSV formátumban"
+            />
+          </div>
+        </div>
 
         {/* User Header */}
         <Card className="cgi-card">
@@ -260,6 +298,27 @@ export default function UserDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Quick Overview Card */}
+        <QuickOverviewCard
+          daysSinceRegistration={stats.days_since_registration}
+          totalRedemptions={stats.total_free_drink_redemptions + stats.total_reward_redemptions}
+          totalSpend={points.total_spend || 0}
+          roi={points.total_spend && stats.total_free_drink_redemptions > 0 
+            ? points.total_spend / (stats.total_free_drink_redemptions * 1500) 
+            : 0}
+          favoriteVenue={stats.favorite_venue}
+          todayStats={{
+            redemptions: free_drink_redemptions.filter(r => 
+              new Date(r.redeemed_at).toDateString() === new Date().toDateString()
+            ).length,
+            venues: [...new Set(free_drink_redemptions
+              .filter(r => new Date(r.redeemed_at).toDateString() === new Date().toDateString())
+              .map(r => r.venue_name))]
+          }}
+          activeVenuesCount={venue_affinity.length}
+          weeklyVipVenue={venue_affinity.find(v => v.visit_count >= 5)?.venue_name || null}
+        />
 
         {/* Scorecard */}
         <UserScorecard
