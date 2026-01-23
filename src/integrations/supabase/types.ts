@@ -114,6 +114,51 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          new_value: Json | null
+          old_value: Json | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       autopilot_rules: {
         Row: {
           action_config: Json
@@ -1086,6 +1131,86 @@ export type Database = {
           },
         ]
       }
+      report_logs: {
+        Row: {
+          error_message: string | null
+          id: string
+          recipient_count: number | null
+          schedule_id: string | null
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          recipient_count?: number | null
+          schedule_id?: string | null
+          sent_at?: string
+          status: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          recipient_count?: number | null
+          schedule_id?: string | null
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_logs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "report_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+          name: string
+          recipient_emails: string[]
+          report_type: string
+          schedule_cron: string
+          timezone: string | null
+          updated_at: string
+          venue_ids: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          name: string
+          recipient_emails: string[]
+          report_type: string
+          schedule_cron: string
+          timezone?: string | null
+          updated_at?: string
+          venue_ids?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          name?: string
+          recipient_emails?: string[]
+          report_type?: string
+          schedule_cron?: string
+          timezone?: string | null
+          updated_at?: string
+          venue_ids?: string[] | null
+        }
+        Relationships: []
+      }
       reward_redemptions: {
         Row: {
           created_at: string
@@ -1636,6 +1761,30 @@ export type Database = {
           id?: string
           token_hash?: string
           used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          tag: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tag: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tag?: string
           user_id?: string
         }
         Relationships: []

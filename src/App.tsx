@@ -27,6 +27,7 @@ import CommandCenter from "./pages/CommandCenter";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
+import AuditLog from "./pages/AuditLog";
 import POSRedeem from "./pages/pos/POSRedeem";
 import POSHistory from "./pages/pos/POSHistory";
 import { POSGuard } from "@/components/POSGuard";
@@ -157,6 +158,12 @@ const App = () => {
             <Route path="/command-center" element={
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <CommandCenter />
+              </RouteGuard>
+            } />
+
+            <Route path="/audit-log" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <AuditLog />
               </RouteGuard>
             } />
 
