@@ -5,6 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { Receipt, Clock, Pause, Play, TrendingUp, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useDashboardStats, formatCurrency, formatTime } from "@/hooks/useDashboardStats";
+import { UserLink, VenueLink, DrinkLink } from "@/components/ui/entity-links";
+import { RedemptionContextBadges } from "@/components/RedemptionContextBadges";
+import { MobileTooltip } from "@/components/ui/mobile-tooltip";
+
+interface RecentRedemption {
+  id: string;
+  drink: string;
+  value: number;
+  time: string;
+  user_type: string;
+  user_id?: string;
+  user_name?: string;
+  venue_id?: string;
+  venue_name?: string;
+  visits_total?: number;
+  visits_this_week?: number;
+}
 
 export function StaffDashboard() {
   const [isFreeDrinkPaused, setIsFreeDrinkPaused] = useState(false);
@@ -22,7 +39,7 @@ export function StaffDashboard() {
     cap_usage: stats?.cap_usage ?? 0,
   };
 
-  const recentRedemptions = stats?.recent_redemptions ?? [];
+  const recentRedemptions = (stats?.recent_redemptions ?? []) as RecentRedemption[];
   const topDrinks = stats?.top_drinks ?? [];
 
   return (
@@ -102,7 +119,7 @@ export function StaffDashboard() {
         {/* Live Redemption Feed */}
         <ChartCard 
           title="Mai beváltások - Élő feed"
-          tooltip="Valós idejű lista a mai beváltásokról. Új és visszatérő felhasználók megkülönböztetésével, az italok értékével és helyszínével."
+          tooltip="Valós idejű lista a mai beváltásokról. Kattints a felhasználó nevére a profiljához. Új és visszatérő felhasználók megkülönböztetésével."
         >
           {isLoading ? (
             <div className="h-80 flex items-center justify-center">
@@ -115,20 +132,62 @@ export function StaffDashboard() {
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {recentRedemptions.map((redemption) => (
-                <div key={redemption.id} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-cgi-surface-foreground">{redemption.drink}</span>
-                      <Badge variant={redemption.user_type === 'new' ? 'default' : 'secondary'} className="text-xs">
-                        {redemption.user_type === 'new' ? 'Új' : 'Visszatérő'}
-                      </Badge>
+                <div key={redemption.id} className="p-3 bg-cgi-muted/20 rounded-lg">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      {/* Drink name and user type badge */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <DrinkLink
+                          drinkName={redemption.drink}
+                          size="sm"
+                        />
+                        <MobileTooltip content={redemption.user_type === 'new' ? 'Első látogatás ezen a helyszínen' : 'Már járt korábban itt'}>
+                          <Badge variant={redemption.user_type === 'new' ? 'default' : 'secondary'} className="text-xs">
+                            {redemption.user_type === 'new' ? 'Új' : 'Visszatérő'}
+                          </Badge>
+                        </MobileTooltip>
+                      </div>
+                      
+                      {/* User and venue info */}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {redemption.user_id && redemption.user_name && (
+                          <UserLink
+                            userId={redemption.user_id}
+                            userName={redemption.user_name}
+                            size="xs"
+                          />
+                        )}
+                        {redemption.venue_id && redemption.venue_name && (
+                          <>
+                            <span className="text-cgi-muted-foreground text-xs">@</span>
+                            <VenueLink
+                              venueId={redemption.venue_id}
+                              venueName={redemption.venue_name}
+                              size="xs"
+                            />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Context badges */}
+                      {(redemption.visits_total || redemption.visits_this_week) && (
+                        <div className="mt-1.5">
+                          <RedemptionContextBadges
+                            visitsThisWeek={redemption.visits_this_week}
+                            visitsTotal={redemption.visits_total}
+                            showMilestones={true}
+                            size="sm"
+                          />
+                        </div>
+                      )}
+
+                      <p className="text-xs text-cgi-muted-foreground mt-1">
+                        {formatTime(redemption.time)}
+                      </p>
                     </div>
-                    <p className="text-sm text-cgi-muted-foreground">
-                      {formatTime(redemption.time)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(redemption.value)}</p>
+                    <div className="text-right shrink-0">
+                      <p className="font-medium text-cgi-secondary">{formatCurrency(redemption.value)}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -154,13 +213,17 @@ export function StaffDashboard() {
               {topDrinks.map((drink, index) => (
                 <div key={drink.name} className="flex items-center justify-between p-3 bg-cgi-muted/20 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
-                      <span className="text-sm font-medium text-cgi-secondary">#{index + 1}</span>
-                    </div>
-                    <span className="font-medium text-cgi-surface-foreground">{drink.name}</span>
+                    <MobileTooltip content={`${index + 1}. legnépszerűbb ital ma`}>
+                      <div className="w-8 h-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
+                        <span className="text-sm font-medium text-cgi-secondary">#{index + 1}</span>
+                      </div>
+                    </MobileTooltip>
+                    <DrinkLink drinkName={drink.name} size="sm" />
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{drink.count} db</p>
+                    <MobileTooltip content={`${drink.count} beváltás összesen`}>
+                      <p className="font-medium">{drink.count} db</p>
+                    </MobileTooltip>
                     <p className="text-sm text-cgi-muted-foreground">{formatCurrency(drink.revenue)}</p>
                   </div>
                 </div>
