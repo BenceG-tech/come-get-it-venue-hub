@@ -1,195 +1,308 @@
 
-# Terv: Globális Napi Limit (1 ingyen ital / nap / felhasználó)
+# Teljes Terv: Users Oldal Fejlesztése - Bulk Actions & Javítások
 
-## A szabály tisztázása
+## Áttekintés
 
-**Helyes szabály:** Egy felhasználó egy napon **összesen csak 1** ingyen italt válthat be - bármelyik helyszínen. Ez nem "ital vadászat", hanem az ingyen ital becsábítja a vendéget, aki aztán költ a helyszínen.
-
-**Jelenleg hibás:** A rendszer helyszínenkénti limitet ellenőriz (1/nap/venue), ami azt jelenti, hogy valaki akár 5 helyszínen is beválthatna ingyen italt ugyanazon a napon.
+A Users oldal az admin felület egyik központi eleme. A jelenlegi állapotban hiányoznak kulcsfontosságú funkciók, és több UX/UI probléma is van. Ez a terv a Phase 1 "User Bulk Actions" feladat megvalósítását, valamint az azonosított hiányosságok és rendezetlenségek javítását tartalmazza.
 
 ---
 
-## Végrehajtandó változások
+## 1. BULK USER ACTIONS (Fő feladat)
 
-### 1. Edge Function: `issue-redemption-token` javítása
+### 1.1 Kijelölés infrastruktúra
 
-A jelenlegi kód (196-252. sor) helyszínen belüli limitet ellenőriz. Ezt **globális** ellenőrzésre kell cserélni:
-
-**Jelenlegi logika (hibás):**
-```
-eq("venue_id", venue_id)  // Csak ezen a helyszínen
-gte("redeemed_at", todayStart)
-```
-
-**Új logika (helyes):**
-```
-eq("user_id", userId)     // GLOBÁLIS - bármelyik helyszínen
-gte("redeemed_at", todayStart)
-// NEM szűrünk venue_id-ra!
-```
-
-Ha a felhasználó ma már bárhol beváltott ingyen italt, a válasz:
-```json
-{
-  "success": false,
-  "error": "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
-  "code": "USER_GLOBAL_DAILY_LIMIT"
-}
-```
-
----
-
-### 2. Edge Function: `seed-test-data` javítása
-
-A jelenlegi kód (144-178. sor) helyszín+nap kombinációkat követi. Ezt **globális napi limit**-re kell cserélni:
-
-**Jelenlegi logika (hibás):**
+**Új state a Users.tsx-ben:**
 ```typescript
-const usedVenueDays = new Set<string>(); // venue_id:date
+const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+const [selectAll, setSelectAll] = useState(false);
 ```
 
-**Új logika (helyes):**
-```typescript
-const usedDays = new Set<string>(); // Csak dátumok (YYYY-MM-DD)
+**Checkbox minden user sorhoz:**
+- Bal oldalon checkbox az Avatar előtt
+- "Összes kijelölése" checkbox a lista fejlécében
+- Kijelöltek száma megjelenítése: "3 felhasználó kiválasztva"
 
-// Ellenőrzés: max 1 beváltás naponta összesen
-if (usedDays.has(dateKey)) {
-  continue; // Skip - ezen a napon már van beváltás
-}
-usedDays.add(dateKey);
+### 1.2 Bulk Actions Toolbar
+
+**Új komponens: `UserBulkActionsToolbar.tsx`**
+
+Megjelenik, ha `selectedUserIds.size > 0`:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ ✓ 5 felhasználó kiválasztva                                     │
+│ [Export CSV] [Tag hozzáadása ▼] [Push küldése] [Bónusz pont] [✕]│
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Eredmény:** 30 napos időszakra maximum ~30 beváltás generálódik (naponta legfeljebb 1).
+**Műveletek:**
+1. **Export kiválasztottak (CSV)** - A jelenlegi `exportUsersToCSV` használata a kijelölt userekre
+2. **Tag hozzáadása** - Dropdown meglévő tagekből + új tag létrehozás
+3. **Push értesítés küldése** - Modál: cím + üzenet, tömeges küldés
+4. **Bónusz pont küldése** - Modál: összeg + indoklás
 
----
+### 1.3 Tag Management
 
-### 3. Régi hibás adatok törlése + újra seedelés
+**Backend: Edge function szükséges**
 
-**3.1 Törlés (SQL migration vagy manuális):**
+A `user_tags` tábla létezik:
 ```sql
--- Összes teszt beváltás törlése
-DELETE FROM redemptions WHERE metadata->>'test_data' = 'true';
-
--- Kapcsolódó rate limit bejegyzések törlése
-DELETE FROM token_rate_limits;
-
--- Teszt activity logok és points transactions törlése
-DELETE FROM user_activity_logs 
-WHERE user_id = '46b15f9d-ed46-41b0-aa6a-5aa2334c407e' 
-  AND metadata->>'test_data' = 'true';
-
-DELETE FROM points_transactions 
-WHERE user_id = '46b15f9d-ed46-41b0-aa6a-5aa2334c407e';
+user_tags (id, user_id, tag, created_by, created_at)
 ```
 
-**3.2 Újra seedelés:** A javított `seed-test-data` function meghívása.
+**Új edge functions:**
+- `add-user-tags` - Tagek hozzáadása userhez/userekhez
+- `remove-user-tag` - Tag eltávolítása
+- `get-user-tags` - User tageinek lekérése
+- `get-all-tags` - Összes létező tag (autocomplete-hez)
+
+**UI komponensek:**
+- `UserTagsManager.tsx` - Tag hozzáadás/törlés modal
+- `UserTagBadges.tsx` - Tag badge-ek megjelenítése a user listában
+
+### 1.4 Bulk Notification Sender
+
+**Új komponens: `BulkNotificationModal.tsx`**
+
+```
+┌─────────────────────────────────────────────────┐
+│ Push értesítés küldése (5 felhasználó)          │
+├─────────────────────────────────────────────────┤
+│ Cím:    [________________________________]      │
+│                                                 │
+│ Üzenet: [________________________________]      │
+│         [________________________________]      │
+│                                                 │
+│ ○ Sablon használata: [Válassz sablont ▼]        │
+│                                                 │
+│              [Mégse]  [Küldés 5 felhasználónak] │
+└─────────────────────────────────────────────────┘
+```
+
+**Backend:** `send-user-notification` edge function módosítása, hogy támogassa `user_ids: string[]` tömböt is.
+
+### 1.5 Bulk Bonus Points
+
+**Új komponens: `BulkBonusPointsModal.tsx`**
+
+```
+┌─────────────────────────────────────────────────┐
+│ Bónusz pont küldése (5 felhasználó)             │
+├─────────────────────────────────────────────────┤
+│ Pont összeg: [______] (pl. 100)                 │
+│                                                 │
+│ Indoklás:    [________________________________] │
+│              (pl. "Hűségprogram jutalom")       │
+│                                                 │
+│              [Mégse]  [Küldés 5 felhasználónak] │
+└─────────────────────────────────────────────────┘
+```
+
+**Backend:** `send-loyalty-reward` edge function már létezik, módosítás szükséges bulk támogatáshoz.
 
 ---
 
-### 4. Időzóna: Europe/Budapest
+## 2. HIÁNYZÓ FUNKCIÓK (Azonosított problémák)
 
-A napi limit számításához a magyar időzónát használjuk:
+### 2.1 Pagination hiányzik a Users listából
 
+**Probléma:** A Users.tsx csak az első 50 usert tölti be (`limit: "50"`, `offset: "0"`), de nincs pagination UI.
+
+**Megoldás:**
 ```typescript
-// Europe/Budapest időzóna kezelése
-const budapestDate = new Date(now.toLocaleString('en-US', { 
-  timeZone: 'Europe/Budapest' 
-}));
-const todayStart = new Date(
-  budapestDate.getFullYear(), 
-  budapestDate.getMonth(), 
-  budapestDate.getDate()
-);
+const [page, setPage] = useState(0);
+const pageSize = 50;
+
+// Query params
+offset: (page * pageSize).toString(),
+
+// Pagination UI
+<div className="flex justify-between items-center mt-4">
+  <span>{page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} / {total}</span>
+  <div className="flex gap-2">
+    <Button onClick={() => setPage(p => p - 1)} disabled={page === 0}>Előző</Button>
+    <Button onClick={() => setPage(p => p + 1)} disabled={...}>Következő</Button>
+  </div>
+</div>
 ```
 
+### 2.2 UserQuickView TODO-k
+
+**Probléma:** A `UserQuickView.tsx` "Push küldése" és "Jutalom" gombok csak bezárják a modalt (TODO komment).
+
+**Megoldás:**
+1. "Push küldése" → Nyissa meg a `ManualNotificationModal`-t
+2. "Jutalom" → Nyissa meg a jutalom küldés modalt
+
+### 2.3 Tag szűrés hiányzik
+
+**Probléma:** Nincs lehetőség tagek alapján szűrni a user listát.
+
+**Megoldás:**
+- Új filter dropdown: "Tag szűrő"
+- `get-users` edge function bővítése `tags` paraméterrel
+
+### 2.4 Sorting opciók hiányoznak
+
+**Probléma:** Csak `last_seen_at` szerint rendez, nincs UI a rendezés változtatásához.
+
+**Megoldás:**
+- Sortable column headers: Név, Pontok, Beváltások, Utolsó aktivitás
+- Backend már támogatja az `order` paramétert, csak UI kell
+
 ---
 
-### 5. UI frissítések
+## 3. UX/UI JAVÍTÁSOK
 
-**5.1 QuickOverviewCard:** A "Ma: X beváltás" badge logikája:
-- Ha `todayStats.redemptions > 1` → warning, de a globális szabállyal ez nem fordulhat elő
-- Maximum érték: 1
+### 3.1 Felhasználó lista layout rendezetlen mobilon
 
-**5.2 UserRevenueImpact:** A "Ma: X" badge figyelmeztetés:
-- `visits_today > 1` → sárga figyelmeztető ikon + tooltip
-- A javított seed után ez nem fordul elő
+**Probléma:** A user sor mobilon:
+- Avatar + név + badge-ek zsúfoltak
+- Statisztikák (`points`, `redemptions`, `sessions`) eltűnnek (`hidden md:flex`)
+- Quick view gomb nehezen elérhető
 
-**5.3 TodayRedemptionStatus:** Frissítés a globális limitre:
-- "Ma már beváltottál ingyen italt (bármelyik helyszínen)"
-- "Holnap újra próbálhatod"
+**Megoldás:**
+```
+┌──────────────────────────────────────────┐
+│ [Avatar] Kovács János          [👁] [>]  │
+│          kovacs@email.com                │
+│          ● Aktív                         │
+├──────────────────────────────────────────┤
+│ 1,234 pont │ 45 beváltás │ 3 napja      │
+└──────────────────────────────────────────┘
+```
+- Kisebb kártyás layout mobilon
+- Statisztikák alsó sorban, mindig láthatók
+
+### 3.2 Keresés/szűrés állapot nem egyértelmű
+
+**Probléma:** Ha aktív a szűrés, nem látható tisztán.
+
+**Megoldás:**
+- Active filters badge: "3 szűrő aktív"
+- "Szűrők törlése" gomb
+- Empty state javítás: "Nincs találat a 'xyz' keresésre az aktív felhasználók között"
+
+### 3.3 Loading/Error state javítások
+
+**Probléma:** Skeleton loader jó, de error state minimális.
+
+**Megoldás:**
+- Retry gomb error esetén
+- Részletesebb error üzenet
 
 ---
 
-## Érintett fájlok
+## 4. TECHNIKAI RÉSZLETEK
+
+### 4.1 Új fájlok
+
+| Fájl | Leírás |
+|------|--------|
+| `src/components/user/UserBulkActionsToolbar.tsx` | Bulk műveletek toolbar |
+| `src/components/user/BulkNotificationModal.tsx` | Tömeges push küldés |
+| `src/components/user/BulkBonusPointsModal.tsx` | Tömeges pont küldés |
+| `src/components/user/UserTagsManager.tsx` | Tag kezelő modal |
+| `src/components/user/UserTagBadges.tsx` | Tag badge-ek |
+| `supabase/functions/add-user-tags/index.ts` | Tag hozzáadás |
+| `supabase/functions/get-all-tags/index.ts` | Összes tag lekérés |
+| `supabase/functions/bulk-send-notification/index.ts` | Tömeges push |
+| `supabase/functions/bulk-send-bonus/index.ts` | Tömeges bónusz |
+
+### 4.2 Módosítandó fájlok
 
 | Fájl | Változás |
 |------|----------|
-| `supabase/functions/issue-redemption-token/index.ts` | Globális napi limit ellenőrzés |
-| `supabase/functions/seed-test-data/index.ts` | Max 1 beváltás/nap összesen |
-| `src/components/user/TodayRedemptionStatus.tsx` | Szöveg frissítés |
-| `src/components/user/QuickOverviewCard.tsx` | Badge logika ellenőrzés |
-| SQL migration | Régi adatok törlése |
+| `src/pages/Users.tsx` | Selection state, pagination, toolbar, sorting |
+| `src/components/user/UserQuickView.tsx` | TODO-k implementálása |
+| `supabase/functions/get-users/index.ts` | Tag filter, ordering params |
+| `src/lib/exportUtils.ts` | Bulk export helper |
+| `src/components/user/index.ts` | Új komponensek export |
+
+### 4.3 Adatbázis
+
+A `user_tags` tábla már létezik, RLS policy kell:
+```sql
+-- Admins can manage all tags
+CREATE POLICY "Admins can manage user tags"
+ON user_tags
+FOR ALL
+USING (is_admin());
+```
 
 ---
 
-## Technikai részletek
+## 5. IMPLEMENTÁCIÓS SORREND
 
-### Globális limit ellenőrzés pszeudokód
+### Lépés 1: Selection infrastruktúra (P0)
+1. `selectedUserIds` state hozzáadása `Users.tsx`-hez
+2. Checkbox komponens minden user sorhoz
+3. "Összes kijelölése" checkbox
+4. Kijelöltek számának megjelenítése
 
+### Lépés 2: Bulk Actions Toolbar (P0)
+1. `UserBulkActionsToolbar.tsx` létrehozása
+2. Export kiválasztottak funkció
+3. Toolbar megjelenítése ha van kijelölt user
+
+### Lépés 3: Tag Management (P1)
+1. `get-all-tags` és `add-user-tags` edge functions
+2. `UserTagsManager.tsx` modal
+3. Tag filter a user listához
+
+### Lépés 4: Bulk Notification (P1)
+1. `bulk-send-notification` edge function
+2. `BulkNotificationModal.tsx`
+3. Integrálás a toolbarral
+
+### Lépés 5: Bulk Bonus Points (P1)
+1. `bulk-send-bonus` edge function
+2. `BulkBonusPointsModal.tsx`
+3. Integrálás a toolbarral
+
+### Lépés 6: Pagination & Sorting (P1)
+1. Pagination state és UI
+2. Sorting dropdown/column headers
+3. `get-users` edge function bővítése
+
+### Lépés 7: UX javítások (P2)
+1. Mobile layout optimalizálás
+2. Active filters badge
+3. UserQuickView TODO-k fix
+
+---
+
+## 6. AUDIT LOGGING INTEGRÁCIÓ
+
+Minden bulk művelet naplózandó:
 ```typescript
-// 1. Budapest időzóna szerinti mai nap kezdete
-const budapestNow = new Date(now.toLocaleString('en-US', { 
-  timeZone: 'Europe/Budapest' 
-}));
-const todayStart = new Date(
-  budapestNow.getFullYear(), 
-  budapestNow.getMonth(), 
-  budapestNow.getDate()
-);
-
-// 2. Globális ellenőrzés - bármelyik helyszínen beváltott-e ma
-const { count: globalTodayCount } = await supabase
-  .from("redemptions")
-  .select("*", { count: "exact", head: true })
-  .eq("user_id", userId)
-  .eq("status", "success")
-  .gte("redeemed_at", todayStart.toISOString());
-
-if (globalTodayCount && globalTodayCount >= 1) {
-  return new Response(JSON.stringify({ 
-    success: false, 
-    error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
-    code: "USER_GLOBAL_DAILY_LIMIT",
-    next_available: tomorrow.toISOString()
-  }), { status: 403 });
-}
-```
-
-### Seed data logika
-
-```typescript
-const usedDays = new Set<string>(); // Globális napi tracking
-
-while (redemptionsToInsert.length < targetRedemptions && attempts < maxAttempts) {
-  const venue = weightedRandomVenue();
-  const redeemDate = generateRandomDateWithHour(daysAgo);
-  const dateKey = getDateKey(redeemDate); // "2026-01-15"
-  
-  // GLOBÁLIS LIMIT: max 1 beváltás naponta (összesen)
-  if (usedDays.has(dateKey)) {
-    continue; // Skip - ezen a napon már van beváltás
+await logAuditEvent({
+  action: "bulk_action",
+  resourceType: "user",
+  metadata: {
+    action_type: "add_tags" | "send_notification" | "send_bonus",
+    affected_user_ids: [...selectedUserIds],
+    affected_count: selectedUserIds.size,
+    details: { tags: [...], points: 100, ... }
   }
-  
-  usedDays.add(dateKey);
-  redemptionsToInsert.push({ ... });
-}
+});
 ```
 
 ---
 
-## Várható eredmény
+## 7. ÖSSZEFOGLALÓ
 
-1. **Valós működés:** Felhasználó naponta max 1 ingyen italt válthat be
-2. **Tesztadatok:** 30 napos időszakra ~25-30 beváltás (random napokra)
-3. **UI:** "Ma: 1 beváltás" maximum, nem 49
-4. **Metrikák:** Reális ROI és LTV számítások
+| Kategória | Elem | Prioritás |
+|-----------|------|-----------|
+| Bulk Actions | Selection infrastruktúra | P0 |
+| Bulk Actions | Export kiválasztottak | P0 |
+| Bulk Actions | Tag management | P1 |
+| Bulk Actions | Bulk notification | P1 |
+| Bulk Actions | Bulk bonus points | P1 |
+| Hiányzó | Pagination | P1 |
+| Hiányzó | Sorting | P2 |
+| Hiányzó | Tag filter | P2 |
+| UX Fix | UserQuickView TODO-k | P1 |
+| UX Fix | Mobile layout | P2 |
+| UX Fix | Active filters badge | P2 |
+
+**Becsült időtartam:** 3-5 nap
