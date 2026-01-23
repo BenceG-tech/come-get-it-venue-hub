@@ -7,7 +7,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { hu } from "date-fns/locale";
-import { Wine, MapPin, User, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { Wine, MapPin, User, Clock, AlertTriangle, CheckCircle, CreditCard, CalendarDays, TrendingUp } from "lucide-react";
+import { UserLink, VenueLink, DrinkLink } from "@/components/ui/entity-links";
+import { RedemptionContextBadges } from "@/components/RedemptionContextBadges";
+import { MobileTooltip, InfoTooltip } from "@/components/ui/mobile-tooltip";
 
 interface RedemptionMetadata {
   voided_at?: string;
@@ -28,8 +31,12 @@ export interface RedemptionRecord {
   token_id?: string;
   metadata?: RedemptionMetadata;
   venue?: { id: string; name: string };
+  user_profile?: { id: string; name: string | null; avatar_url: string | null };
   drink_details?: { drink_name: string; image_url?: string };
   token_info?: { token_prefix: string };
+  visits_total?: number;
+  visits_this_week?: number;
+  visits_this_month?: number;
 }
 
 interface RedemptionDetailModalProps {
@@ -57,8 +64,8 @@ export function RedemptionDetailModal({
     }).format(value);
   };
 
-  const truncateUserId = (userId: string) => {
-    return userId.substring(0, 8) + "...";
+  const truncateId = (id: string) => {
+    return id.substring(0, 8) + "...";
   };
 
   const getStatusBadge = (status: string) => {
@@ -76,11 +83,12 @@ export function RedemptionDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wine className="h-5 w-5 text-cgi-primary" />
             Beváltás részletei
+            <InfoTooltip content="A beváltás teljes részletei a felhasználó, helyszín és ital információkkal" />
           </DialogTitle>
         </DialogHeader>
 
@@ -108,47 +116,85 @@ export function RedemptionDetailModal({
             </div>
           </div>
 
+          {/* Visit Context */}
+          {(redemption.visits_total || redemption.visits_this_week) && (
+            <div className="p-3 rounded-lg bg-cgi-muted/20 border border-cgi-muted/30">
+              <p className="text-xs font-medium text-cgi-muted-foreground mb-2 flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                Látogatási kontextus
+                <InfoTooltip content="Hányadik alkalommal váltott be ez a felhasználó ezen a helyszínen" iconClassName="h-3 w-3" />
+              </p>
+              <RedemptionContextBadges
+                visitsThisWeek={redemption.visits_this_week}
+                visitsThisMonth={redemption.visits_this_month}
+                visitsTotal={redemption.visits_total}
+                showMilestones={true}
+              />
+            </div>
+          )}
+
           {/* Details Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-sm text-cgi-muted-foreground">Azonosító</p>
-              <p className="font-mono text-sm">{redemption.id.substring(0, 8)}...</p>
+              <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                Azonosító
+                <InfoTooltip content="A beváltás egyedi azonosítója" iconClassName="h-3 w-3" />
+              </p>
+              <p className="font-mono text-sm">{truncateId(redemption.id)}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm text-cgi-muted-foreground">Időpont</p>
-              <p className="text-sm flex items-center gap-1">
+              <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {formatDate(redemption.redeemed_at)}
+                Időpont
               </p>
+              <p className="text-sm">{formatDate(redemption.redeemed_at)}</p>
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm text-cgi-muted-foreground">Helyszín</p>
-              <p className="text-sm flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {redemption.venue?.name || "Ismeretlen"}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm text-cgi-muted-foreground">Ital</p>
-              <p className="text-sm flex items-center gap-1">
-                <Wine className="h-3 w-3" />
-                {redemption.drink_details?.drink_name || redemption.drink}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm text-cgi-muted-foreground">Felhasználó</p>
-              <p className="text-sm flex items-center gap-1">
+              <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
                 <User className="h-3 w-3" />
-                {truncateUserId(redemption.user_id)}
+                Felhasználó
               </p>
+              <UserLink
+                userId={redemption.user_id}
+                userName={redemption.user_profile?.name || "Vendég"}
+                avatarUrl={redemption.user_profile?.avatar_url || undefined}
+                showAvatar={true}
+                size="sm"
+              />
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm text-cgi-muted-foreground">Érték</p>
+              <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                Helyszín
+              </p>
+              <VenueLink
+                venueId={redemption.venue_id}
+                venueName={redemption.venue?.name || "Ismeretlen"}
+                size="sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                <Wine className="h-3 w-3" />
+                Ital
+              </p>
+              <DrinkLink
+                drinkId={redemption.drink_id}
+                drinkName={redemption.drink_details?.drink_name || redemption.drink}
+                size="sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                <CreditCard className="h-3 w-3" />
+                Érték
+                <InfoTooltip content="Az ingyenes ital számított értéke" iconClassName="h-3 w-3" />
+              </p>
               <p className="text-sm font-medium text-cgi-secondary">
                 {formatCurrency(redemption.value)}
               </p>
@@ -156,15 +202,21 @@ export function RedemptionDetailModal({
 
             {redemption.token_info?.token_prefix && (
               <div className="space-y-1">
-                <p className="text-sm text-cgi-muted-foreground">Token</p>
+                <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                  Token
+                  <InfoTooltip content="A beváltáshoz használt QR kód token" iconClassName="h-3 w-3" />
+                </p>
                 <p className="font-mono text-sm">{redemption.token_info.token_prefix}</p>
               </div>
             )}
 
             {redemption.staff_id && (
               <div className="space-y-1">
-                <p className="text-sm text-cgi-muted-foreground">Személyzet</p>
-                <p className="font-mono text-sm">{truncateUserId(redemption.staff_id)}</p>
+                <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                  Személyzet
+                  <InfoTooltip content="A beváltást jóváhagyó személyzet azonosítója" iconClassName="h-3 w-3" />
+                </p>
+                <p className="font-mono text-sm">{truncateId(redemption.staff_id)}</p>
               </div>
             )}
           </div>
@@ -172,7 +224,10 @@ export function RedemptionDetailModal({
           {/* Void Information */}
           {redemption.status === "void" && redemption.metadata && (
             <div className="border-t border-cgi-border pt-4 mt-4">
-              <h4 className="font-medium mb-2 text-red-400">Visszavonás adatai</h4>
+              <h4 className="font-medium mb-2 text-red-400 flex items-center gap-1">
+                <AlertTriangle className="h-4 w-4" />
+                Visszavonás adatai
+              </h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {redemption.metadata.voided_at && (
                   <div>
@@ -183,7 +238,7 @@ export function RedemptionDetailModal({
                 {redemption.metadata.voided_by && (
                   <div>
                     <p className="text-cgi-muted-foreground">Visszavonta</p>
-                    <p className="font-mono">{truncateUserId(redemption.metadata.voided_by)}</p>
+                    <p className="font-mono">{truncateId(redemption.metadata.voided_by)}</p>
                   </div>
                 )}
               </div>

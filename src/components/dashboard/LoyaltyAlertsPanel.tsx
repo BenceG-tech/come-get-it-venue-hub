@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SendLoyaltyRewardModal } from "./SendLoyaltyRewardModal";
 import { useNavigate } from "react-router-dom";
+import { UserLink, VenueLink } from "@/components/ui/entity-links";
+import { MobileTooltip, InfoTooltip } from "@/components/ui/mobile-tooltip";
 
 interface PendingMilestone {
   id: string;
@@ -116,6 +118,22 @@ export function LoyaltyAlertsPanel() {
     return `${Math.floor(diffHours / 24)} napja`;
   };
 
+  const getMilestoneTooltip = (type: string) => {
+    switch (type) {
+      case 'weekly_regular':
+        return 'Heti törzsvendég: legalább 3 beváltás ezen a héten';
+      case 'monthly_vip':
+        return 'Havi VIP: legalább 10 beváltás ebben a hónapban';
+      case 'platinum':
+        return 'Platina tag: elérte az 50. összesített beváltást';
+      case 'legendary':
+        return 'Legendás: elérte a 100. összesített beváltást';
+      case 'returning':
+        return 'Visszatérő vendég: harmadszor jár ezen a helyszínen';
+      default:
+        return 'Lojalitás mérföldkő elérése';
+    }
+  };
   if (isLoading) {
     return (
       <Card className="cgi-card">
@@ -153,6 +171,7 @@ export function LoyaltyAlertsPanel() {
           <CardTitle className="text-cgi-surface-foreground flex items-center gap-2">
             <Trophy className="h-5 w-5 text-cgi-secondary" />
             Lojalitás értesítések
+            <InfoTooltip content="Automatikusan detektált lojalitás mérföldkövek, amelyek jutalmazásra várnak. Ezek a felhasználók rendszeres látogatók." />
             {summary && summary.pending_count > 0 && (
               <Badge className="bg-cgi-primary text-cgi-primary-foreground ml-2">
                 {summary.pending_count} új
@@ -176,24 +195,40 @@ export function LoyaltyAlertsPanel() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <span className="text-2xl">{milestone.milestone_emoji}</span>
+                      <MobileTooltip content={getMilestoneTooltip(milestone.milestone_type)}>
+                        <span className="text-2xl cursor-help">{milestone.milestone_emoji}</span>
+                      </MobileTooltip>
                       <div>
                         <p className="font-medium text-cgi-surface-foreground">
-                          <span className="text-cgi-primary">{milestone.user_name}</span> elérte a{" "}
-                          <span className="text-cgi-secondary">"{milestone.milestone_label}"</span> státuszt
+                          <UserLink
+                            userId={milestone.user_id}
+                            userName={milestone.user_name}
+                            size="md"
+                            className="text-cgi-primary"
+                          />{" "}
+                          <span className="text-cgi-muted-foreground">elérte a</span>{" "}
+                          <span className="text-cgi-secondary">"{milestone.milestone_label}"</span>{" "}
+                          <span className="text-cgi-muted-foreground">státuszt</span>
                         </p>
-                        <div className="flex items-center gap-2 mt-1 text-sm text-cgi-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          <span>{milestone.venue_name}</span>
+                        <div className="flex items-center gap-2 mt-1 text-sm text-cgi-muted-foreground flex-wrap">
+                          <VenueLink
+                            venueId={milestone.venue_id}
+                            venueName={milestone.venue_name}
+                            size="xs"
+                          />
                           <span>•</span>
-                          <span>{milestone.visit_count}. látogatás</span>
+                          <MobileTooltip content="Összesen hányszor váltott be itt">
+                            <span>{milestone.visit_count}. látogatás</span>
+                          </MobileTooltip>
                           {milestone.total_spend > 0 && (
                             <>
                               <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <Coins className="h-3 w-3" />
-                                {formatCurrency(milestone.total_spend)}
-                              </span>
+                              <MobileTooltip content="Összes költés ezen a helyszínen">
+                                <span className="flex items-center gap-1">
+                                  <Coins className="h-3 w-3" />
+                                  {formatCurrency(milestone.total_spend)}
+                                </span>
+                              </MobileTooltip>
                             </>
                           )}
                         </div>
@@ -202,9 +237,11 @@ export function LoyaltyAlertsPanel() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-cgi-muted-foreground shrink-0">
-                      {milestone.suggested_reward}
-                    </Badge>
+                    <MobileTooltip content="Javasolt jutalom típus ehhez a mérföldkőhöz">
+                      <Badge variant="outline" className="text-cgi-muted-foreground shrink-0">
+                        {milestone.suggested_reward}
+                      </Badge>
+                    </MobileTooltip>
                   </div>
 
                   <div className="flex items-center gap-2 mt-4 pt-3 border-t border-cgi-muted/30">

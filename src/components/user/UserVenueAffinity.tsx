@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
+import { VenueLink } from "@/components/ui/entity-links";
+import { MobileTooltip, InfoTooltip } from "@/components/ui/mobile-tooltip";
 
 interface VenueAffinityData {
   venue_id: string;
@@ -60,6 +62,7 @@ export function UserVenueAffinity({ venues }: UserVenueAffinityProps) {
         <CardTitle className="text-cgi-surface-foreground flex items-center gap-2">
           <MapPin className="h-5 w-5 text-cgi-primary" />
           Helyszín affinitás
+          <InfoTooltip content="A felhasználó kedvenc helyszínei látogatás szám alapján rangsorolva. Kattints a helyszín nevére a részletekhez." />
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -79,11 +82,16 @@ export function UserVenueAffinity({ venues }: UserVenueAffinityProps) {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getMedalEmoji(index)}</span>
+                      <MobileTooltip content={`${index + 1}. legnépszerűbb helyszín`}>
+                        <span className="text-2xl">{getMedalEmoji(index)}</span>
+                      </MobileTooltip>
                       <div>
-                        <h4 className="font-medium text-cgi-surface-foreground">
-                          {venue.venue_name}
-                        </h4>
+                        <VenueLink
+                          venueId={venue.venue_id}
+                          venueName={venue.venue_name}
+                          size="md"
+                          className="font-medium"
+                        />
                         {venue.first_visit && (
                           <p className="text-xs text-cgi-muted-foreground flex items-center gap-1 mt-1">
                             <Calendar className="h-3 w-3" />
@@ -101,10 +109,12 @@ export function UserVenueAffinity({ venues }: UserVenueAffinityProps) {
 
                   <div className="flex flex-wrap gap-2 mt-3">
                     {trend && (
-                      <Badge className={`${trend.color} bg-transparent border border-current/30`}>
-                        <trend.icon className="h-3 w-3 mr-1" />
-                        {trend.label}
-                      </Badge>
+                      <MobileTooltip content={`Aktivitás trend: ${trend.label.toLowerCase()} az utolsó látogatás alapján`}>
+                        <Badge className={`${trend.color} bg-transparent border border-current/30`}>
+                          <trend.icon className="h-3 w-3 mr-1" />
+                          {trend.label}
+                        </Badge>
+                      </MobileTooltip>
                     )}
                     {venue.preferred_days.length > 0 && (
                       <Badge variant="outline" className="text-cgi-muted-foreground">

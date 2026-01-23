@@ -25,6 +25,8 @@ import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
 import { LoyaltyAlertsPanel } from "@/components/dashboard/LoyaltyAlertsPanel";
+import { UserLink, VenueLink } from "@/components/ui/entity-links";
+import { MobileTooltip, InfoTooltip } from "@/components/ui/mobile-tooltip";
 
 interface VenueActivity {
   venue_id: string;
@@ -38,6 +40,7 @@ interface RecentActivity {
   type: 'redemption' | 'app_open' | 'venue_browse' | 'points_earned';
   user_id: string;
   user_name: string;
+  venue_id?: string;
   venue_name?: string;
   drink_name?: string;
   timestamp: string;
@@ -119,16 +122,59 @@ export default function CommandCenter() {
     }
   };
 
-  const getActivityLabel = (activity: RecentActivity) => {
+  const getActivityContent = (activity: RecentActivity) => {
+    const userLink = (
+      <UserLink
+        userId={activity.user_id}
+        userName={activity.user_name}
+        size="xs"
+        showTooltip={false}
+      />
+    );
+    
+    const venueLink = activity.venue_id && activity.venue_name ? (
+      <VenueLink
+        venueId={activity.venue_id}
+        venueName={activity.venue_name}
+        size="xs"
+        showTooltip={false}
+      />
+    ) : activity.venue_name ? (
+      <span className="text-cgi-muted-foreground">{activity.venue_name}</span>
+    ) : null;
+
     switch (activity.type) {
       case 'redemption':
-        return `${activity.user_name} - beváltás${activity.venue_name ? ` @ ${activity.venue_name}` : ''}${activity.drink_name ? ` (${activity.drink_name})` : ''}`;
+        return (
+          <span className="text-sm">
+            {userLink}
+            <span className="text-cgi-muted-foreground"> - beváltás</span>
+            {venueLink && <> @ {venueLink}</>}
+            {activity.drink_name && <span className="text-cgi-muted-foreground"> ({activity.drink_name})</span>}
+          </span>
+        );
       case 'app_open':
-        return `${activity.user_name} - app megnyitás`;
+        return (
+          <span className="text-sm">
+            {userLink}
+            <span className="text-cgi-muted-foreground"> - app megnyitás</span>
+          </span>
+        );
       case 'venue_browse':
-        return `${activity.user_name} - helyszín böngészés${activity.venue_name ? ` (${activity.venue_name})` : ''}`;
+        return (
+          <span className="text-sm">
+            {userLink}
+            <span className="text-cgi-muted-foreground"> - helyszín böngészés</span>
+            {venueLink && <> ({venueLink})</>}
+          </span>
+        );
       case 'points_earned':
-        return `${activity.user_name} - pontszerzés`;
+        return (
+          <span className="text-sm">
+            {userLink}
+            <span className="text-cgi-muted-foreground"> - pontszerzés</span>
+          </span>
+        );
     }
   };
 
@@ -345,15 +391,17 @@ export default function CommandCenter() {
                     >
                       {getActivityIcon(activity.type)}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{getActivityLabel(activity)}</p>
+                        <div className="truncate">{getActivityContent(activity)}</div>
                         <p className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(activity.timestamp), { locale: hu, addSuffix: true })}
                         </p>
                       </div>
                       {activity.type === 'venue_browse' && (
-                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 shrink-0">
-                          PUSH READY
-                        </Badge>
+                        <MobileTooltip content="A felhasználó éppen böngészi a helyszíneket - ideális pillanat push értesítésre!">
+                          <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 shrink-0">
+                            PUSH READY
+                          </Badge>
+                        </MobileTooltip>
                       )}
                     </div>
                   ))}
