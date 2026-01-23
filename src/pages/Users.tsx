@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExportDropdown } from "@/components/ExportDropdown";
+import { InfoTooltip } from "@/components/ui/mobile-tooltip";
 import {
   Search,
   Users as UsersIcon,
@@ -22,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
+import { exportUsersToCSV } from "@/lib/exportUtils";
 
 // Chart components
 import { UserActivityChart } from "@/components/UserActivityChart";
@@ -202,18 +205,33 @@ export default function Users() {
     <PageLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg bg-cgi-primary/20">
-            <UsersIcon className="h-6 w-6 text-cgi-primary" />
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-cgi-primary/20">
+              <UsersIcon className="h-6 w-6 text-cgi-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-cgi-surface-foreground">
+                Felhasználók
+              </h1>
+              <p className="text-sm text-cgi-muted-foreground">
+                Regisztrált felhasználók kezelése és monitorozása
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-cgi-surface-foreground">
-              Felhasználók
-            </h1>
-            <p className="text-sm text-cgi-muted-foreground">
-              Regisztrált felhasználók kezelése és monitorozása
-            </p>
-          </div>
+          
+          {/* Export Button */}
+          {activeTab === "users" && data?.users && data.users.length > 0 && (
+            <ExportDropdown
+              options={[
+                {
+                  label: "Összes felhasználó (CSV)",
+                  onClick: () => exportUsersToCSV(data.users)
+                }
+              ]}
+              tooltipContent="Felhasználók exportálása CSV fájlba"
+            />
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -222,9 +240,12 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">
-                    Összes felhasználó
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm text-cgi-muted-foreground">
+                      Összes felhasználó
+                    </p>
+                    <InfoTooltip content="Az összes regisztrált felhasználó száma a rendszerben." />
+                  </div>
                   <p className="text-2xl font-bold text-cgi-surface-foreground">
                     {summary.total_users}
                   </p>
@@ -238,14 +259,17 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">
-                    Aktív (7 nap)
-                  </p>
-                  <p className="text-2xl font-bold text-green-400">
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm text-cgi-muted-foreground">
+                      Aktív (7 nap)
+                    </p>
+                    <InfoTooltip content="Felhasználók, akik az elmúlt 7 napban legalább egyszer aktívak voltak (bejelentkezés, beváltás, stb.)." />
+                  </div>
+                  <p className="text-2xl font-bold text-cgi-success">
                     {summary.active_7_days}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-400 opacity-50" />
+                <TrendingUp className="h-8 w-8 text-cgi-success opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -254,12 +278,15 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">Ma aktív</p>
-                  <p className="text-2xl font-bold text-blue-400">
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm text-cgi-muted-foreground">Ma aktív</p>
+                    <InfoTooltip content="Felhasználók, akik ma legalább egyszer használták az alkalmazást." />
+                  </div>
+                  <p className="text-2xl font-bold text-cgi-primary">
                     {summary.active_today}
                   </p>
                 </div>
-                <Calendar className="h-8 w-8 text-blue-400 opacity-50" />
+                <Calendar className="h-8 w-8 text-cgi-primary opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -268,9 +295,12 @@ export default function Users() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-cgi-muted-foreground">
-                    Összes beváltás
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm text-cgi-muted-foreground">
+                      Összes beváltás
+                    </p>
+                    <InfoTooltip content="A felhasználók által elvégzett összes ingyen ital beváltás száma." />
+                  </div>
                   <p className="text-2xl font-bold text-cgi-secondary">
                     {summary.total_redemptions}
                   </p>

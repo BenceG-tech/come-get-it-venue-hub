@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { hu } from "date-fns/locale";
-import { Eye, Ban, Loader2, Wine } from "lucide-react";
+import { Eye, Ban, Loader2, Wine, Download } from "lucide-react";
 import { RedemptionFilters, RedemptionFiltersState } from "@/components/RedemptionFilters";
 import { RedemptionDetailModal, RedemptionRecord } from "@/components/RedemptionDetailModal";
 import { VoidRedemptionDialog } from "@/components/VoidRedemptionDialog";
@@ -15,6 +15,8 @@ import { Json } from "@/integrations/supabase/types";
 import { UserLink, VenueLink, DrinkLink } from "@/components/ui/entity-links";
 import { RedemptionContextBadges } from "@/components/RedemptionContextBadges";
 import { MobileTooltip, InfoTooltip } from "@/components/ui/mobile-tooltip";
+import { ExportDropdown } from "@/components/ExportDropdown";
+import { exportRedemptionsToCSV } from "@/lib/exportUtils";
 
 // Helper to format date/time
 const formatDateTime = (dateString: string) => {
@@ -344,18 +346,46 @@ export default function Redemptions() {
     <RouteGuard requiredRoles={["cgi_admin", "venue_owner", "venue_staff"]}>
       <PageLayout>
         <div className="mb-8">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">
-              Beváltások
-            </h1>
-            <InfoTooltip 
-              content="Itt láthatod az összes free drink beváltást. Kattints a felhasználó nevére a profiljához, vagy a helyszínre a helyszín oldalához."
-              iconClassName="h-5 w-5 mb-2"
-            />
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">
+                  Beváltások
+                </h1>
+                <InfoTooltip 
+                  content="Itt láthatod az összes free drink beváltást. Kattints a felhasználó nevére a profiljához, vagy a helyszínre a helyszín oldalához."
+                  iconClassName="h-5 w-5 mb-2"
+                />
+              </div>
+              <p className="text-cgi-muted-foreground">
+                A Come Get It alkalmazáson keresztül beváltott italok listája és audit
+              </p>
+            </div>
+            
+            {/* Export Button */}
+            {redemptions.length > 0 && (
+              <ExportDropdown
+                options={[
+                  {
+                    label: "Összes beváltás (CSV)",
+                    onClick: () => exportRedemptionsToCSV(
+                      redemptions.map(r => ({
+                        id: r.id,
+                        user_name: r.user_profile?.name || undefined,
+                        user_id: r.user_id,
+                        venue_name: r.venue?.name || "Ismeretlen",
+                        drink_name: r.drink_details?.drink_name || r.drink,
+                        value: r.value,
+                        status: r.status,
+                        redeemed_at: r.redeemed_at
+                      }))
+                    )
+                  }
+                ]}
+                tooltipContent="Beváltások exportálása CSV fájlba"
+              />
+            )}
           </div>
-          <p className="text-cgi-muted-foreground">
-            A Come Get It alkalmazáson keresztül beváltott italok listája és audit
-          </p>
         </div>
 
         <RedemptionFilters
