@@ -1,382 +1,719 @@
 
-# Complete Admin Interface & Supabase Audit
+# Teljes Fejlesztési Terv: 5 Fázis Implementáció
 
-## Executive Summary
+## Áttekintés
 
-This is a comprehensive loyalty/rewards platform called "Come Get It" for Hungarian hospitality venues. It provides free drinks to customers who visit partner venues during designated time windows, with sophisticated tracking, analytics, and engagement tools.
-
----
-
-## PART 1: Current Features Inventory
-
-### 1.1 Admin Pages (18 pages)
-
-| Page | Route | Access | Description |
-|------|-------|--------|-------------|
-| Login | `/` | Public | Admin authentication |
-| Dashboard | `/dashboard` | All roles | Role-specific dashboard views |
-| Venues | `/venues` | Admin only | Venue management CRUD |
-| Venue Detail | `/venues/:id` | Admin only | Single venue configuration |
-| Venue Comparison | `/venues/comparison` | Admin only | Multi-venue analytics comparison |
-| Users | `/users` | Admin only | User list with QuickView modal |
-| User Detail | `/users/:id` | Admin only | Deep user analytics with predictions |
-| Redemptions | `/redemptions` | All roles | Free drink redemption tracking |
-| Transactions | `/transactions` | Admin/Owner | POS transaction history |
-| Rewards | `/rewards` | Admin/Owner | Points-based rewards management |
-| Brands | `/brands` | Admin only | Brand partner management |
-| Promotions | `/promotions` | Admin only | Points multipliers & bonuses |
-| Notifications | `/notifications` | Admin only | Push notification templates |
-| Analytics | `/analytics` | Admin/Owner | Charts, heatmaps, trends |
-| Data Insights | `/data-insights` | Admin only | Value metrics for venues/brands |
-| Command Center | `/command-center` | Admin only | Real-time platform monitoring |
-| Salt Edge Transactions | `/saltedge-transactions` | Admin only | Bank transaction matching |
-| Settings | `/settings` | Admin/Owner | Venue configuration |
-
-### 1.2 POS Interface (2 pages)
-
-| Page | Route | Description |
-|------|-------|-------------|
-| POS Redeem | `/pos/redeem` | QR scanner for staff to redeem tokens |
-| POS History | `/pos/history` | Staff view of daily redemptions |
-
-### 1.3 Consumer App (2 pages)
-
-| Page | Route | Description |
-|------|-------|-------------|
-| Consumer App | `/app` | Public venue discovery & token generation |
-| Venue Detail | `/app/venue/:id` | Individual venue page with free drink windows |
+Ez a terv a "Come Get It" platform teljes körű továbbfejlesztését tartalmazza 5 fázisban, összesen 12-17 hét munkával.
 
 ---
 
-## PART 2: Supabase Database Tables (37 tables)
+## PHASE 1: QUICK WINS (1-2 hét)
 
-### Core Business Tables
-| Table | Purpose |
-|-------|---------|
-| `venues` | Restaurant/bar locations with caps, hours, settings |
-| `venue_drinks` | Menu of drinks available (including free drinks) |
-| `venue_images` | Photo gallery for venues |
-| `venue_locations` | Fidel card-linking location mappings |
-| `venue_memberships` | Staff/owner relationships to venues |
-| `free_drink_windows` | Time windows when free drinks are available |
-| `caps` | Daily/hourly/monthly redemption limits |
+### 1.1 Audit Logging - Admin Műveletek Naplózása
 
-### User & Activity Tables
-| Table | Purpose |
-|-------|---------|
-| `profiles` | User profiles with admin flag |
-| `user_points` | Points balances, lifetime stats |
-| `user_activity_logs` | App opens, venue views, etc. |
-| `user_behavior_patterns` | AI-computed behavior clusters |
-| `user_predictions` | ML predictions for next visit |
-| `user_achievements` | Gamification badges |
-| `user_qr_tokens` | QR codes for POS identification |
+**Új tábla: `audit_logs`**
+```sql
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id UUID NOT NULL,                    -- Ki végezte
+  actor_email TEXT,                          -- Email mentése olvashatóságért
+  action TEXT NOT NULL,                      -- create, update, delete, login, export
+  resource_type TEXT NOT NULL,               -- venue, user, promotion, notification
+  resource_id UUID,                          -- Érintett rekord
+  old_value JSONB,                           -- Változás előtti érték
+  new_value JSONB,                           -- Változás utáni érték
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
-### Transaction Tables
-| Table | Purpose |
-|-------|---------|
-| `redemptions` | Free drink redemption records |
-| `redemption_tokens` | Token issuance and consumption |
-| `token_rate_limits` | Anti-abuse rate limiting |
-| `pos_transactions` | POS system order data (via webhook) |
-| `transactions` | Legacy transaction data |
-| `points_transactions` | Points earn/spend ledger |
-| `reward_redemptions` | Points-based reward claims |
-| `rewards` | Available rewards catalog |
+**Új fájlok:**
+- `src/lib/auditLogger.ts` - Frontend utility a műveletek naplózására
+- `src/pages/AuditLog.tsx` - Új admin oldal az audit log megtekintésére
+- `supabase/functions/log-audit-event/index.ts` - Edge function a naplózáshoz
 
-### Integration Tables
-| Table | Purpose |
-|-------|---------|
-| `fidel_transactions` | Card-linked transactions from Fidel |
-| `linked_cards` | User payment cards |
-| `saltedge_customers` | Salt Edge AIS customer mappings |
-| `saltedge_connections` | Bank connections |
-| `saltedge_transactions` | Bank transaction data |
-
-### Marketing & Analytics Tables
-| Table | Purpose |
-|-------|---------|
-| `brands` | Brand partner companies |
-| `promotions` | Points multipliers & bonuses |
-| `notification_templates` | Push notification designs |
-| `notification_logs` | Sent notification history |
-| `ai_notification_suggestions` | AI-generated push ideas |
-| `autopilot_rules` | Automated marketing triggers |
-| `anomaly_logs` | Detected unusual patterns |
-| `loyalty_milestones` | User achievement thresholds |
-| `campaign_roi` | Marketing campaign tracking |
-| `platform_snapshots` | Time-series platform metrics |
+**Módosítandó fájlok:**
+- `src/App.tsx` - Új route: `/audit-log`
+- `src/components/Sidebar.tsx` - Új menüpont
 
 ---
 
-## PART 3: Edge Functions (32 functions)
+### 1.2 User Bulk Actions - Tömeges Műveletek
 
-### Token & Redemption System
-| Function | Purpose |
-|----------|---------|
-| `issue-redemption-token` | Generate QR token for free drink |
-| `consume-redemption-token` | Staff scans QR to confirm redemption |
-| `void-redemption` | Cancel/void a redemption |
-| `generate-user-qr` | Create user identification QR |
-| `validate-user-qr` | Verify user QR at POS |
+**Új komponens: `UserBulkActions.tsx`**
 
-### User Analytics
-| Function | Purpose |
-|----------|---------|
-| `get-user-stats` | Basic user statistics |
-| `get-user-stats-extended` | Full user profile with predictions |
-| `get-user-points` | Points balance lookup |
-| `get-user-revenue-impact` | ROI calculation per user |
-| `get-users` | Paginated user list for admin |
-| `analyze-user-behavior` | AI behavior pattern detection |
-| `generate-user-story` | AI narrative about user |
+Funkciók:
+- Checkbox minden user sorhoz
+- "Összes kijelölése" gomb
+- Tömeges műveletek dropdown:
+  - **Export kiválasztottak (CSV)**
+  - **Tag hozzáadása** (új `user_tags` tábla)
+  - **Push értesítés küldése**
+  - **Bónusz pont küldése**
 
-### Platform Analytics
-| Function | Purpose |
-|----------|---------|
-| `get-dashboard-stats` | Role-based KPI data |
-| `get-user-analytics` | DAU/WAU, heatmaps, retention |
-| `get-data-value-insights` | Business value metrics |
-| `get-live-platform-status` | Real-time activity feed |
-| `get-anomaly-report` | Anomaly detection report |
+**Új tábla: `user_tags`**
+```sql
+CREATE TABLE user_tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  tag TEXT NOT NULL,
+  created_by UUID,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, tag)
+);
+```
 
-### Integration Webhooks
-| Function | Purpose |
-|----------|---------|
-| `fidel-webhook` | Card-linked transactions from Fidel API |
-| `goorderz-webhook` | POS transactions with promotion engine |
-
-### Engagement & Notifications
-| Function | Purpose |
-|----------|---------|
-| `suggest-user-notification` | AI-powered push suggestions |
-| `send-user-notification` | Actually send push notification |
-| `send-loyalty-reward` | Grant bonus to user |
-| `detect-loyalty-milestones` | Check for milestone achievements |
-| `get-pending-loyalty-alerts` | Pending admin actions |
-| `log-user-activity` | Record user events |
-
-### Rewards System
-| Function | Purpose |
-|----------|---------|
-| `get-rewards` | Available rewards catalog |
-| `redeem-reward` | Exchange points for reward |
-
-### Public APIs
-| Function | Purpose |
-|----------|---------|
-| `get-public-venues` | Public venue list |
-| `get-public-venue` | Single venue details |
-| `geocode-address` | Address to coordinates |
-| `ai-venue-recommend` | AI venue suggestions |
-
-### Admin Utilities
-| Function | Purpose |
-|----------|---------|
-| `seed-test-data` | Generate test data |
+**Módosítandó fájlok:**
+- `src/pages/Users.tsx` - Bulk selection és actions UI
+- `src/lib/exportUtils.ts` - Kibővítés bulk exporthoz
 
 ---
 
-## PART 4: Key User Experience Components
+### 1.3 Notification Analytics Dashboard
 
-### User Detail Components (21 components)
-- `UserScorecard` - Engagement score, LTV, ROI
-- `UserVenueAffinity` - Favorite venues with today's status
-- `UserPredictions` - 30-day forecast panel
-- `UserComparison` - vs platform averages
-- `UserQuickView` - Modal preview from list
-- `ChurnWarningPanel` - Inactivity alerts
-- `SystemRulesPanel` - Explain the "1 drink/day/venue" rule
-- `QuickOverviewCard` - KPI summary header
-- `TodayRedemptionStatus` - Per-venue daily status
-- `BehaviorPatternBadges` - AI-detected patterns
-- `AINotificationSuggestions` - Push message ideas
-- `UserActivityHeatmap` - Weekly activity visualization
-- `UserDrinkPreferences` - Favorite drinks
-- `UserPointsFlow` - Points earn/spend history
-- `UserRevenueImpact` - Financial value analysis
-- `UserWeeklyTrends` - Week-over-week comparisons
-- `NextActionPredictor` - What will user do next?
-- `EnhancedRedemptionCard` - Detailed redemption info
-- `UserNotificationHistory` - Sent notifications
-- `UserBehaviorStory` - AI-generated narrative
+**Új komponens: `NotificationAnalyticsDashboard.tsx`**
 
-### Dashboard Components
-- `AdminDashboard` - Platform-wide KPIs
-- `OwnerDashboard` - Venue-specific metrics
-- `StaffDashboard` - Daily operations view
-- `BrandDashboard` - Brand partner view
-- `LoyaltyAlertsPanel` - Pending milestone actions
+Megjelenítendő metrikák:
+- Elküldött értesítések száma (napi/heti/havi)
+- Delivery rate (kézbesítési arány)
+- Open rate (megnyitási arány)
+- Click-through rate (átkattintási arány)
+- Legjobban teljesítő sablonok
+- Idősor grafikon a teljesítményről
+
+**Új edge function: `get-notification-analytics`**
+```typescript
+// Aggregált statisztikák a notification_logs táblából
+// Group by template_id, day
+// Calculate: sent_count, delivered_count, opened_count, clicked_count
+```
+
+**Módosítandó fájlok:**
+- `src/pages/Notifications.tsx` - Új "Statisztikák" tab hozzáadása
 
 ---
 
-## PART 5: Identified Gaps & Improvement Opportunities
+### 1.4 Automated Email Report Scheduling
 
-### 5.1 CRITICAL MISSING FEATURES
+**Új táblák:**
+```sql
+CREATE TABLE report_schedules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  report_type TEXT NOT NULL,         -- weekly_summary, daily_redemptions, monthly_revenue
+  recipient_emails TEXT[] NOT NULL,
+  venue_ids UUID[],                  -- NULL = all venues
+  schedule_cron TEXT NOT NULL,       -- "0 8 * * 1" (hétfő 8:00)
+  timezone TEXT DEFAULT 'Europe/Budapest',
+  is_active BOOLEAN DEFAULT true,
+  last_sent_at TIMESTAMPTZ,
+  created_by UUID,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-| Feature | Priority | Complexity | Business Impact |
-|---------|----------|------------|-----------------|
-| **A/B Testing Framework** | High | Medium | Measure promotion effectiveness |
-| **Automated Reports (Email)** | High | Medium | Scheduled PDF reports to owners |
-| **Mobile Staff App** | High | High | Native POS experience |
-| **Webhook Retry Queue** | High | Medium | Reliability for Fidel/Goorderz |
-| **Audit Log** | High | Low | Track all admin actions |
+CREATE TABLE report_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id UUID REFERENCES report_schedules(id),
+  sent_at TIMESTAMPTZ DEFAULT now(),
+  recipient_count INTEGER,
+  status TEXT,
+  error_message TEXT
+);
+```
 
-### 5.2 ANALYTICS ENHANCEMENTS
+**Új fájlok:**
+- `src/pages/ReportScheduler.tsx` - UI a jelentések ütemezéséhez
+- `src/components/ReportScheduleFormModal.tsx` - Form modal
+- `supabase/functions/send-scheduled-report/index.ts` - Email küldés
 
-| Feature | Priority | Complexity | Description |
-|---------|----------|------------|-------------|
-| **Cohort Analysis** | High | Medium | User retention by signup week |
-| **Funnel Visualization** | High | Medium | app_open → venue_view → redemption |
-| **Geographic Heatmap** | Medium | Medium | Map view of user activity |
-| **Seasonal Trend Detection** | Medium | Medium | YoY comparisons |
-| **Revenue Attribution** | High | High | Which promotions drive spend |
-
-### 5.3 USER MANAGEMENT ENHANCEMENTS
-
-| Feature | Priority | Complexity | Description |
-|---------|----------|------------|-------------|
-| **User Segments/Tags** | High | Low | Manual tagging system |
-| **Bulk Actions** | High | Low | Select multiple users → action |
-| **User Merge** | Medium | Medium | Merge duplicate accounts |
-| **User Block/Ban** | Medium | Low | Abuse prevention |
-| **Export Scheduling** | Medium | Low | Automated weekly exports |
-
-### 5.4 VENUE MANAGEMENT ENHANCEMENTS
-
-| Feature | Priority | Complexity | Description |
-|---------|----------|------------|-------------|
-| **Multi-Location Groups** | High | Medium | Chain management |
-| **Venue Cloning** | Medium | Low | Copy settings to new venue |
-| **Staff Scheduling** | Low | High | Integrated shift planning |
-| **Inventory Tracking** | Low | High | Track free drink stock |
-| **Dynamic Pricing** | Medium | Medium | Adjust caps based on demand |
-
-### 5.5 NOTIFICATION SYSTEM ENHANCEMENTS
-
-| Feature | Priority | Complexity | Description |
-|---------|----------|------------|-------------|
-| **Geofence Trigger** | High | High | Push when near venue |
-| **Smart Scheduling** | High | Medium | Send at optimal time per user |
-| **Notification Analytics** | High | Medium | Open rate, click rate dashboards |
-| **Template Variants** | Medium | Low | A/B test notification copy |
-| **In-App Messaging** | Medium | Medium | Rich messages within app |
-
-### 5.6 INTEGRATION EXPANSIONS
-
-| Integration | Priority | Complexity | Description |
-|-------------|----------|------------|-------------|
-| **Stripe Payments** | High | Medium | Enable in-app purchases |
-| **Apple/Google Wallet** | High | High | Loyalty card passes |
-| **Facebook/Google Ads** | Medium | Medium | Attribution tracking |
-| **CRM Export** | Medium | Low | Sync to HubSpot/Salesforce |
-| **Slack/Discord Alerts** | Low | Low | Real-time notifications |
-
-### 5.7 SECURITY & COMPLIANCE
-
-| Feature | Priority | Complexity | Description |
-|---------|----------|------------|-------------|
-| **GDPR Data Export** | High | Medium | User data download |
-| **GDPR Data Deletion** | High | Medium | Right to be forgotten |
-| **Two-Factor Auth** | High | Medium | Admin account security |
-| **Session Management** | Medium | Low | View/revoke active sessions |
-| **IP Whitelisting** | Low | Low | API access restriction |
-
-### 5.8 PERFORMANCE & SCALABILITY
-
-| Feature | Priority | Complexity | Description |
-|---------|----------|------------|-------------|
-| **Edge Function Caching** | High | Medium | Redis/memcached layer |
-| **Query Optimization** | High | Medium | Database indexes review |
-| **Background Jobs Queue** | High | High | Async processing |
-| **CDN for Images** | Medium | Low | Cloudflare/Fastly |
-| **Database Read Replicas** | Low | High | Scale reads |
+**Technikai megjegyzés:** A Supabase pg_cron használható az időzített futtatáshoz, vagy külső szolgáltatás (pl. Inngest, Trigger.dev).
 
 ---
 
-## PART 6: Technical Debt & Issues
+### 1.5 GDPR Data Export Endpoint
 
-### 6.1 Code Quality Issues
+**Új edge function: `export-user-data`**
 
-| Issue | Location | Impact |
-|-------|----------|--------|
-| Hardcoded Supabase URL in fidel-webhook | Edge function | Maintenance difficulty |
-| Mixed Hungarian/English in UI | Multiple files | Inconsistent UX |
-| Some edge functions don't use service role key variable | Various | Security concern |
-| Missing error boundaries | React components | Crash handling |
-| Incomplete TypeScript types | Various | Type safety |
+Exportálandó adatok:
+- `profiles` - Felhasználói profil
+- `user_points` - Pont egyenleg és history
+- `redemptions` - Beváltások
+- `reward_redemptions` - Jutalom beváltások
+- `notification_logs` - Értesítések
+- `user_activity_logs` - Aktivitás napló
+- `linked_cards` - Linkelt kártyák (maszkolva)
 
-### 6.2 Database Concerns
+**Output:** JSON fájl letöltése
 
-| Issue | Tables Affected | Recommendation |
-|-------|-----------------|----------------|
-| No foreign keys on some relations | redemptions, pos_transactions | Add FK constraints |
-| Missing indexes on frequently queried columns | redemptions.redeemed_at | Add composite indexes |
-| Orphaned RLS policies overlap | venues, redemptions | Review and consolidate |
-| No soft delete mechanism | Most tables | Add deleted_at columns |
-
-### 6.3 Edge Function Concerns
-
-| Issue | Functions Affected | Recommendation |
-|-------|-------------------|----------------|
-| No retry mechanism | fidel-webhook, goorderz-webhook | Add dead letter queue |
-| No rate limiting on public endpoints | issue-redemption-token | Add IP-based limiting |
-| Long-running queries | get-user-stats-extended | Pagination, caching |
-| No request validation schema | Multiple | Add Zod validation |
+**Új komponens:** 
+- `src/components/user/GDPRExportButton.tsx` - UserDetail oldalra
 
 ---
 
-## PART 7: Recommended Development Roadmap
+## PHASE 2: ANALYTICS ENHANCEMENT (2-3 hét)
 
-### Phase 1: Quick Wins (1-2 weeks)
-1. Add audit logging for admin actions
-2. Implement user bulk actions (export selected, tag)
-3. Add notification analytics dashboard
-4. Create automated email report scheduling
-5. Add GDPR data export endpoint
+### 2.1 Cohort Analysis Dashboard
 
-### Phase 2: Analytics Enhancement (2-3 weeks)
-1. Build cohort analysis dashboard
-2. Add funnel visualization component
-3. Implement revenue attribution tracking
-4. Create A/B testing framework
-5. Add seasonal trend detection
+**Koncepció:** Felhasználók csoportosítása regisztráció hete szerint, retention mérése
 
-### Phase 3: Engagement Boost (3-4 weeks)
-1. Smart notification scheduling (ML-based optimal time)
-2. Geofence-triggered notifications
-3. Apple/Google Wallet pass generation
-4. In-app rich messaging
-5. Gamification expansion (achievements, leaderboards)
+**Új edge function: `get-cohort-analysis`**
+```typescript
+interface CohortData {
+  cohort_week: string;           // "2025-W03"
+  cohort_size: number;           // Regisztráltak száma
+  retention: number[];           // [100, 80, 65, 55, ...] - % hetente
+}
+```
 
-### Phase 4: Scale & Security (2-3 weeks)
-1. Edge function caching layer
-2. Background job queue (Supabase pg_cron or external)
-3. Two-factor authentication
-4. Database performance audit
-5. API rate limiting infrastructure
+**Új komponens: `CohortAnalysisChart.tsx`**
+- Hőtérkép vizualizáció
+- X tengely: Hetek a regisztráció óta
+- Y tengely: Kohort hetek
+- Szín: Retention %
 
-### Phase 5: Integrations (3-4 weeks)
-1. Stripe payment integration
-2. Social media ad attribution
-3. CRM export connectors
-4. Slack/Discord alert integration
-5. Calendar integration for venue hours
+**Módosítandó fájlok:**
+- `src/pages/Analytics.tsx` - Új "Kohort" tab
 
 ---
 
-## Summary Statistics
+### 2.2 Funnel Visualization Component
 
-| Category | Count |
-|----------|-------|
-| Admin Pages | 18 |
-| POS Pages | 2 |
-| Consumer Pages | 2 |
-| Database Tables | 37 |
-| Edge Functions | 32 |
-| User Detail Components | 21 |
-| Dashboard Components | 5 |
-| Identified Improvement Areas | 40+ |
-| Database Migrations | 39 |
+**Koncepció:** User journey vizualizáció: App megnyitás → Venue megtekintés → QR generálás → Beváltás
 
-The platform is already quite feature-rich with sophisticated analytics, AI-powered suggestions, real-time monitoring, and multiple integration points. The main opportunities lie in automation, deeper analytics, and scalability improvements.
+**Új edge function: `get-funnel-analytics`**
+```typescript
+interface FunnelStep {
+  step_name: string;
+  count: number;
+  conversion_rate: number;  // vs előző lépés
+  drop_off_rate: number;
+}
+```
+
+**Új komponens: `FunnelVisualization.tsx`**
+- Tölcsér alakú diagram
+- Lépésenkénti konverziós ráták
+- Időszak szűrő (7 nap, 30 nap, 90 nap)
+
+---
+
+### 2.3 Revenue Attribution Tracking
+
+**Koncepció:** Melyik promóció/kampány hozza a legtöbb bevételt?
+
+**Új edge function: `get-revenue-attribution`**
+
+Számítások:
+- Promóció → POS tranzakciók összekapcsolása
+- ROI számítás: bevétel / promóció költség
+- Top 10 leghatékonyabb promóció
+
+**Új komponens: `RevenueAttributionTable.tsx`**
+
+---
+
+### 2.4 A/B Testing Framework
+
+**Új táblák:**
+```sql
+CREATE TABLE ab_tests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  test_type TEXT NOT NULL,           -- notification, promotion, ui_variant
+  variant_a JSONB NOT NULL,          -- Kontroll csoport
+  variant_b JSONB NOT NULL,          -- Teszt csoport
+  split_ratio NUMERIC DEFAULT 0.5,   -- 50-50
+  metric_type TEXT NOT NULL,         -- open_rate, redemption_rate, spend
+  status TEXT DEFAULT 'draft',       -- draft, running, completed
+  started_at TIMESTAMPTZ,
+  ended_at TIMESTAMPTZ,
+  winner_variant TEXT,
+  statistical_significance NUMERIC,
+  created_by UUID,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE ab_test_assignments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  test_id UUID REFERENCES ab_tests(id),
+  user_id UUID NOT NULL,
+  variant TEXT NOT NULL,             -- 'A' or 'B'
+  assigned_at TIMESTAMPTZ DEFAULT now(),
+  converted BOOLEAN DEFAULT false,
+  converted_at TIMESTAMPTZ,
+  UNIQUE(test_id, user_id)
+);
+```
+
+**Új fájlok:**
+- `src/pages/ABTests.tsx` - A/B tesztek listája
+- `src/components/ABTestFormModal.tsx` - Teszt létrehozás
+- `src/components/ABTestResults.tsx` - Eredmények vizualizáció
+- `supabase/functions/assign-ab-variant/index.ts` - Variant hozzárendelés
+
+---
+
+### 2.5 Seasonal Trend Detection
+
+**Új edge function: `get-seasonal-trends`**
+
+Számítások:
+- Hónap/hét összehasonlítás előző évvel (ha van adat)
+- Nap-típus elemzés (hétköznap vs hétvége)
+- Ünnepek/események hatása
+- Időjárás korreláció (opcionális, külső API)
+
+**Új komponens: `SeasonalTrendsChart.tsx`**
+- Year-over-year összehasonlítás
+- Heti/napi mintázatok
+- Anomália kiemelés
+
+---
+
+## PHASE 3: ENGAGEMENT BOOST (3-4 hét)
+
+### 3.1 Smart Notification Scheduling (ML-based)
+
+**Koncepció:** Minden usernek személyre szabott optimális push időpont
+
+**Új edge function: `get-optimal-push-time`**
+
+Algoritmus (heurisztikus, nem igazi ML):
+```typescript
+function calculateOptimalPushTime(userId: string): PushTiming {
+  // 1. User activity heatmap elemzése
+  // 2. Legjobb napok/órák meghatározása
+  // 3. Notification open history elemzése
+  // 4. Churn risk figyelembevétele
+  return {
+    best_day: 'Friday',
+    best_hour: 14,
+    confidence: 0.85,
+    reasoning: 'Legmagasabb app megnyitási arány'
+  };
+}
+```
+
+**Módosítandó fájlok:**
+- `supabase/functions/send-user-notification/index.ts` - Smart scheduling opció
+
+---
+
+### 3.2 Geofence-triggered Notifications
+
+**Új táblák:**
+```sql
+CREATE TABLE geofence_triggers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  venue_id UUID REFERENCES venues(id),
+  radius_meters INTEGER DEFAULT 500,
+  notification_template_id UUID,
+  min_dwell_minutes INTEGER DEFAULT 5,
+  cooldown_hours INTEGER DEFAULT 24,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE geofence_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  venue_id UUID NOT NULL,
+  trigger_id UUID REFERENCES geofence_triggers(id),
+  entered_at TIMESTAMPTZ,
+  exited_at TIMESTAMPTZ,
+  notification_sent BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Új edge function: `process-geofence-event`**
+- Mobilról kapott lokációs esemény feldolgozása
+- Szabályok ellenőrzése
+- Push küldés ha teljesül
+
+**Dokumentáció:** RORK mobilappnak API leírás
+
+---
+
+### 3.3 Apple/Google Wallet Pass Generation
+
+**Új edge function: `generate-wallet-pass`**
+
+Implementáció:
+- Apple Wallet: `.pkpass` generálás (JSON + aláírás)
+- Google Wallet: JWT token Google Pay API-hoz
+
+**Szükséges secrets:**
+- `APPLE_PASS_TYPE_ID`
+- `APPLE_TEAM_ID`
+- `APPLE_PASS_CERTIFICATE` (base64)
+- `GOOGLE_WALLET_ISSUER_ID`
+- `GOOGLE_WALLET_PRIVATE_KEY`
+
+**Új komponens:**
+- `src/components/WalletPassButton.tsx` - Consumer app-hoz
+
+---
+
+### 3.4 In-App Rich Messaging
+
+**Új táblák:**
+```sql
+CREATE TABLE in_app_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  image_url TEXT,
+  cta_text TEXT,
+  cta_deep_link TEXT,
+  targeting JSONB,
+  display_type TEXT,              -- banner, modal, full_screen
+  priority INTEGER DEFAULT 0,
+  starts_at TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE in_app_message_views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID REFERENCES in_app_messages(id),
+  user_id UUID NOT NULL,
+  viewed_at TIMESTAMPTZ DEFAULT now(),
+  clicked BOOLEAN DEFAULT false,
+  dismissed BOOLEAN DEFAULT false
+);
+```
+
+**Új edge function: `get-in-app-messages`**
+- Releváns üzenetek lekérése user számára
+
+---
+
+### 3.5 Gamification Expansion
+
+**Új táblák:**
+```sql
+CREATE TABLE achievement_definitions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  icon TEXT,
+  category TEXT,                     -- explorer, spender, loyal, social
+  criteria JSONB NOT NULL,           -- { type: 'redemption_count', value: 10 }
+  points_reward INTEGER DEFAULT 0,
+  badge_image_url TEXT,
+  is_hidden BOOLEAN DEFAULT false,   -- Secret achievements
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE user_leaderboard_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  period TEXT NOT NULL,              -- 'weekly', 'monthly', 'all_time'
+  period_start DATE NOT NULL,
+  points_earned INTEGER DEFAULT 0,
+  redemption_count INTEGER DEFAULT 0,
+  rank INTEGER,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, period, period_start)
+);
+```
+
+**Új fájlok:**
+- `src/pages/Achievements.tsx` - Admin: achievement-ek kezelése
+- `supabase/functions/check-achievements/index.ts` - Achievement ellenőrzés
+- `supabase/functions/update-leaderboard/index.ts` - Ranglista frissítés
+
+---
+
+## PHASE 4: SCALE & SECURITY (2-3 hét)
+
+### 4.1 Edge Function Caching Layer
+
+**Implementáció:**
+- Supabase Edge Functions + KV store (vagy in-memory cache)
+- Cache keys: user_id + function_name
+- TTL: 5-60 perc (funkciótól függően)
+
+**Módosítandó edge functions:**
+- `get-user-stats-extended` - 5 perc cache
+- `get-dashboard-stats` - 2 perc cache
+- `get-public-venues` - 10 perc cache
+
+**Minta implementáció:**
+```typescript
+const CACHE = new Map<string, { data: any; expires: number }>();
+
+async function getCached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+  const cached = CACHE.get(key);
+  if (cached && cached.expires > Date.now()) {
+    return cached.data as T;
+  }
+  const data = await fetcher();
+  CACHE.set(key, { data, expires: Date.now() + ttlMs });
+  return data;
+}
+```
+
+---
+
+### 4.2 Background Job Queue
+
+**Opciók:**
+1. **Supabase pg_cron** - Egyszerű ütemezett feladatok
+2. **Inngest** - Komplex workflow-k
+3. **Custom queue tábla** - `job_queue` tábla + worker edge function
+
+**Job típusok:**
+- Napi report küldés
+- Heti leaderboard frissítés
+- Achievement ellenőrzés
+- Expired token cleanup
+- Platform snapshot generálás
+
+**Új tábla (ha custom queue):**
+```sql
+CREATE TABLE job_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_type TEXT NOT NULL,
+  payload JSONB,
+  status TEXT DEFAULT 'pending',
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  scheduled_at TIMESTAMPTZ DEFAULT now(),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
+
+### 4.3 Two-Factor Authentication
+
+**Implementáció Supabase Auth-tal:**
+- TOTP (Time-based One-Time Password)
+- Authenticator app support (Google Authenticator, Authy)
+
+**Új fájlok:**
+- `src/components/TwoFactorSetup.tsx` - QR kód generálás
+- `src/components/TwoFactorVerify.tsx` - Kód bevitel
+- `src/pages/SecuritySettings.tsx` - Biztonsági beállítások
+
+**Módosítandó:**
+- `src/pages/Login.tsx` - 2FA flow hozzáadása
+
+---
+
+### 4.4 Database Performance Audit
+
+**Indexek hozzáadása:**
+```sql
+-- Gyakori lekérdezésekhez
+CREATE INDEX idx_redemptions_user_venue ON redemptions(user_id, venue_id);
+CREATE INDEX idx_redemptions_redeemed_at ON redemptions(redeemed_at DESC);
+CREATE INDEX idx_user_activity_user_type ON user_activity_logs(user_id, event_type);
+CREATE INDEX idx_points_transactions_user ON points_transactions(user_id, created_at DESC);
+CREATE INDEX idx_notification_logs_user ON notification_logs(user_id, sent_at DESC);
+```
+
+**RLS policy optimalizáció:**
+- Felesleges policy-k eltávolítása
+- Query plan elemzés
+
+---
+
+### 4.5 API Rate Limiting Infrastructure
+
+**Új tábla:**
+```sql
+CREATE TABLE api_rate_limits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identifier TEXT NOT NULL,          -- IP address vagy API key
+  endpoint TEXT NOT NULL,
+  request_count INTEGER DEFAULT 1,
+  window_start TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(identifier, endpoint, window_start)
+);
+```
+
+**Rate limit szabályok:**
+- Public endpoints: 100 req/perc/IP
+- Authenticated endpoints: 1000 req/perc/user
+- Webhooks: 10 req/másodperc/IP
+
+**Implementáció:** Middleware a kritikus edge functions-ben
+
+---
+
+## PHASE 5: INTEGRATIONS (3-4 hét)
+
+### 5.1 Stripe Payment Integration
+
+**Szükséges secret:** `STRIPE_SECRET_KEY`
+
+**Új táblák:**
+```sql
+CREATE TABLE stripe_customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID UNIQUE NOT NULL,
+  stripe_customer_id TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE purchases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  stripe_payment_intent_id TEXT,
+  amount INTEGER NOT NULL,
+  currency TEXT DEFAULT 'HUF',
+  product_type TEXT,                  -- points_bundle, premium_subscription
+  product_config JSONB,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Új edge functions:**
+- `create-checkout-session` - Stripe checkout indítás
+- `stripe-webhook` - Payment events feldolgozása
+
+**Használati esetek:**
+- Pont vásárlás
+- Premium előfizetés venue-knak
+
+---
+
+### 5.2 Social Media Ad Attribution
+
+**Koncepció:** UTM paraméterek követése, konverzió mérés
+
+**Új tábla:**
+```sql
+CREATE TABLE attribution_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
+  session_id TEXT,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  utm_content TEXT,
+  referrer TEXT,
+  landing_page TEXT,
+  converted BOOLEAN DEFAULT false,
+  conversion_type TEXT,
+  conversion_value NUMERIC,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Új edge function: `log-attribution`**
+
+---
+
+### 5.3 CRM Export Connectors
+
+**Támogatott platformok:**
+- HubSpot
+- Salesforce (opcionális)
+- CSV export
+
+**Új edge function: `export-to-crm`**
+
+**HubSpot integráció:**
+```typescript
+// Contact szinkronizálás
+await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${HUBSPOT_API_KEY}` },
+  body: JSON.stringify({
+    properties: {
+      email: user.email,
+      firstname: user.name.split(' ')[0],
+      cgi_points: user.points_balance,
+      cgi_redemptions: user.total_redemptions,
+      cgi_ltv: user.ltv
+    }
+  })
+});
+```
+
+**Szükséges secret:** `HUBSPOT_API_KEY`
+
+---
+
+### 5.4 Slack/Discord Alert Integration
+
+**Új táblák:**
+```sql
+CREATE TABLE alert_channels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  channel_type TEXT NOT NULL,        -- slack, discord, email
+  webhook_url TEXT,
+  alert_types TEXT[],                -- anomaly, milestone, daily_summary
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Új edge function: `send-alert`**
+
+**Alert típusok:**
+- Anomália detektálva
+- Napi summary
+- Milestone elérve
+- Cap kimerült
+
+---
+
+### 5.5 Calendar Integration for Venue Hours
+
+**Koncepció:** Google Calendar / iCal integráció a nyitvatartáshoz
+
+**Új edge function: `sync-venue-calendar`**
+- iCal feed generálás venue-hoz
+- Google Calendar API import
+
+**Új komponens:**
+- `src/components/VenueCalendarSync.tsx`
+
+---
+
+## Összesítés
+
+| Fázis | Időtartam | Új Táblák | Új Edge Functions | Új Komponensek |
+|-------|-----------|-----------|-------------------|----------------|
+| Phase 1 | 1-2 hét | 4 | 3 | 8 |
+| Phase 2 | 2-3 hét | 2 | 5 | 6 |
+| Phase 3 | 3-4 hét | 6 | 5 | 5 |
+| Phase 4 | 2-3 hét | 2 | 2 | 3 |
+| Phase 5 | 3-4 hét | 4 | 5 | 3 |
+| **Összesen** | **11-16 hét** | **18** | **20** | **25** |
+
+---
+
+## Prioritási Javaslat
+
+**Azonnali implementáció (Phase 1):**
+1. Audit logging - Biztonsági szempontból kritikus
+2. GDPR export - Jogi megfelelőség
+3. Notification analytics - Meglévő funkció bővítése
+
+**Magas prioritás (Phase 2-3):**
+4. Cohort analysis - Üzleti döntéstámogatás
+5. A/B testing - Optimalizáció alapja
+6. Smart notifications - Engagement növelés
+
+**Közepes prioritás (Phase 4):**
+7. 2FA - Security
+8. Database indexes - Performance
+
+**Alacsonyabb prioritás (Phase 5):**
+9. Stripe - Ha van üzleti igény
+10. CRM export - Enterprise feature
