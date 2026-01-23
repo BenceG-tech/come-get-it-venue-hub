@@ -1,7 +1,6 @@
 
 import { Card } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/mobile-tooltip";
 import { ReactNode } from "react";
 
 interface ChartCardProps {
@@ -18,16 +17,7 @@ export function ChartCard({ title, children, className = "", action, tooltip }: 
       <div className="cgi-card-header">
         <div className="flex items-center gap-2">
           <h3 className="cgi-card-title">{title}</h3>
-          {tooltip && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-cgi-muted-foreground hover:text-cgi-surface-foreground cursor-help transition-colors" />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <p className="text-sm">{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
+          {tooltip && <InfoTooltip content={tooltip} />}
         </div>
         {action && <div>{action}</div>}
       </div>
