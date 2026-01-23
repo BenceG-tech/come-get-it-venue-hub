@@ -34,7 +34,9 @@ import {
   UserNotificationHistory,
   UserPointsFlow,
   UserVenueAffinity,
-  AINotificationSuggestions
+  AINotificationSuggestions,
+  UserBehaviorStory,
+  BehaviorPatternBadges
 } from "@/components/user";
 
 interface ExtendedUserStats {
@@ -271,8 +273,11 @@ export default function UserDetail() {
             <TabsTrigger value="overview" className="data-[state=active]:bg-cgi-primary">
               <TrendingUp className="h-4 w-4 mr-2" />Áttekintés
             </TabsTrigger>
+            <TabsTrigger value="behavior" className="data-[state=active]:bg-cgi-primary">
+              <Activity className="h-4 w-4 mr-2" />Viselkedés
+            </TabsTrigger>
             <TabsTrigger value="activity" className="data-[state=active]:bg-cgi-primary">
-              <Activity className="h-4 w-4 mr-2" />Aktivitás
+              <Clock className="h-4 w-4 mr-2" />Aktivitás
             </TabsTrigger>
             <TabsTrigger value="redemptions" className="data-[state=active]:bg-cgi-primary">
               <Wine className="h-4 w-4 mr-2" />Beváltások
@@ -292,13 +297,29 @@ export default function UserDetail() {
           </TabsList>
 
           <TabsContent value="overview">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* User Behavior Story - AI generated narrative */}
+            <UserBehaviorStory 
+              userId={userId!} 
+              userName={user.name}
+              onGenerateNotification={() => {
+                // Switch to AI tab
+                const aiTab = document.querySelector('[value="ai"]') as HTMLElement;
+                aiTab?.click();
+              }}
+            />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
               <UserWeeklyTrends data={weekly_trends} />
               <UserDrinkPreferences preferences={drink_preferences} />
             </div>
             <div className="mt-4">
               <UserActivityHeatmap heatmapData={hourly_heatmap} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="behavior">
+            {/* Behavior Analysis with Patterns, Predictions, Micro-moments */}
+            <BehaviorPatternBadges userId={userId!} />
           </TabsContent>
 
           <TabsContent value="activity">

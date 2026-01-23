@@ -6,3 +6,6 @@ export { UserNotificationHistory } from "./UserNotificationHistory";
 export { UserPointsFlow } from "./UserPointsFlow";
 export { UserVenueAffinity } from "./UserVenueAffinity";
 export { AINotificationSuggestions } from "./AINotificationSuggestions";
+export { UserBehaviorStory } from "./UserBehaviorStory";
+export { BehaviorPatternBadges } from "./BehaviorPatternBadges";
+export { NextActionPredictor } from "./NextActionPredictor";
