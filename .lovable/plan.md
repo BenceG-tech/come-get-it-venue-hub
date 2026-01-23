@@ -1,340 +1,253 @@
 
-# Terv: Beváltások UX Overhaul & Kapcsolódó Navigáció Rendszer
+# Terv: Felhasználók UX Fejlesztés + Adat Exportálás
 
-## Probléma Összefoglaló
+## Azonosított Problémák
 
-Az áttekintés után azonosított fő hiányosságok:
+A UserDetail oldal és kapcsolódó komponensek áttekintése után a következő fejlesztési lehetőségeket azonosítottam:
 
-### 1. Beváltások oldalon (Redemptions.tsx)
-- **Nincs látható felhasználó név** - csak csonkolt user_id látszik
-- **Nincs kattintható navigáció** a felhasználó profiljára
-- **Nincs helyszín link** - nem lehet rákattintani a venue-ra
-- **Nincs tooltip** a táblázat fejléceken
-- **Nincs kontextus** (hányadik látogatás, ROI, stb.)
+### 1. Érthetőségi problémák
+- **Engagement Score**: Mit jelent pontosan? 0-100 skála de nincs magyarázat
+- **LTV (Élettartam Érték)**: Hogyan számítódik? 
+- **Viselkedési minták**: Badge-ek vannak, de nincs kontextus
+- **ROI**: Mit jelent a "Return on Investment" ebben a kontextusban?
 
-### 2. Command Center Real-time Feed
-- Felhasználó nevek látszanak, de **nem kattinthatóak**
-- Helyszínek csak szövegként jelennek meg
-- Nincs tooltip magyarázat a "PUSH READY" badge-hez
+### 2. "1 free drink / nap / helyszín" szabály nem látható
+- A rendszerben van `per_user_daily` limit a `caps` táblában
+- DE ez nincs vizualizálva a felhasználó profiljában
+- Nem látszik, hogy "ma már váltott itt ingyen italt" vagy "még nem váltott"
 
-### 3. Staff Dashboard - Mai beváltások feed
-- **Nincs felhasználó információ egyáltalán** - csak az ital és érték látszik
-- Nem lehet rákattintani semmire
+### 3. Hiányzó Export funkciók
+- Users oldalon nincs export gomb
+- UserDetail oldalon nincs export
+- Redemptions oldalon nincs export
+- Analytics adatok nem exportálhatók
 
-### 4. LoyaltyAlertsPanel
-- Van felhasználó link (jó!), de **nincs venue link**
-- Hiányzik tooltip a mérföldkő típusokhoz
-
-### 5. UserDetail - Beváltások tab
-- Nincs **venue link** a beváltásoknál
-- Nincs felhasználó profil link (értelmetlen itt, de más kontextusban fontos)
-
-### 6. Hiányzó Tooltipek
-Új komponensek tooltip hiánnyal:
-- `UserVenueAffinity` - venue kártyák
-- `EnhancedRedemptionCard` - kontextus badge-ek
-- `LoyaltyAlertsPanel` - mérföldkő típusok
-- `CommandCenter` - KPI kártyák, alertek
-- `UserJourneyTimeline` - milestone-ok
+### 4. Navigációs és kontextus hiányok
+- Beváltásoknál nincs kattintható venue link
+- Pontok tabon nincs venue kapcsolat
 
 ---
 
-## Megoldás: Unified Entity Link Rendszer
+## Megoldási Terv
 
-### 1. Új Komponens: EntityLink
+### 1. RÉSZ: "Szabályok" Info Panel
 
-Univerzális kattintható link komponens entitásokhoz:
+Új panel a UserDetail oldalon, ami elmagyarázza a rendszer működését:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ℹ️ RENDSZER SZABÁLYOK                                          [Bezárás ✕] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  🍺 INGYEN ITAL SZABÁLYOK:                                                  │
+│  • Egy felhasználó naponta 1 ingyen italt válthat be helyszínenként        │
+│  • Az ingyen ital csak az aktív időablakokban érhető el                    │
+│  • 5 perc várakozás szükséges két token kérés között                       │
+│                                                                             │
+│  📊 METRIKÁK MAGYARÁZATA:                                                   │
+│  • Engagement Score: Aktivitási szint 0-100 (beváltások + app használat)   │
+│  • LTV: Becsült élettartam érték (eddigi + várható költés)                 │
+│  • ROI: Megtérülés = Tényleges költés / Ingyen italok értéke               │
+│  • Churn Risk: Lemorzsolódási kockázat az inaktivitás alapján              │
+│                                                                             │
+│  🏆 LOJALITÁS MÉRFÖLDKÖVEK:                                                 │
+│  • Heti VIP: 5+ látogatás / hét ugyanazon helyszínen                       │
+│  • Havi VIP: 10+ látogatás / hónap ugyanazon helyszínen                    │
+│  • Platina: 50+ összesített látogatás egy helyszínen                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. RÉSZ: "Mai állapot" kártya (per helyszín)
+
+A UserDetail Helyszínek tabján minden venue mellett látható:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🥇 Vinozza                                                      23 beváltás │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  📅 MAI ÁLLAPOT:                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  ✅ Ma már beváltott: 14:32-kor (Peroni)                            │   │
+│  │  ❌ Következő lehetőség: holnap                                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  VAGY ha még nem váltott:                                                   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  ⏳ Ma még nem váltott be ingyen italt                              │   │
+│  │  🕐 Következő ablak: 16:00 - 18:00                                  │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3. RÉSZ: CSV/Excel Export Funkciók
+
+#### 3.1 Users Lista Export
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  FELHASZNÁLÓK                                    [🔍 Keresés] [📥 Export ▼] │
+├─────────────────────────────────────────────────────────────────────────────┤
+                                                            │
+                                                   ┌────────┴────────┐
+                                                   │ 📊 CSV Export   │
+                                                   │ 📑 Excel Export │
+                                                   │ 📋 Csak kijelölt│
+                                                   └─────────────────┘
+```
+
+Export tartalom:
+- Név, Email, Telefon
+- Regisztráció dátuma
+- Pont egyenleg, Lifetime pontok
+- Összes beváltás
+- Státusz (aktív/inaktív)
+- Utolsó aktivitás
+
+#### 3.2 UserDetail Export
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ← Vissza     Kiss Péter                             [📥 Export] [⚙️]      │
+├─────────────────────────────────────────────────────────────────────────────┤
+                                          │
+                                 ┌────────┴────────────────┐
+                                 │ 📊 Teljes profil (CSV)  │
+                                 │ 🍺 Csak beváltások      │
+                                 │ 📊 Csak pontok          │
+                                 │ 📈 Analitikai adatok    │
+                                 └─────────────────────────┘
+```
+
+#### 3.3 Redemptions Export
+A meglévő Redemptions oldal export gomb hozzáadása.
+
+### 4. RÉSZ: Tooltipek Kiegészítése
+
+| Komponens | Hely | Hiányzó Tooltip |
+|-----------|------|-----------------|
+| UserScorecard | Engagement Score | ✅ Már van |
+| UserScorecard | LTV | Képlet hozzáadása |
+| UserRevenueImpact | ROI | Mit jelent, hogyan számítjuk |
+| UserPointsFlow | Források | Mi az egyes típusok jelentése |
+| UserVenueAffinity | "Beváltás" szám | Ez a free drink beváltások száma |
+| BehaviorPatternBadges | Klaszter | Mi az a klaszter, miért fontos |
+
+### 5. RÉSZ: Beváltások tab javítása
+
+A jelenlegi beváltások tab a UserDetail-on eléggé egyszerű. Bővítések:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🍺 Ingyen italok (12)                                      [📥 Export]    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ 🍻 Peroni                              📍 Vinozza →               │    │
+│  │ 2024.01.15 14:32                       1.500 Ft                    │    │
+│  │                                                                     │    │
+│  │ 📊 KONTEXTUS:                                                       │    │
+│  │ [3. ezen a héten] [8. ebben a hónapban] [45. összesen]             │    │
+│  │                                                                     │    │
+│  │ 💳 KAPCSOLÓDÓ KÖLTÉS: 8.500 Ft (ROI: 5.7x)                         │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6. RÉSZ: Összefoglaló Dashboard Kártya
+
+Új "Gyors áttekintés" kártya a UserDetail tetején:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  📋 GYORS ÁTTEKINTÉS                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐│
+│  │ 🗓️ TAG     │ │ 🍺 BEVÁLTÁS│ │ 💰 KÖLTÉS  │ │ 📊 ROI     │ │ 🎯 KEDVENC ││
+│  │ 45 napja  │ │ 23 db      │ │ 48.500 Ft  │ │ 2.7x       │ │ Vinozza    ││
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘│
+│                                                                             │
+│  ⚡ MA: 2 beváltás (Vinozza, BuBu) | 📍 3 helyszínen aktív | 🔥 Heti VIP   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Technikai Implementáció
+
+### Új Komponensek
+
+| Komponens | Leírás |
+|-----------|--------|
+| `SystemRulesPanel.tsx` | Összecsukható info panel a szabályokkal |
+| `TodayRedemptionStatus.tsx` | Per-venue mai beváltás állapot |
+| `ExportDropdown.tsx` | Újrahasználható export menü |
+| `QuickOverviewCard.tsx` | Gyors összefoglaló kártya |
+| `EnhancedRedemptionList.tsx` | Bővített beváltás lista kontextussal |
+
+### Export Utility Függvények
 
 ```typescript
-// Használat példák:
-<UserLink userId="xxx" userName="Kiss Péter" />
-// Megjelenés: "Kiss Péter" kék szín, kattintható, hover effekt
-
-<VenueLink venueId="yyy" venueName="Vinozza" />
-// Megjelenés: "Vinozza" + MapPin ikon, kattintható
-
-<DrinkLink drinkId="zzz" drinkName="Peroni" />
-// Megjelenés: "Peroni" + Wine ikon, kattintható (opcionális)
+// src/lib/exportUtils.ts
+export function exportToCSV(data: any[], filename: string): void;
+export function exportUsersToCSV(users: UserListItem[]): void;
+export function exportUserProfileToCSV(userData: ExtendedUserStats): void;
+export function exportRedemptionsToCSV(redemptions: Redemption[]): void;
+export function exportAnalyticsToCSV(analytics: AnalyticsData): void;
 ```
 
-### 2. Beváltások oldal (Redemptions.tsx) átdolgozás
+### Módosítandó Komponensek
 
-**Jelenlegi állapot:**
-```
-Dátum | Helyszín | Ital | Felhasználó | Érték | Státusz | Műveletek
-2024.01.15 | Vinozza | Peroni | 8d7f3a2b... | 1.500 Ft | Sikeres | [👁] [🚫]
-```
+1. **UserDetail.tsx**
+   - "Szabályok" info gomb header-be
+   - "Export" dropdown a header-be
+   - QuickOverviewCard beillesztése
 
-**Új állapot:**
-```
-Dátum | Felhasználó | Helyszín | Ital | Kontextus | Érték | Státusz | Műveletek
-2024.01.15 | 👤 Kiss Péter → | 📍 Vinozza → | 🍺 Peroni | [3. e héten] [12. összesen] | 1.500 Ft | ✅ Sikeres | [👁] [🚫]
-```
+2. **UserVenueAffinity.tsx**
+   - TodayRedemptionStatus hozzáadása minden venue-hoz
+   - Tooltip kiegészítések
 
-**Változások:**
-1. Felhasználó név lekérése (profiles tábla join)
-2. Kattintható UserLink (navigál `/users/{id}`-re)
-3. Kattintható VenueLink (navigál `/venues/{id}`-re)
-4. Kontextus badge-ek (látogatás számláló)
-5. Tooltip minden oszlop fejlécen
+3. **Users.tsx**
+   - Export gomb hozzáadása
+   - Bulk export lehetőség
 
-### 3. Command Center Real-time Feed javítás
+4. **Redemptions.tsx**
+   - Export gomb hozzáadása
 
-**Jelenlegi:**
-```
-🍺 Kiss P. - beváltás @ Vinozza (Peroni)
-    most
-```
+5. **UserScorecard.tsx** / egyéb komponensek
+   - Tooltipek bővítése részletesebb magyarázatokkal
 
-**Új:**
-```
-🍺 [👤 Kiss Péter →] - beváltás @ [📍 Vinozza →] (Peroni)
-    most | 💰 +8.500 Ft költés | [3. e héten]
-    [📤 Push küldése]
-```
+### API Bővítések
 
-### 4. Staff Dashboard - Mai beváltások javítás
-
-**Jelenlegi:**
-```
-Peroni                    [Új]
-14:32                     1.500 Ft
-```
-
-**Új:**
-```
-🍺 Peroni                              [Új user]
-👤 Kiss Péter →  📍 Vinozza          14:32
-[3. ma] [Első látogatás itt!]         1.500 Ft
-```
-
-### 5. RedemptionDetailModal bővítés
-
-A jelenlegi modal bővítése:
-- Felhasználó név + kattintható link
-- Helyszín kattintható link
-- Látogatás kontextus (heti/havi/összes)
-- Kapcsolódó költés (ha van POS adat)
-- Staff név (ha elérhető)
+A `get-user-stats-extended` edge function bővítése:
+- `today_redemptions_by_venue`: Per-venue mai beváltások
+- `can_redeem_today`: Per-venue lehet-e még ma váltani
 
 ---
 
-## Új Komponensek
+## Implementációs Prioritás
 
-### 1. EntityLinks (src/components/ui/entity-links.tsx)
-
-```typescript
-// UserLink - Kattintható felhasználó név
-interface UserLinkProps {
-  userId: string;
-  userName?: string;  // Ha nincs, betöltjük
-  showAvatar?: boolean;
-  className?: string;
-}
-
-// VenueLink - Kattintható helyszín
-interface VenueLinkProps {
-  venueId: string;
-  venueName?: string;
-  showIcon?: boolean;
-  className?: string;
-}
-
-// Mindkettő: hover effekt, kék szín, cursor pointer, navigáció
-```
-
-### 2. RedemptionContextBadges (src/components/RedemptionContextBadges.tsx)
-
-Újrahasználható komponens a beváltás kontextushoz:
-- Ma hányadik
-- Ezen a héten hányadik
-- Ebben a hónapban hányadik
-- Összesen hányadik
-- Milestone badge-ek (első látogatás, visszatérő, VIP, stb.)
-
-### 3. Hiányzó Tooltipek hozzáadása
-
-| Komponens | Hely | Tooltip szöveg |
-|-----------|------|----------------|
-| UserVenueAffinity | Card header | "A felhasználó kedvenc helyszínei látogatás szám alapján rangsorolva." |
-| UserVenueAffinity | Trend badge | "Az aktivitás trendje az utolsó látogatás időpontja alapján." |
-| EnhancedRedemptionCard | Header | "Részletes beváltás kártya a kapcsolódó költéssel és kontextussal." |
-| EnhancedRedemptionCard | ROI badge | "Return on Investment: többletköltés / free drink érték arány." |
-| LoyaltyAlertsPanel | Header | "Automatikusan detektált lojalitás mérföldkövek, amelyek jutalmazásra várnak." |
-| LoyaltyAlertsPanel | Milestone emoji | Tooltip a mérföldkő feltételéről |
-| CommandCenter | KPI cards | Már vannak ChartCard-ban, de hiányzik az InfoTooltip |
-| CommandCenter | PUSH READY badge | "A felhasználó éppen böngészi a helyszíneket - ideális pillanat push értesítésre." |
-| CommandCenter | Alert severity | "Kritikus/Figyelmeztetés/Info szintű anomália magyarázata." |
-
----
-
-## Backend Módosítások
-
-### 1. Redemptions query bővítés
-
-A `Redemptions.tsx` oldal query-jének bővítése:
-```sql
-SELECT 
-  r.*,
-  v.name as venue_name,
-  p.name as user_name,  -- ÚJ
-  p.avatar_url,         -- ÚJ
-  vd.drink_name,
-  -- Visit context (subquery vagy edge function)
-  (SELECT COUNT(*) FROM redemptions WHERE user_id = r.user_id AND venue_id = r.venue_id) as visits_total,
-  (SELECT COUNT(*) FROM redemptions WHERE user_id = r.user_id AND venue_id = r.venue_id AND redeemed_at >= date_trunc('week', now())) as visits_this_week
-FROM redemptions r
-LEFT JOIN venues v ON r.venue_id = v.id
-LEFT JOIN profiles p ON r.user_id = p.id  -- ÚJ JOIN
-LEFT JOIN venue_drinks vd ON r.drink_id = vd.id
-```
-
-### 2. Dashboard stats bővítés
-
-A `get-dashboard-stats` edge function-ök bővítése, hogy a recent_redemptions tartalmazzon:
-- `user_name`
-- `user_id`
-- `venue_id`
-- `venue_name`
-- `visits_context`
-
----
-
-## Implementációs Lépések
-
-### Fázis 1: Alapvető Link Komponensek (P0)
-1. `EntityLinks.tsx` komponens létrehozása (UserLink, VenueLink)
-2. Redemptions.tsx átdolgozás - profiles join + kattintható linkek
-3. RedemptionDetailModal bővítés - linkek + kontextus
-
-### Fázis 2: Dashboard Feed-ek (P0)
-4. StaffDashboard recent_redemptions bővítés - user név + link
-5. CommandCenter real-time feed - kattintható linkek
-6. LoyaltyAlertsPanel - venue link hozzáadás
-
-### Fázis 3: Kontextus Badge-ek (P1)
-7. RedemptionContextBadges komponens
-8. Integrálás Redemptions oldalra
-9. Integrálás StaffDashboard-ra
-10. Integrálás CommandCenter-be
-
-### Fázis 4: Tooltipek (P1)
-11. UserVenueAffinity tooltipek
-12. EnhancedRedemptionCard tooltipek
-13. LoyaltyAlertsPanel tooltipek
-14. CommandCenter tooltipek
-15. UserJourneyTimeline tooltipek
-
-### Fázis 5: Finomhangolás (P2)
-16. Hover preview card (opcionális) - felhasználó előnézet hover-re
-17. Breadcrumb navigáció javítás
-18. Back button kontextus (honnan jöttünk)
-
----
-
-## UI/UX Javítások Összefoglaló
-
-| Terület | Jelenlegi | Új |
-|---------|-----------|-----|
-| Beváltások tábla | User ID csonkolt | 👤 Teljes név, kattintható |
-| Beváltások tábla | Venue csak szöveg | 📍 Kattintható link |
-| Beváltások tábla | Nincs kontextus | [3. e héten] [VIP] badge-ek |
-| Staff Dashboard | Nincs user info | Név + link + kontextus |
-| Command Center | Nem kattintható | Minden entitás linkelhető |
-| Modálok | Statikus szöveg | Interaktív linkek |
-| Összes új komponens | Nincs tooltip | InfoTooltip mindenhol |
-
----
-
-## Technikai Részletek
-
-### EntityLinks komponens specifikáció
-
-```typescript
-// src/components/ui/entity-links.tsx
-
-import { useNavigate } from "react-router-dom";
-import { User, MapPin, Wine } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { MobileTooltip } from "./mobile-tooltip";
-
-interface UserLinkProps {
-  userId: string;
-  userName?: string;
-  showAvatar?: boolean;
-  avatarUrl?: string;
-  size?: "sm" | "md" | "lg";
-  className?: string;
-  showTooltip?: boolean;
-}
-
-export function UserLink({ 
-  userId, 
-  userName = "Felhasználó", 
-  showAvatar = false,
-  avatarUrl,
-  size = "md",
-  className,
-  showTooltip = true
-}: UserLinkProps) {
-  const navigate = useNavigate();
-  
-  const content = (
-    <span
-      onClick={(e) => {
-        e.stopPropagation();
-        navigate(`/users/${userId}`);
-      }}
-      className={cn(
-        "inline-flex items-center gap-1.5 text-cgi-primary hover:text-cgi-primary/80",
-        "cursor-pointer hover:underline transition-colors",
-        size === "sm" && "text-sm",
-        size === "lg" && "text-lg font-medium",
-        className
-      )}
-    >
-      <User className={cn("h-3.5 w-3.5", size === "lg" && "h-4 w-4")} />
-      {userName}
-    </span>
-  );
-
-  if (showTooltip) {
-    return (
-      <MobileTooltip content="Kattints a felhasználó profiljához">
-        {content}
-      </MobileTooltip>
-    );
-  }
-  
-  return content;
-}
-
-// Hasonló VenueLink és DrinkLink komponensek...
-```
-
-### Redemptions.tsx query módosítás
-
-```typescript
-// Új query profiles join-nal
-const { data, error } = await supabase
-  .from("redemptions")
-  .select(`
-    *,
-    venue:venues(id, name),
-    user:profiles(id, name, avatar_url),  // ÚJ
-    drink_details:venue_drinks(drink_name, image_url),
-    token_info:redemption_tokens(token_prefix)
-  `)
-  .order("redeemed_at", { ascending: false })
-  .limit(200);
-```
+| Prioritás | Feladat | Komplexitás |
+|-----------|---------|-------------|
+| **P0** | Export utility + Users CSV export | Alacsony |
+| **P0** | UserDetail Export dropdown | Alacsony |
+| **P0** | SystemRulesPanel (info gomb) | Alacsony |
+| **P1** | TodayRedemptionStatus per venue | Közepes |
+| **P1** | QuickOverviewCard | Közepes |
+| **P1** | Tooltipek bővítése | Alacsony |
+| **P2** | EnhancedRedemptionList kontextussal | Közepes |
+| **P2** | Redemptions export | Alacsony |
 
 ---
 
 ## Várható Eredmény
 
-1. **Átláthatóbb beváltások**: Azonnal látszik ki váltotta be, hol és milyen kontextusban
-2. **Gyorsabb navigáció**: Egy kattintással elérhető bármely kapcsolódó entitás
-3. **Jobb megértés**: Tooltipek mindenhol segítik az új felhasználókat
-4. **Konzisztens UX**: Egységes link stílus és viselkedés az egész appban
-5. **Akcionálható adatok**: A kontextus badge-ek azonnal mutatják a VIP usereket
+1. **Érthetőbb rendszer**: A "Szabályok" panel elmagyarázza hogyan működik minden
+2. **Napi limit átláthatóság**: Látszik, melyik helyszínen váltott már ma
+3. **Adat hozzáférhetőség**: Minden fontos adat exportálható CSV-be
+4. **Jobb UX**: Tooltipek mindenhol, kontextus minden adatnál
+5. **Gyorsabb áttekintés**: Összefoglaló kártya a legfontosabb adatokkal
