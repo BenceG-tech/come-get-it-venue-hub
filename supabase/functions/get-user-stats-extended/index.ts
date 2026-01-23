@@ -34,6 +34,8 @@ interface PlatformAverages {
   avg_roi: number;
 }
 
+const dayNames = ["Vasárnap", "Hétfő", "Kedd", "Szerda", "Csütörtök", "Péntek", "Szombat"];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -371,6 +373,89 @@ Deno.serve(async (req) => {
       spendingByType[type] = (spendingByType[type] || 0) + Math.abs(t.amount);
     });
 
+    // --- Predictions Calculation ---
+    // 1. Expected redemptions (30 days)
+    const avgRedemptionsPerMonth = recentRedemptions;
+    const expectedRedemptions = {
+      min: Math.max(0, avgRedemptionsPerMonth - 3),
+      max: avgRedemptionsPerMonth + 3,
+      average: avgRedemptionsPerMonth
+    };
+
+    // 2. Estimated spend
+    const spendPerRedemption = totalRedemptions > 0 ? (totalSpend / totalRedemptions) : 0;
+    const estimatedSpend = {
+      min: Math.round(expectedRedemptions.min * spendPerRedemption),
+      max: Math.round(expectedRedemptions.max * spendPerRedemption)
+    };
+
+    // 3. Likely venues (from venue_affinity)
+    const totalVisits = venueAffinity.reduce((s, v) => s + v.visit_count, 0);
+    const likelyVenues = venueAffinity.slice(0, 3).map(v => ({
+      venue_id: v.venue_id,
+      venue_name: v.venue_name,
+      probability: totalVisits > 0 ? Math.round((v.visit_count / totalVisits) * 100) : 0
+    }));
+
+    // 4. Likely day & hour from hourly_heatmap
+    let maxDayValue = 0;
+    let likelyDay = 0;
+    let maxHourValue = 0;
+    let likelyHour = 0;
+    
+    for (let day = 0; day < 7; day++) {
+      const dayTotal = hourlyHeatmap[day].reduce((s, v) => s + v, 0);
+      if (dayTotal > maxDayValue) {
+        maxDayValue = dayTotal;
+        likelyDay = day;
+      }
+      for (let hour = 0; hour < 24; hour++) {
+        if (hourlyHeatmap[day][hour] > maxHourValue) {
+          maxHourValue = hourlyHeatmap[day][hour];
+          likelyHour = hour;
+        }
+      }
+    }
+
+    const totalActivityEvents = hourlyHeatmap.flat().reduce((s, v) => s + v, 0);
+    const likelyDayProbability = totalActivityEvents > 0 ? Math.round((maxDayValue / totalActivityEvents) * 100) : 0;
+    const likelyHourProbability = totalActivityEvents > 0 ? Math.round((maxHourValue / totalActivityEvents) * 100) : 0;
+
+    // 5. Optimal push time (day before likely day, afternoon)
+    const optimalPushDay = (likelyDay - 1 + 7) % 7;
+    const optimalPush = likelyVenues.length > 0 && totalActivityEvents > 5 ? {
+      day_name: dayNames[optimalPushDay],
+      time: "14:30",
+      suggested_message: `Emlékeztető: holnap ${likelyVenues[0].venue_name} ingyen itallal vár!`
+    } : null;
+
+    // 6. Confidence based on data weeks
+    const dataWeeks = Math.floor(daysSinceRegistration / 7);
+    let confidence: "low" | "medium" | "high" = "low";
+    if (dataWeeks >= 4 && totalRedemptions >= 8) {
+      confidence = "high";
+    } else if (dataWeeks >= 2 && totalRedemptions >= 3) {
+      confidence = "medium";
+    }
+
+    const predictions = {
+      expected_redemptions_30_days: expectedRedemptions,
+      estimated_spend_30_days: estimatedSpend,
+      likely_venues: likelyVenues,
+      likely_day: {
+        day: likelyDay,
+        day_name: dayNames[likelyDay],
+        probability: likelyDayProbability
+      },
+      likely_hour: {
+        hour: likelyHour,
+        probability: likelyHourProbability
+      },
+      optimal_push: optimalPush,
+      confidence,
+      data_weeks: dataWeeks
+    };
+
     // Build response
     const response = {
       user: {
@@ -423,6 +508,7 @@ Deno.serve(async (req) => {
         user_roi: roi,
         platform_avg: platformAverages
       },
+      predictions,
       weekly_trends: weeklyTrends,
       hourly_heatmap: hourlyHeatmap,
       drink_preferences: drinkPreferences,
