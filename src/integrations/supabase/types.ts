@@ -69,6 +69,102 @@ export type Database = {
           },
         ]
       }
+      anomaly_logs: {
+        Row: {
+          anomaly_type: string
+          created_at: string
+          description: string | null
+          detected_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          anomaly_type: string
+          created_at?: string
+          description?: string | null
+          detected_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          title: string
+        }
+        Update: {
+          anomaly_type?: string
+          created_at?: string
+          description?: string | null
+          detected_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      autopilot_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          cooldown_hours: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          priority: number | null
+          stats: Json | null
+          trigger_condition: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config: Json
+          action_type: string
+          cooldown_hours?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          priority?: number | null
+          stats?: Json | null
+          trigger_condition: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          cooldown_hours?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          priority?: number | null
+          stats?: Json | null
+          trigger_condition?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           contact_email: string | null
@@ -123,6 +219,54 @@ export type Database = {
           product_keywords?: string[] | null
           spent_this_month?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_roi: {
+        Row: {
+          attributed_revenue: number | null
+          campaign_id: string | null
+          campaign_name: string
+          campaign_type: string
+          clicks: number | null
+          computed_at: string
+          conversions: number | null
+          cost_estimate: number | null
+          id: string
+          impressions: number | null
+          metadata: Json | null
+          period_end: string
+          period_start: string
+        }
+        Insert: {
+          attributed_revenue?: number | null
+          campaign_id?: string | null
+          campaign_name: string
+          campaign_type: string
+          clicks?: number | null
+          computed_at?: string
+          conversions?: number | null
+          cost_estimate?: number | null
+          id?: string
+          impressions?: number | null
+          metadata?: Json | null
+          period_end: string
+          period_start: string
+        }
+        Update: {
+          attributed_revenue?: number | null
+          campaign_id?: string | null
+          campaign_name?: string
+          campaign_type?: string
+          clicks?: number | null
+          computed_at?: string
+          conversions?: number | null
+          cost_estimate?: number | null
+          id?: string
+          impressions?: number | null
+          metadata?: Json | null
+          period_end?: string
+          period_start?: string
         }
         Relationships: []
       }
@@ -467,6 +611,53 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_snapshots: {
+        Row: {
+          active_users: number | null
+          alerts: Json | null
+          hottest_venue_count: number | null
+          hottest_venue_id: string | null
+          id: string
+          metadata: Json | null
+          redemptions_last_5min: number | null
+          redemptions_last_hour: number | null
+          snapshot_time: string
+          venue_activity: Json | null
+        }
+        Insert: {
+          active_users?: number | null
+          alerts?: Json | null
+          hottest_venue_count?: number | null
+          hottest_venue_id?: string | null
+          id?: string
+          metadata?: Json | null
+          redemptions_last_5min?: number | null
+          redemptions_last_hour?: number | null
+          snapshot_time?: string
+          venue_activity?: Json | null
+        }
+        Update: {
+          active_users?: number | null
+          alerts?: Json | null
+          hottest_venue_count?: number | null
+          hottest_venue_id?: string | null
+          id?: string
+          metadata?: Json | null
+          redemptions_last_5min?: number | null
+          redemptions_last_hour?: number | null
+          snapshot_time?: string
+          venue_activity?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_snapshots_hottest_venue_id_fkey"
+            columns: ["hottest_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -1681,6 +1872,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_snapshots: { Args: never; Returns: undefined }
       get_public_venues: {
         Args: { limit_count?: number; search_term?: string }
         Returns: {
