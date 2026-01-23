@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
-  User,
   Calendar,
   Clock,
   Gift,
@@ -19,13 +18,26 @@ import {
   Mail,
   Phone,
   Activity,
-  Wine
+  Wine,
+  Sparkles,
+  Bell,
+  Coins
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
+import {
+  UserScorecard,
+  UserWeeklyTrends,
+  UserDrinkPreferences,
+  UserActivityHeatmap,
+  UserNotificationHistory,
+  UserPointsFlow,
+  UserVenueAffinity,
+  AINotificationSuggestions
+} from "@/components/user";
 
-interface UserStats {
+interface ExtendedUserStats {
   user: {
     id: string;
     name: string;
@@ -43,16 +55,47 @@ interface UserStats {
     lifetime_spent: number;
     total_spend: number;
   };
+  scores: {
+    engagement_score: number;
+    churn_risk: "low" | "medium" | "high";
+    ltv: number;
+    preference_profile: string[];
+  };
   stats: {
     total_sessions: number;
     avg_session_duration_seconds: number;
+    unique_active_days: number;
+    days_since_registration: number;
     total_free_drink_redemptions: number;
     total_reward_redemptions: number;
-    favorite_venue: { id: string; name: string; visit_count: number } | null;
-    favorite_drink: { name: string; count: number } | null;
-    first_seen: string;
-    last_seen: string | null;
+    favorite_venue: { venue_id: string; venue_name: string; visit_count: number } | null;
+    favorite_drink: { drink_name: string; category: string | null; count: number } | null;
     days_since_last_activity: number | null;
+    app_opens_last_7_days: number;
+    redemptions_last_30_days: number;
+  };
+  weekly_trends: Array<{ week: string; sessions: number; redemptions: number }>;
+  hourly_heatmap: number[][];
+  drink_preferences: Array<{ drink_name: string; category: string | null; count: number }>;
+  venue_affinity: Array<{
+    venue_id: string;
+    venue_name: string;
+    visit_count: number;
+    first_visit: string | null;
+    last_visit: string | null;
+    preferred_days: number[];
+    preferred_hours: number[];
+  }>;
+  points_flow: {
+    earnings_by_type: Record<string, number>;
+    spending_by_type: Record<string, number>;
+    recent_transactions: Array<{
+      id: string;
+      amount: number;
+      type: string;
+      description: string | null;
+      created_at: string;
+    }>;
   };
   recent_activity: Array<{
     event_type: string;
@@ -78,10 +121,13 @@ interface UserStats {
     points_spent: number;
     redeemed_at: string;
   }>;
-  venue_affinity: Array<{
-    venue_id: string;
-    venue_name: string;
-    visit_count: number;
+  notification_history: Array<{
+    id: string;
+    title: string;
+    body: string;
+    status: string;
+    sent_at: string;
+    opened_at: string | null;
   }>;
 }
 
@@ -105,11 +151,11 @@ export default function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
 
-  const { data, isLoading, error } = useQuery<UserStats>({
-    queryKey: ["user-stats", userId],
+  const { data, isLoading, error } = useQuery<ExtendedUserStats>({
+    queryKey: ["user-stats-extended", userId],
     queryFn: async () => {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-stats?user_id=${userId}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-stats-extended?user_id=${userId}`,
         {
           headers: {
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
@@ -129,12 +175,7 @@ export default function UserDetail() {
   });
 
   const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
   const formatDuration = (seconds: number) => {
@@ -150,9 +191,7 @@ export default function UserDetail() {
         <div className="space-y-6">
           <Skeleton className="h-48 w-full" />
           <div className="grid grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
           </div>
           <Skeleton className="h-96" />
         </div>
@@ -164,7 +203,7 @@ export default function UserDetail() {
     return (
       <PageLayout>
         <div className="text-center py-12">
-          <p className="text-red-400 mb-4">Hiba történt a felhasználó betöltése közben</p>
+          <p className="text-cgi-error mb-4">Hiba történt a felhasználó betöltése közben</p>
           <Button onClick={() => navigate("/users")} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Vissza a listához
@@ -174,17 +213,12 @@ export default function UserDetail() {
     );
   }
 
-  const { user, points, stats, recent_activity, free_drink_redemptions, reward_redemptions, venue_affinity } = data;
+  const { user, points, scores, stats, weekly_trends, hourly_heatmap, drink_preferences, venue_affinity, points_flow, recent_activity, free_drink_redemptions, reward_redemptions, notification_history } = data;
 
   return (
     <PageLayout>
       <div className="space-y-6">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/users")}
-          className="cgi-button-ghost"
-        >
+        <Button variant="ghost" onClick={() => navigate("/users")} className="cgi-button-ghost">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Vissza a felhasználókhoz
         </Button>
@@ -199,22 +233,11 @@ export default function UserDetail() {
                   {getInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
-
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-cgi-surface-foreground">{user.name}</h2>
                 <div className="flex flex-wrap gap-4 mt-2 text-sm text-cgi-muted-foreground">
-                  {user.email && (
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-4 w-4" />
-                      {user.email}
-                    </span>
-                  )}
-                  {user.phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
-                      {user.phone}
-                    </span>
-                  )}
+                  {user.email && <span className="flex items-center gap-1"><Mail className="h-4 w-4" />{user.email}</span>}
+                  {user.phone && <span className="flex items-center gap-1"><Phone className="h-4 w-4" />{user.phone}</span>}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     Tag {format(new Date(user.created_at), "yyyy. MMMM d.", { locale: hu })} óta
@@ -223,115 +246,82 @@ export default function UserDetail() {
                 {user.last_seen_at && (
                   <p className="text-sm text-cgi-muted-foreground mt-1 flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    Utoljára online: {formatDistanceToNow(new Date(user.last_seen_at), {
-                      addSuffix: true,
-                      locale: hu
-                    })}
+                    Utoljára: {formatDistanceToNow(new Date(user.last_seen_at), { addSuffix: true, locale: hu })}
                   </p>
                 )}
               </div>
-
-              <div className="flex gap-2">
-                <Badge className="bg-cgi-secondary/20 text-cgi-secondary border-cgi-secondary/30">
-                  {user.signup_source || "mobile_app"}
-                </Badge>
-              </div>
+              <Badge className="bg-cgi-secondary/20 text-cgi-secondary border-cgi-secondary/30">
+                {user.signup_source || "mobile_app"}
+              </Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="cgi-card">
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-cgi-secondary">{points.balance}</p>
-              <p className="text-sm text-cgi-muted-foreground">Jelenlegi pontok</p>
-            </CardContent>
-          </Card>
-
-          <Card className="cgi-card">
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-cgi-surface-foreground">{stats.total_free_drink_redemptions}</p>
-              <p className="text-sm text-cgi-muted-foreground">Ingyen italok</p>
-            </CardContent>
-          </Card>
-
-          <Card className="cgi-card">
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-cgi-surface-foreground">{stats.total_sessions}</p>
-              <p className="text-sm text-cgi-muted-foreground">Munkamenetek</p>
-            </CardContent>
-          </Card>
-
-          <Card className="cgi-card">
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-cgi-surface-foreground">
-                {formatDuration(stats.avg_session_duration_seconds)}
-              </p>
-              <p className="text-sm text-cgi-muted-foreground">Átl. munkamenet</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Scorecard */}
+        <UserScorecard
+          engagementScore={scores.engagement_score}
+          churnRisk={scores.churn_risk}
+          ltv={scores.ltv}
+          preferenceProfile={scores.preference_profile}
+        />
 
         {/* Tabs */}
-        <Tabs defaultValue="activity" className="space-y-4">
-          <TabsList className="bg-cgi-muted/30">
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="bg-cgi-muted/30 flex-wrap h-auto gap-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-cgi-primary">
+              <TrendingUp className="h-4 w-4 mr-2" />Áttekintés
+            </TabsTrigger>
             <TabsTrigger value="activity" className="data-[state=active]:bg-cgi-primary">
-              <Activity className="h-4 w-4 mr-2" />
-              Aktivitás
+              <Activity className="h-4 w-4 mr-2" />Aktivitás
             </TabsTrigger>
             <TabsTrigger value="redemptions" className="data-[state=active]:bg-cgi-primary">
-              <Wine className="h-4 w-4 mr-2" />
-              Beváltások
+              <Wine className="h-4 w-4 mr-2" />Beváltások
             </TabsTrigger>
             <TabsTrigger value="venues" className="data-[state=active]:bg-cgi-primary">
-              <MapPin className="h-4 w-4 mr-2" />
-              Helyszínek
+              <MapPin className="h-4 w-4 mr-2" />Helyszínek
             </TabsTrigger>
             <TabsTrigger value="points" className="data-[state=active]:bg-cgi-primary">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Pontok
+              <Coins className="h-4 w-4 mr-2" />Pontok
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="data-[state=active]:bg-cgi-primary">
+              <Sparkles className="h-4 w-4 mr-2" />AI Ajánlatok
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="data-[state=active]:bg-cgi-primary">
+              <Bell className="h-4 w-4 mr-2" />Értesítések
             </TabsTrigger>
           </TabsList>
 
-          {/* Activity Tab */}
+          <TabsContent value="overview">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <UserWeeklyTrends data={weekly_trends} />
+              <UserDrinkPreferences preferences={drink_preferences} />
+            </div>
+            <div className="mt-4">
+              <UserActivityHeatmap heatmapData={hourly_heatmap} />
+            </div>
+          </TabsContent>
+
           <TabsContent value="activity">
             <Card className="cgi-card">
-              <CardHeader>
-                <CardTitle className="text-cgi-surface-foreground">Legutóbbi aktivitás</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-cgi-surface-foreground">Legutóbbi aktivitás</CardTitle></CardHeader>
               <CardContent>
                 {recent_activity.length === 0 ? (
                   <p className="text-center py-8 text-cgi-muted-foreground">Nincs rögzített aktivitás</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto">
                     {recent_activity.map((activity, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-4 p-3 rounded-lg bg-cgi-muted/20"
-                      >
+                      <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-cgi-muted/20">
                         <div className="h-10 w-10 rounded-full bg-cgi-primary/20 flex items-center justify-center">
                           <Activity className="h-5 w-5 text-cgi-primary" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-cgi-surface-foreground">
-                            {eventTypeLabels[activity.event_type] || activity.event_type}
-                          </p>
+                          <p className="font-medium text-cgi-surface-foreground">{eventTypeLabels[activity.event_type] || activity.event_type}</p>
                           <div className="flex items-center gap-2 text-sm text-cgi-muted-foreground">
                             <span>{format(new Date(activity.created_at), "yyyy.MM.dd HH:mm", { locale: hu })}</span>
-                            {activity.app_version && (
-                              <Badge variant="outline" className="text-xs">
-                                v{activity.app_version}
-                              </Badge>
-                            )}
+                            {activity.app_version && <Badge variant="outline" className="text-xs">v{activity.app_version}</Badge>}
                           </div>
                         </div>
-                        {activity.device_info && (
-                          <div className="flex items-center gap-1 text-sm text-cgi-muted-foreground">
-                            <Smartphone className="h-4 w-4" />
-                            {activity.device_info}
-                          </div>
-                        )}
+                        {activity.device_info && <span className="text-sm text-cgi-muted-foreground flex items-center gap-1"><Smartphone className="h-4 w-4" />{activity.device_info}</span>}
                       </div>
                     ))}
                   </div>
@@ -340,78 +330,32 @@ export default function UserDetail() {
             </Card>
           </TabsContent>
 
-          {/* Redemptions Tab */}
           <TabsContent value="redemptions">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Free Drinks */}
               <Card className="cgi-card">
-                <CardHeader>
-                  <CardTitle className="text-cgi-surface-foreground flex items-center gap-2">
-                    <Wine className="h-5 w-5 text-cgi-secondary" />
-                    Ingyen italok ({free_drink_redemptions.length})
-                  </CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-cgi-surface-foreground flex items-center gap-2"><Wine className="h-5 w-5 text-cgi-secondary" />Ingyen italok ({free_drink_redemptions.length})</CardTitle></CardHeader>
                 <CardContent>
-                  {free_drink_redemptions.length === 0 ? (
-                    <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltás</p>
-                  ) : (
+                  {free_drink_redemptions.length === 0 ? <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltás</p> : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {free_drink_redemptions.map((redemption) => (
-                        <div
-                          key={redemption.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20"
-                        >
-                          <div>
-                            <p className="font-medium text-cgi-surface-foreground">{redemption.drink}</p>
-                            <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {redemption.venue_name}
-                            </p>
-                          </div>
-                          <div className="text-right text-sm">
-                            <p className="text-cgi-secondary">{redemption.value} Ft</p>
-                            <p className="text-cgi-muted-foreground">
-                              {format(new Date(redemption.redeemed_at), "MM.dd HH:mm")}
-                            </p>
-                          </div>
+                      {free_drink_redemptions.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
+                          <div><p className="font-medium text-cgi-surface-foreground">{r.drink}</p><p className="text-sm text-cgi-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{r.venue_name}</p></div>
+                          <div className="text-right text-sm"><p className="text-cgi-secondary">{r.value} Ft</p><p className="text-cgi-muted-foreground">{format(new Date(r.redeemed_at), "MM.dd HH:mm")}</p></div>
                         </div>
                       ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
-
-              {/* Rewards */}
               <Card className="cgi-card">
-                <CardHeader>
-                  <CardTitle className="text-cgi-surface-foreground flex items-center gap-2">
-                    <Gift className="h-5 w-5 text-cgi-primary" />
-                    Jutalmak ({reward_redemptions.length})
-                  </CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-cgi-surface-foreground flex items-center gap-2"><Gift className="h-5 w-5 text-cgi-primary" />Jutalmak ({reward_redemptions.length})</CardTitle></CardHeader>
                 <CardContent>
-                  {reward_redemptions.length === 0 ? (
-                    <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltott jutalom</p>
-                  ) : (
+                  {reward_redemptions.length === 0 ? <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltott jutalom</p> : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {reward_redemptions.map((redemption) => (
-                        <div
-                          key={redemption.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20"
-                        >
-                          <div>
-                            <p className="font-medium text-cgi-surface-foreground">{redemption.reward_name}</p>
-                            <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {redemption.venue_name}
-                            </p>
-                          </div>
-                          <div className="text-right text-sm">
-                            <p className="text-cgi-primary">-{redemption.points_spent} pont</p>
-                            <p className="text-cgi-muted-foreground">
-                              {format(new Date(redemption.redeemed_at), "MM.dd HH:mm")}
-                            </p>
-                          </div>
+                      {reward_redemptions.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
+                          <div><p className="font-medium text-cgi-surface-foreground">{r.reward_name}</p><p className="text-sm text-cgi-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{r.venue_name}</p></div>
+                          <div className="text-right text-sm"><p className="text-cgi-primary">-{r.points_spent} pont</p><p className="text-cgi-muted-foreground">{format(new Date(r.redeemed_at), "MM.dd HH:mm")}</p></div>
                         </div>
                       ))}
                     </div>
@@ -421,75 +365,27 @@ export default function UserDetail() {
             </div>
           </TabsContent>
 
-          {/* Venues Tab */}
           <TabsContent value="venues">
-            <Card className="cgi-card">
-              <CardHeader>
-                <CardTitle className="text-cgi-surface-foreground">Kedvenc helyszínek</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {venue_affinity.length === 0 ? (
-                  <p className="text-center py-8 text-cgi-muted-foreground">Nincs látogatott helyszín</p>
-                ) : (
-                  <div className="space-y-3">
-                    {venue_affinity.map((venue, index) => (
-                      <div
-                        key={venue.venue_id}
-                        className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20"
-                      >
-                        <div className="h-10 w-10 rounded-full bg-cgi-primary/20 flex items-center justify-center text-cgi-primary font-bold">
-                          #{index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-cgi-surface-foreground">{venue.venue_name}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-cgi-secondary">{venue.visit_count}</p>
-                          <p className="text-xs text-cgi-muted-foreground">beváltás</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <UserVenueAffinity venues={venue_affinity} />
           </TabsContent>
 
-          {/* Points Tab */}
           <TabsContent value="points">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="cgi-card">
-                <CardContent className="pt-6 text-center">
-                  <p className="text-4xl font-bold text-cgi-secondary">{points.balance}</p>
-                  <p className="text-sm text-cgi-muted-foreground mt-1">Jelenlegi egyenleg</p>
-                </CardContent>
-              </Card>
+            <UserPointsFlow
+              earningsByType={points_flow.earnings_by_type}
+              spendingByType={points_flow.spending_by_type}
+              recentTransactions={points_flow.recent_transactions}
+              currentBalance={points.balance}
+              lifetimeEarned={points.lifetime_earned}
+              lifetimeSpent={points.lifetime_spent}
+            />
+          </TabsContent>
 
-              <Card className="cgi-card">
-                <CardContent className="pt-6 text-center">
-                  <p className="text-4xl font-bold text-green-400">{points.lifetime_earned}</p>
-                  <p className="text-sm text-cgi-muted-foreground mt-1">Összesen szerzett</p>
-                </CardContent>
-              </Card>
+          <TabsContent value="ai">
+            <AINotificationSuggestions userId={userId!} userName={user.name} />
+          </TabsContent>
 
-              <Card className="cgi-card">
-                <CardContent className="pt-6 text-center">
-                  <p className="text-4xl font-bold text-red-400">{points.lifetime_spent}</p>
-                  <p className="text-sm text-cgi-muted-foreground mt-1">Összesen elköltött</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="cgi-card mt-4">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-cgi-muted-foreground">Összköltés a helyszíneken</span>
-                  <span className="font-bold text-cgi-surface-foreground">
-                    {points.total_spend.toLocaleString()} Ft
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="notifications">
+            <UserNotificationHistory notifications={notification_history} />
           </TabsContent>
         </Tabs>
       </div>

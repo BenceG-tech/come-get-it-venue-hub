@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_notification_suggestions: {
+        Row: {
+          action_taken: string | null
+          context: Json | null
+          created_by: string | null
+          generated_at: string | null
+          id: string
+          sent_notification_id: string | null
+          suggestions: Json
+          user_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          context?: Json | null
+          created_by?: string | null
+          generated_at?: string | null
+          id?: string
+          sent_notification_id?: string | null
+          suggestions: Json
+          user_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          context?: Json | null
+          created_by?: string | null
+          generated_at?: string | null
+          id?: string
+          sent_notification_id?: string | null
+          suggestions?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_notification_suggestions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_notification_suggestions_sent_notification_id_fkey"
+            columns: ["sent_notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_notification_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           contact_email: string | null
@@ -269,6 +324,152 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      notification_logs: {
+        Row: {
+          body: string
+          clicked_at: string | null
+          delivered_at: string | null
+          device_token: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          opened_at: string | null
+          platform: string | null
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          clicked_at?: string | null
+          delivered_at?: string | null
+          device_token?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          platform?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          clicked_at?: string | null
+          delivered_at?: string | null
+          device_token?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          platform?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_templates: {
+        Row: {
+          body_en: string | null
+          body_hu: string
+          category: string
+          created_at: string | null
+          created_by: string | null
+          deep_link: string | null
+          event_type: string | null
+          frequency_limit: Json | null
+          icon: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          priority: string
+          quiet_hours: Json | null
+          scheduled_at: string | null
+          send_mode: string
+          targeting: Json | null
+          title_en: string | null
+          title_hu: string
+          ttl_hours: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          body_en?: string | null
+          body_hu: string
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          deep_link?: string | null
+          event_type?: string | null
+          frequency_limit?: Json | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          priority?: string
+          quiet_hours?: Json | null
+          scheduled_at?: string | null
+          send_mode?: string
+          targeting?: Json | null
+          title_en?: string | null
+          title_hu: string
+          ttl_hours?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          body_en?: string | null
+          body_hu?: string
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          deep_link?: string | null
+          event_type?: string | null
+          frequency_limit?: Json | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          priority?: string
+          quiet_hours?: Json | null
+          scheduled_at?: string | null
+          send_mode?: string
+          targeting?: Json | null
+          title_en?: string | null
+          title_hu?: string
+          ttl_hours?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       points_transactions: {
         Row: {
