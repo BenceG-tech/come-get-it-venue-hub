@@ -204,6 +204,8 @@ Válaszolj CSAK érvényes JSON formátumban:
 }`;
 
     try {
+      console.log("Calling AI API with user context:", JSON.stringify(userContext, null, 2));
+      
       const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -211,15 +213,16 @@ Válaszolj CSAK érvényes JSON formátumban:
           "Authorization": `Bearer ${lovableApiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: "Generálj személyre szabott értesítési javaslatokat a felhasználónak." }
+            { role: "user", content: "Generálj személyre szabott értesítési javaslatokat a felhasználónak. Legyél kreatív és változatos!" }
           ],
-          temperature: 0.7,
-          max_tokens: 1000
+          temperature: 0.95
         })
       });
+      
+      console.log("AI API response status:", aiResponse.status);
 
       if (!aiResponse.ok) {
         console.error("AI API error:", aiResponse.status);

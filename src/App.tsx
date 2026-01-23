@@ -22,6 +22,7 @@ import Promotions from "./pages/Promotions";
 import Notifications from "./pages/Notifications";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
+import DataInsights from "./pages/DataInsights";
 import NotFound from "./pages/NotFound";
 import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
@@ -143,6 +144,12 @@ const App = () => {
             <Route path="/users/:userId" element={
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <UserDetail />
+              </RouteGuard>
+            } />
+
+            <Route path="/data-insights" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <DataInsights />
               </RouteGuard>
             } />
 
