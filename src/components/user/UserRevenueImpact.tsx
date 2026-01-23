@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoTooltip } from "@/components/ui/mobile-tooltip";
-import { Gift, CreditCard, TrendingUp, MapPin, Calendar, CalendarDays, CalendarRange } from "lucide-react";
+import { Gift, CreditCard, TrendingUp, MapPin, Calendar, CalendarDays, CalendarRange, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface VenueRevenue {
@@ -91,6 +91,25 @@ export function UserRevenueImpact({ userId }: UserRevenueImpactProps) {
     return <Badge className="bg-cgi-muted text-cgi-muted-foreground">{roi.toFixed(1)}x</Badge>;
   };
 
+  // Helper to render visit badge with warning for impossible values
+  const renderVisitBadge = (label: string, count: number, maxPossible: number, Icon: typeof Calendar) => {
+    const isImpossible = count > maxPossible;
+    
+    return (
+      <Badge 
+        variant="outline" 
+        className={`text-cgi-muted-foreground ${isImpossible ? 'border-amber-500/50 bg-amber-500/10' : ''}`}
+        title={isImpossible ? `Tesztadat figyelmeztetés: Valós esetben max ${maxPossible} lehetséges` : undefined}
+      >
+        <Icon className="h-3 w-3 mr-1" />
+        {label}: {count}
+        {isImpossible && (
+          <AlertTriangle className="h-3 w-3 ml-1 text-amber-500" />
+        )}
+      </Badge>
+    );
+  };
+
   return (
     <Card className="cgi-card">
       <CardHeader>
@@ -136,7 +155,10 @@ export function UserRevenueImpact({ userId }: UserRevenueImpactProps) {
         {/* Venue Breakdown */}
         {data.venue_breakdown.length > 0 ? (
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-cgi-muted-foreground">Helyszínenkénti bontás</h4>
+            <h4 className="text-sm font-medium text-cgi-muted-foreground flex items-center gap-2">
+              Helyszínenkénti bontás
+              <InfoTooltip content="Szabály: 1 ingyen ital / nap / helyszín. Ha ennél magasabb számot látsz, az tesztadatból származik." />
+            </h4>
             {data.venue_breakdown.map((venue) => (
               <div
                 key={venue.venue_id}
@@ -165,20 +187,11 @@ export function UserRevenueImpact({ userId }: UserRevenueImpactProps) {
                   </div>
                 </div>
 
-                {/* Visit Counters */}
+                {/* Visit Counters with warnings for impossible values */}
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-cgi-muted/30">
-                  <Badge variant="outline" className="text-cgi-muted-foreground">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Ma: {venue.visits_today}
-                  </Badge>
-                  <Badge variant="outline" className="text-cgi-muted-foreground">
-                    <CalendarDays className="h-3 w-3 mr-1" />
-                    Heti: {venue.visits_this_week}
-                  </Badge>
-                  <Badge variant="outline" className="text-cgi-muted-foreground">
-                    <CalendarRange className="h-3 w-3 mr-1" />
-                    Havi: {venue.visits_this_month}
-                  </Badge>
+                  {renderVisitBadge("Ma", venue.visits_today, 1, Calendar)}
+                  {renderVisitBadge("Heti", venue.visits_this_week, 7, CalendarDays)}
+                  {renderVisitBadge("Havi", venue.visits_this_month, 31, CalendarRange)}
                   <Badge className="bg-cgi-primary/20 text-cgi-primary border-cgi-primary/30">
                     Összes: {venue.visits_total}
                   </Badge>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout } from "@/components/PageLayout";
@@ -46,6 +47,7 @@ import {
   ChurnWarningPanel,
   UserPredictions
 } from "@/components/user";
+import { ManualNotificationModal } from "@/components/user/ManualNotificationModal";
 import { VenueLink } from "@/components/ui/entity-links";
 import {
   exportUserProfileToCSV,
@@ -218,6 +220,10 @@ const eventTypeLabels: Record<string, string> = {
 export default function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  
+  // State for tab control and modal
+  const [activeTab, setActiveTab] = useState("overview");
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
 
   const { data, isLoading, error } = useQuery<ExtendedUserStats>({
     queryKey: ["user-stats-extended", userId],
@@ -251,6 +257,19 @@ export default function UserDetail() {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}p ${secs}mp`;
+  };
+
+  // Handler functions for ChurnWarningPanel and UserBehaviorStory
+  const handleNavigateToAI = () => {
+    setActiveTab("ai");
+  };
+
+  const handleNavigateToNotifications = () => {
+    setActiveTab("notifications");
+  };
+
+  const handleOpenManualNotification = () => {
+    setShowNotificationModal(true);
   };
 
   if (isLoading) {
@@ -383,8 +402,8 @@ export default function UserDetail() {
           preferenceProfile={scores.preference_profile}
         />
 
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
+        {/* Tabs with controlled state */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="bg-cgi-muted/30 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-cgi-primary">
               <TrendingUp className="h-4 w-4 mr-2" />Áttekintés
@@ -420,14 +439,9 @@ export default function UserDetail() {
                   churnRisk={scores.churn_risk}
                   churnFactors={scores.churn_factors || []}
                   daysSinceLastActivity={stats.days_since_last_activity}
-                  onSendOffer={() => {
-                    const aiTab = document.querySelector('[value="ai"]') as HTMLElement;
-                    aiTab?.click();
-                  }}
-                  onSendPush={() => {
-                    const notifTab = document.querySelector('[value="notifications"]') as HTMLElement;
-                    notifTab?.click();
-                  }}
+                  onSendOffer={handleNavigateToAI}
+                  onSendEmail={handleOpenManualNotification}
+                  onSendPush={handleNavigateToNotifications}
                 />
               </div>
             )}
@@ -453,11 +467,8 @@ export default function UserDetail() {
               <UserBehaviorStory 
                 userId={userId!} 
                 userName={user.name}
-                onGenerateNotification={() => {
-                  // Switch to AI tab
-                  const aiTab = document.querySelector('[value="ai"]') as HTMLElement;
-                  aiTab?.click();
-                }}
+                onGenerateNotification={handleNavigateToAI}
+                onManualNotification={handleOpenManualNotification}
               />
             </div>
             
@@ -568,6 +579,14 @@ export default function UserDetail() {
             <UserNotificationHistory notifications={notification_history} />
           </TabsContent>
         </Tabs>
+
+        {/* Manual Notification Modal */}
+        <ManualNotificationModal
+          userId={userId!}
+          userName={user.name}
+          open={showNotificationModal}
+          onOpenChange={setShowNotificationModal}
+        />
       </div>
     </PageLayout>
   );

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, XCircle, Gift, Mail, Bell } from "lucide-react";
 import { InfoTooltip } from "@/components/ui/mobile-tooltip";
+import { toast } from "sonner";
 
 interface ChurnWarningPanelProps {
   churnRisk: "low" | "medium" | "high";
@@ -58,6 +59,28 @@ export function ChurnWarningPanel({
 
   const config = getRiskConfig();
   const Icon = config.icon;
+
+  const handleSendOffer = () => {
+    if (onSendOffer) {
+      onSendOffer();
+      toast.info("Navigálás az AI ajánlatokhoz...");
+    }
+  };
+
+  const handleSendEmail = () => {
+    if (onSendEmail) {
+      onSendEmail();
+    } else {
+      toast.info("Email kampány funkció hamarosan elérhető!");
+    }
+  };
+
+  const handleSendPush = () => {
+    if (onSendPush) {
+      onSendPush();
+      toast.info("Navigálás az értesítésekhez...");
+    }
+  };
 
   // Only show detailed panel for medium/high risk
   if (churnRisk === "low") {
@@ -126,7 +149,7 @@ export function ChurnWarningPanel({
                 size="sm"
                 variant="outline"
                 className="border-cgi-primary text-cgi-primary hover:bg-cgi-primary/10"
-                onClick={onSendOffer}
+                onClick={handleSendOffer}
               >
                 <Gift className="h-4 w-4 mr-2" />
                 Személyes ajánlat
@@ -135,7 +158,7 @@ export function ChurnWarningPanel({
                 size="sm"
                 variant="outline"
                 className="border-cgi-secondary text-cgi-secondary hover:bg-cgi-secondary/10"
-                onClick={onSendEmail}
+                onClick={handleSendEmail}
               >
                 <Mail className="h-4 w-4 mr-2" />
                 Email kampány
@@ -144,7 +167,7 @@ export function ChurnWarningPanel({
                 size="sm"
                 variant="outline"
                 className="border-cgi-accent text-cgi-accent hover:bg-cgi-accent/10"
-                onClick={onSendPush}
+                onClick={handleSendPush}
               >
                 <Bell className="h-4 w-4 mr-2" />
                 Push értesítés

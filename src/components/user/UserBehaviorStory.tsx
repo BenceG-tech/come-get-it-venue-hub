@@ -32,9 +32,15 @@ interface UserBehaviorStoryProps {
   userId: string;
   userName: string;
   onGenerateNotification?: () => void;
+  onManualNotification?: () => void;
 }
 
-export function UserBehaviorStory({ userId, userName, onGenerateNotification }: UserBehaviorStoryProps) {
+export function UserBehaviorStory({ 
+  userId, 
+  userName, 
+  onGenerateNotification,
+  onManualNotification 
+}: UserBehaviorStoryProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: story, isLoading, error, refetch } = useQuery<UserStory>({
@@ -184,6 +190,7 @@ export function UserBehaviorStory({ userId, userName, onGenerateNotification }: 
             variant="outline"
             size="sm"
             className="cgi-button-outline"
+            onClick={onManualNotification}
           >
             <Bell className="h-4 w-4 mr-2" />
             Manuális értesítés
