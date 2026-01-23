@@ -1,372 +1,297 @@
 
-# Terv: Teszt Adatok + Extrém Analitika Bővítés
+# Terv: Tooltip javítások, AI Ajánló fix és Értékteremtő Dashboard Bővítések
 
-## 1. RÉSZ: Teszt Adatok Feltöltése
+## Probléma Azonosítás
 
-### Jelenlegi Helyzet
-- **0 redemption** a redemptions táblában
-- **0 user_activity_logs** bejegyzés
-- **0 user_points** rekord
-- **0 points_transactions** rekord
-- **1 profiles** (gataibence@gmail.com)
-- **5 venues** (Bartl Janos, BuBu, A KERT Bisztró, Kiscsibe, Vinozza)
-- **4 venue_drinks** (Limonádé, Peroni x2, Bodzás Limonádé)
+### 1. AI Notification Ajánló NEM MŰKÖDIK
+**Ok**: A logokban `AI API error: 400` hiba látható - ez azt jelenti, hogy a Lovable AI Gateway 400-as hibát ad vissza.
 
-### Generálandó Teszt Adatok
+**Hibás rész** (`supabase/functions/suggest-user-notification/index.ts`, sor 214-221):
+```typescript
+body: JSON.stringify({
+  model: "gpt-4o-mini",  // ❌ HIBÁS MODEL NÉV!
+  messages: [...],
+  temperature: 0.7,
+  max_tokens: 1000
+})
+```
 
-| Tábla | Mennyiség | Leírás |
-|-------|-----------|--------|
-| `profiles` | +15 új | Változatos regisztrációs dátumokkal (1-60 nap) |
-| `redemptions` | +200 | 30 napra elosztva, csúcsidőkkel |
-| `user_activity_logs` | +500 | App megnyitás, venue nézés, QR generálás |
-| `user_points` | +16 | Minden userhez egyenleg |
-| `points_transactions` | +100 | Pont mozgások |
+**Javítás**: A megfelelő model név: `google/gemini-2.5-flash` (ahogy az `ai-venue-recommend` edge functionben is van).
 
-### Adatok Mintázatai (Reális Szimulációhoz)
-- **Hétfő-Csütörtök**: 40% aktivitás
-- **Péntek-Szombat**: 90% aktivitás (csúcs)
-- **Vasárnap**: 30% aktivitás
-- **Csúcsidők**: 17:00-21:00 (Happy Hour)
-- **Visszatérő felhasználók**: 60% (hűségesek)
-- **Power userek**: 3-4 fő 20+ beváltással
+### 2. Tooltipek Hiányoznak / Mobil Probléma
+**Jelenlegi helyzet**: 
+- A `Tooltip` komponens Radix UI-t használ, ami **hover-based** működésű
+- Mobilon nincs hover - ezért a tooltipek NEM jelennek meg
+- Néhány új komponensből hiányoznak a tooltip-ek (VenueDetail, UserDetail új elemei)
+
+**Javítási megközelítés**:
+- Mobil-barát tooltip viselkedés: érintésre jelenjen meg (touch event)
+- Vagy: Popover komponensre cserélés mobilon
+- Hiányzó tooltipek hozzáadása az új komponensekhez
+
+### 3. Értékteremtő Dashboard Szekció - NINCS
+A felhasználó szeretne egy szekciót ahol látja, hogyan szolgálják az adatok a vendéglátóhelyeket és italmárkákat. Ez jelenleg nem létezik.
 
 ---
 
-## 2. RÉSZ: Extrém Analitika Funkciók (Javaslatok)
+## Részletes Implementációs Terv
 
-### A) Felhasználó Szintű Mély Analitika
+### FÁZIS 1: AI Ajánló Javítás (Kritikus)
 
-#### 1. **User Lifetime Journey Map**
-```text
-Regisztráció → Első beváltás → Aktív szakasz → Csökkenés? → Reaktiváció?
-     ↓              ↓              ↓              ↓              ↓
-   Jan 5        Jan 7 (2 nap)    8 beváltás    14 nap szünet   Geofence push
-```
-- Minden felhasználó vizuális "életút" idővonala
-- Kritikus pillanatok jelölése (első beváltás, leghűségesebb hét, lemorzsolódási kockázat)
+**Fájl**: `supabase/functions/suggest-user-notification/index.ts`
 
-#### 2. **Predictive Churn Score (AI)**
-```text
-Kockázati faktorok:
-- 14+ nap inaktivitás: +40%
-- Csökkenő beváltási frekvencia: +25%
-- Nincs kedvenc helyszín: +15%
-- Alacsony pont egyenleg: +10%
-- Nincs push engedély: +10%
------------------------------------
-Összesített churn kockázat: 78% (MAGAS)
-```
+**Változtatások**:
+1. Model csere: `gpt-4o-mini` → `google/gemini-2.5-flash`
+2. Jobb error handling és debug logging
+3. Változatosabb AI válaszok a `temperature` növelésével
 
-#### 3. **User Cohort Analysis**
-```text
-        Week 0   Week 1   Week 2   Week 3   Week 4
-Jan 1    100%     72%      58%      45%      38%
-Jan 8    100%     68%      52%      41%       -
-Jan 15   100%     75%      60%       -        -
-Jan 22   100%     70%       -        -        -
-```
-- Regisztrációs kohortok retention rátája
-- Melyik héten regisztráltak a leghűségesebbek?
-
-#### 4. **User Segment Clustering**
-```text
-Szegmensek:
-🏆 Power Users (top 10%): 20+ beváltás/hó, 500+ pont
-🔄 Regulars (30%): 5-19 beváltás/hó, rendszeres
-🌱 Newbies (25%): <30 nap, 1-4 beváltás
-😴 Sleepers (20%): 14+ nap inaktív
-👻 Ghosts (15%): 30+ nap inaktív
-```
-
-#### 5. **User vs User Comparison**
-- Két felhasználó direkt összehasonlítása
-- Radar chart: aktivitás, pontok, beváltások, helyszínek, lojalitás
-- "Ki a jobb ügyfél?" score
-
----
-
-### B) Venue Szintű Extrém Metrikák
-
-#### 6. **Venue Health Score**
-```text
-Pontrendszer (0-100):
-- Napi beváltások: 25 pont
-- Visszatérő arány: 25 pont
-- Átl. kosárérték: 20 pont
-- Növekedési trend: 15 pont
-- Értékelés: 15 pont
------------------------------------
-Blue Lagoon: 87/100 (KIVÁLÓ)
-```
-
-#### 7. **Venue vs Venue Battle**
-```text
-           Blue Lagoon    vs    Jazz Bar
-Beváltás/nap:    12              8
-Visszatérők:     65%            48%
-Átl. kosár:    3200 Ft        2800 Ft
-Csúcsidő:      19:00          21:00
-Top ital:       IPA          Mojito
------------------------------------
-Győztes: Blue Lagoon (+3 kategória)
-```
-
-#### 8. **Venue Cannibalization Analysis**
-- Melyik helyszínek "lopják" egymás felhasználóit?
-- Ha X helyszín nyit, Y helyszín forgalma csökken?
-
-#### 9. **Optimal Staffing Predictor**
-```text
-Péntek 19:00-21:00:
-- Előrejelzett beváltások: 45
-- Ajánlott személyzet: 3 fő
-- Kapacitás kihasználtság: 87%
+```typescript
+// Javított AI hívás
+const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${lovableApiKey}`
+  },
+  body: JSON.stringify({
+    model: "google/gemini-2.5-flash", // ✅ JAVÍTOTT
+    messages: [...],
+    temperature: 0.9,  // Növelve a változatosságért
+  })
+});
 ```
 
 ---
 
-### C) Platform Szintű Szuper Metrikák
+### FÁZIS 2: Mobil-barát Tooltip Komponens
 
-#### 10. **Real-Time Platform Pulse**
-```text
-🟢 LIVE Dashboard
-- Aktív felhasználók most: 127
-- Beváltások az elmúlt 5 percben: 8
-- Legforróbb helyszín: Blue Lagoon (23 aktív)
-- Trending ital: Aperol Spritz (+45%)
+**Fájl**: `src/components/ui/tooltip.tsx` módosítás VAGY új `src/components/ui/mobile-tooltip.tsx`
+
+**Megközelítés**: Egy wrapper komponens ami:
+- Desktopon: eredeti Radix Tooltip (hover)
+- Mobilon: Popover-szerű viselkedés (tap to open/close)
+
+```typescript
+// Új MobileTooltip komponens
+export function MobileTooltip({ children, content }: Props) {
+  const isMobile = useIsMobile();
+  
+  if (isMobile) {
+    // Tap-alapú megjelenítés Dialog/Popover segítségével
+    return (
+      <Popover>
+        <PopoverTrigger asChild>{children}</PopoverTrigger>
+        <PopoverContent>{content}</PopoverContent>
+      </Popover>
+    );
+  }
+  
+  // Desktop: eredeti tooltip
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{content}</TooltipContent>
+    </Tooltip>
+  );
+}
 ```
 
-#### 11. **Revenue Attribution Model**
-```text
-Bevétel forrása:
-- Organikus visszatérők: 45%
-- Push értesítésből: 22%
-- Geofence triggersből: 18%
-- Promóciókból: 12%
-- Social share: 3%
-```
-
-#### 12. **Seasonality & Weather Correlation**
-```text
-Időjárás hatás:
-- Esős nap: -35% outdoor helyszín forgalom
-- 25°C+: +40% terasz helyszínek
-- Péntek + jó idő: +60% általános
-```
-
-#### 13. **Drink Trend Analysis**
-```text
-📈 Felfelé menők:
-1. Aperol Spritz (+120% MoM)
-2. Natural Wine (+45%)
-3. Craft IPA (+38%)
-
-📉 Lefelé menők:
-1. Vodka Shots (-25%)
-2. Long Island (-18%)
-```
-
-#### 14. **Network Effect Score**
-```text
-Felhasználói hálózat:
-- Átl. megosztások/user: 2.3
-- Referral konverzió: 34%
-- Virális együttható: 1.4 (növekvő)
-```
+**Alkalmazás**:
+- `KPICard.tsx` tooltip módosítása
+- `ChartCard.tsx` tooltip módosítása
+- `VenueDetail.tsx` info ikonok
 
 ---
 
-### D) AI-Powered Insights
+### FÁZIS 3: Értékteremtő Dashboard - "Adat Érték" Szekció
 
-#### 15. **Anomaly Detection**
+Egy új oldal/szekció ami **vizualizálja hogyan szolgálják az adatok a partnereket**.
+
+#### 3.1 Új Oldal: `/data-insights` vagy Dashboard-ba beépítve
+
+**Struktúra**:
+
 ```text
-⚠️ Szokatlan aktivitás észlelve:
-- Blue Lagoon: Hétfő 14:00 +180% vs átlag
-  → Ok: Céges rendezvény?
-- User X: 8 beváltás 2 órán belül
-  → Ok: Csoport szervezés?
++=========================================================================+
+|                    📊 ADAT ÉRTÉKTEREMTÉS                                 |
+|       "Így segítjük a vendéglátóhelyeket és italmárkákat"               |
++=========================================================================+
+
++-----------------------------------+------------------------------------+
+|     🏠 VENDÉGLÁTÓHELYEKNEK        |      🍺 ITALMÁRKÁKNAK               |
++-----------------------------------+------------------------------------+
+
+[Vendéglátóhelyek Szekció]
++-----------------------------------------------------------------+
+| 📈 Forgalomnövelés                                               |
+| "Az AI-alapú push értesítések átlagosan 23%-kal növelik          |
+|  a visszatérő vendégek arányát"                                  |
+| [📊 Trend chart: visszatérési ráta növekedése]                   |
++-----------------------------------------------------------------+
+| 🎯 Célzott Marketing                                             |
+| "A hűségprogram adatai alapján 5x pontosabb célzás érhető el"    |
+| [📊 Szegmens breakdown: Power Users, Regulars, At-Risk]          |
++-----------------------------------------------------------------+
+| ⏰ Optimális Időzítés                                            |
+| "A heatmap adatok alapján a csúcsidők 89%-os pontossággal        |
+|  előrejelezhetők"                                                |
+| [📊 Heti heatmap: beváltások/óra]                                |
++-----------------------------------------------------------------+
+| 💰 Bevétel Attribúció                                            |
+| "A free drink kampányok által generált többletforgalom           |
+|  átlagosan 3.2x a promóció költségének"                          |
+| [📊 ROI kalkulátor chart]                                        |
++-----------------------------------------------------------------+
+
+[Italmárkák Szekció]
++-----------------------------------------------------------------+
+| 📊 Fogyasztói Preferenciák                                       |
+| "Valós idejű betekintés a fogyasztói ízlésbe kategóriánként"     |
+| [📊 Pie chart: ital kategóriák népszerűsége]                     |
+| [📊 Trend chart: kategória változások heti szinten]              |
++-----------------------------------------------------------------+
+| 🎯 Márka Penetráció                                              |
+| "Melyik helyszíneken a legnépszerűbb az Ön márkája?"             |
+| [📊 Venue heatmap: márka népszerűség helyszínenként]             |
++-----------------------------------------------------------------+
+| 🆚 Versenyképesség                                               |
+| "Összehasonlítás a kategória többi márkájával"                   |
+| [📊 Bar chart: márka részesedés vs konkurencia]                  |
++-----------------------------------------------------------------+
+| 🚀 Kampány Hatékonyság                                           |
+| "Szponzorált promóciók teljesítménye mérhetően"                  |
+| [📊 Line chart: szponzorált vs nem szponzorált italok]           |
++-----------------------------------------------------------------+
+
+[Közös Értékteremtés Szekció]
++-----------------------------------------------------------------+
+| 🤝 PLATFORM SZINERGIAEFFEKTUSOK                                  |
++-----------------------------------------------------------------+
+| "2450 felhasználó     →    5 aktív helyszín    →   3 márka"      |
+|                                                                   |
+| Network Effect Score: 1.4x (növekvő)                             |
+| Cross-venue látogatók: 34% (felhasználók akik 2+ helyszínt       |
+|                         látogatnak)                              |
+| Márka expozíció: +45% vs hagyományos marketing                   |
++-----------------------------------------------------------------+
 ```
 
-#### 16. **Next Best Action (NBA) Engine**
-```text
-User: Kiss Péter
-Ajánlott akció: "Személyre szabott push"
-Időzítés: Péntek 16:45
-Tartalom: "Kedvenc helyszíned, Blue Lagoon, most happy hour-t tart!"
-Becsült konverzió: 68%
+#### 3.2 Technikai Implementáció
+
+**Új Edge Function**: `get-data-value-insights`
+
+```typescript
+// Visszaadott adatok
+{
+  venue_insights: {
+    push_notification_lift: 23,  // % visszatérés növekedés
+    targeting_precision: 5,      // x pontosabb
+    peak_hour_accuracy: 89,      // % előrejelzési pontosság
+    free_drink_roi: 3.2          // x megtérülés
+  },
+  brand_insights: {
+    category_breakdown: [...],   // Ital kategóriák %
+    brand_penetration_by_venue: [...],
+    sponsored_vs_organic: {...},
+    competitor_comparison: [...]
+  },
+  platform_synergies: {
+    network_effect_score: 1.4,
+    cross_venue_visitors_pct: 34,
+    brand_exposure_lift: 45
+  }
+}
 ```
 
-#### 17. **Churn Prevention Automation**
-```text
-Automatikus szabály:
-IF churn_risk > 70% AND last_activity > 14 days:
-  → Küldj 15% kedvezmény kupont
-  → Geofence trigger aktiválása
-  → AI notification javaslat
-```
+**Új Frontend Komponensek**:
+- `DataValueDashboard.tsx` - főkomponens
+- `VenueValueCard.tsx` - vendéglátóhelyi érték kártya
+- `BrandValueCard.tsx` - márka érték kártya
+- `SynergyMetrics.tsx` - platform szinergia metrikák
 
 ---
 
-### E) Összehasonlító & Benchmark Metrikák
+### FÁZIS 4: Hiányzó Tooltipek Hozzáadása
 
-#### 18. **Industry Benchmark Comparison**
-```text
-Come Get It vs Iparági átlag:
-- DAU/MAU: 23% (iparág: 18%) ✅
-- Retention D7: 45% (iparág: 35%) ✅
-- Avg. redemption/user: 4.2 (iparág: 3.1) ✅
-```
+**Érintett fájlok és tooltipek**:
 
-#### 19. **Time-to-Value Analysis**
-```text
-Új felhasználó optimalizáció:
-- Regisztráció → Első beváltás: Átl. 2.3 nap
-- Első beváltás → Visszatérés: Átl. 5.1 nap
-- Power user státusz elérése: Átl. 28 nap
-```
-
-#### 20. **LTV Prediction Model**
-```text
-User: Kiss Péter
-- Eddigi érték: 45.000 Ft
-- Becsült hátralévő LTV: 120.000 Ft
-- Konfidencia: 78%
-- Recommendation: VIP program meghívás
-```
+| Komponens | Elem | Tooltip szöveg |
+|-----------|------|----------------|
+| `UserScorecard` | Engagement Score | "A felhasználó aktivitási szintje 0-100 skálán, beváltások, visszatérések és app használat alapján számítva." |
+| `UserScorecard` | Churn Risk | "A lemorzsolódási kockázat becslése az utolsó aktivitás és viselkedési minták alapján." |
+| `UserScorecard` | LTV | "A felhasználó becsült élettartam értéke (Lifetime Value) az eddigi és várható költések alapján." |
+| `UserWeeklyTrends` | Chart | "Az elmúlt 4 hét session és beváltási trendje." |
+| `UserVenueAffinity` | Venue list | "A felhasználó által látogatott helyszínek gyakoriság szerint rangsorolva." |
+| `UserPointsFlow` | Balance | "A felhasználó jelenlegi beváltható pontegyenlege." |
 
 ---
 
-## 3. TECHNIKAI IMPLEMENTÁCIÓ
+## Összefoglaló - Fájl Módosítások
 
-### 3.1 Teszt Adat Generálás (Edge Function)
-Új edge function: `seed-test-data`
-- Admin-only hozzáférés
-- Egyszeri futtatás
-- Reális mintázatok generálása
-
-### 3.2 Bővített Analitika Edge Functions
-
-| Edge Function | Cél |
-|---------------|-----|
-| `get-platform-metrics` | Real-time platform pulse |
-| `get-cohort-analysis` | Retention kohortok |
-| `get-user-segments` | AI szegmentáció |
-| `get-venue-health` | Venue egészségi pontszám |
-| `get-anomaly-report` | Szokatlan aktivitások |
-| `get-drink-trends` | Ital trend elemzés |
-
-### 3.3 Új UI Komponensek
-
-| Komponens | Oldal |
-|-----------|-------|
-| `PlatformPulse` | Dashboard |
-| `CohortHeatmap` | Users |
-| `UserSegmentPie` | Users |
-| `VenueHealthCard` | Venues |
-| `DrinkTrendChart` | Analytics |
-| `AnomalyAlertList` | Dashboard |
-
-### 3.4 Adatbázis Bővítések (Opcionális)
-
-```sql
--- Anomaly log
-CREATE TABLE anomaly_logs (
-  id UUID PRIMARY KEY,
-  entity_type TEXT, -- 'user' | 'venue' | 'drink'
-  entity_id UUID,
-  anomaly_type TEXT,
-  severity TEXT,
-  detected_at TIMESTAMPTZ,
-  resolved_at TIMESTAMPTZ,
-  metadata JSONB
-);
-
--- User segments (cache)
-CREATE TABLE user_segments (
-  user_id UUID PRIMARY KEY,
-  segment TEXT,
-  score NUMERIC,
-  computed_at TIMESTAMPTZ
-);
-```
+| Fájl | Művelet | Leírás |
+|------|---------|--------|
+| `supabase/functions/suggest-user-notification/index.ts` | **MÓDOSÍTÁS** | Model fix + temperature növelés |
+| `src/components/ui/mobile-tooltip.tsx` | **ÚJ** | Mobil-barát tooltip wrapper |
+| `src/components/KPICard.tsx` | **MÓDOSÍTÁS** | MobileTooltip használata |
+| `src/components/ChartCard.tsx` | **MÓDOSÍTÁS** | MobileTooltip használata |
+| `src/pages/DataInsights.tsx` | **ÚJ** | Adat értékteremtés dashboard |
+| `src/components/insights/VenueValueSection.tsx` | **ÚJ** | Venue érték vizualizáció |
+| `src/components/insights/BrandValueSection.tsx` | **ÚJ** | Brand érték vizualizáció |
+| `src/components/insights/SynergyMetrics.tsx` | **ÚJ** | Platform szinergia |
+| `supabase/functions/get-data-value-insights/index.ts` | **ÚJ** | Insights adat endpoint |
+| `src/components/user/UserScorecard.tsx` | **MÓDOSÍTÁS** | Tooltip hozzáadás |
+| `src/App.tsx` | **MÓDOSÍTÁS** | Új route: `/data-insights` |
+| `src/components/Sidebar.tsx` | **MÓDOSÍTÁS** | Új menüpont |
 
 ---
 
-## 4. IMPLEMENTÁCIÓS PRIORITÁS
+## Prioritási Sorrend
 
-### P0 - Alapok (Most)
-1. **Teszt adatok generálása** (seed-test-data edge function)
-2. Analytics oldal működésének ellenőrzése valós adatokkal
-
-### P1 - Felhasználó Analitika
-3. User Cohort Analysis
-4. User Segment Clustering
-5. Churn Prediction Score
-
-### P2 - Venue Analitika
-6. Venue Health Score
-7. Venue vs Venue Comparison
-8. Drink Trend Analysis
-
-### P3 - Platform Szint
-9. Real-time Platform Pulse
-10. Anomaly Detection
-11. Industry Benchmarks
+| Prioritás | Feladat | Becsült komplexitás |
+|-----------|---------|---------------------|
+| P0 | AI Ajánló javítás (model fix) | Alacsony |
+| P0 | Mobil tooltip komponens | Közepes |
+| P1 | Data Insights dashboard | Magas |
+| P1 | get-data-value-insights edge function | Közepes |
+| P2 | Hiányzó tooltipek hozzáadása | Alacsony |
+| P2 | Sidebar + routing bővítés | Alacsony |
 
 ---
 
-## 5. TESZT ADATOK RÉSZLETEI
+## Adat Érték Dashboard - Részletes Koncepció
 
-### Generálandó Profiles (15 új)
-```text
-ID    | Név              | Regisztráció | Típus
-------+------------------+--------------+-------
-p01   | Kovács Anna      | 45 nap       | Power user
-p02   | Nagy Béla        | 38 nap       | Regular
-p03   | Szabó Csilla     | 30 nap       | Regular
-p04   | Tóth Dániel      | 28 nap       | Newbie aktív
-p05   | Kiss Eszter      | 25 nap       | Sleeper
-p06   | Horváth Ferenc   | 22 nap       | Regular
-p07   | Varga Gábor      | 20 nap       | Power user
-p08   | Molnár Hanna     | 18 nap       | Newbie
-p09   | Farkas István    | 15 nap       | Ghost
-p10   | Balogh Judit     | 12 nap       | Regular
-p11   | Papp Károly      | 10 nap       | Newbie aktív
-p12   | Lakatos Laura    | 7 nap        | Newbie
-p13   | Simon Márton     | 5 nap        | Newbie
-p14   | Fekete Nóra      | 3 nap        | Newbie
-p15   | Oláh Péter       | 1 nap        | Newbie
-```
+### Vendéglátóhelyeknek Bemutatott Értékek:
 
-### Redemptions Eloszlás (200 db)
-- **Kovács Anna**: 28 beváltás (power user)
-- **Varga Gábor**: 24 beváltás (power user)
-- **Szabó Csilla**: 18 beváltás
-- **Nagy Béla**: 15 beváltás
-- **Horváth Ferenc**: 14 beváltás
-- **Balogh Judit**: 12 beváltás
-- **Tóth Dániel**: 10 beváltás
-- **Többi**: 1-8 beváltás
+1. **Visszatérő Vendégek Növelése**
+   - Metrika: Push notification → visszatérési konverzió
+   - Vizualizáció: Before/After összehasonlítás
 
-### Venue Eloszlás
-- **Vinozza**: 35% (legnépszerűbb)
-- **Bartl Janos**: 25%
-- **A KERT Bisztró**: 20%
-- **BuBu**: 12%
-- **Kiscsibe**: 8%
+2. **Csúcsidő Előrejelzés**
+   - Metrika: Heatmap pontosság vs valós forgalom
+   - Vizualizáció: Előrejelzés vs tény overlay
 
-### Időbeli Eloszlás
-- Elmúlt 7 nap: 40% redemptions
-- 8-14 napja: 25%
-- 15-21 napja: 20%
-- 22-30 napja: 15%
+3. **Free Drink ROI**
+   - Metrika: Ingyen ital → többlet vásárlás
+   - Vizualizáció: ROI kalkulátor
 
----
+4. **Churn Prevention**
+   - Metrika: At-risk userek azonosítása → visszacsábítás sikerráta
+   - Vizualizáció: Funnel diagram
 
-## 6. ÖSSZEFOGLALÁS
+### Italmárkáknak Bemutatott Értékek:
 
-A terv két fő részből áll:
-1. **Teszt adatok**: 15 új felhasználó, 200 beváltás, 500 aktivitás log reális mintázatokkal
-2. **Extrém analitika**: 20 új metrika/funkció javaslat prioritás szerint
+1. **Fogyasztói Trend Insights**
+   - Metrika: Ital kategória preferenciák időben
+   - Vizualizáció: Stacked area chart
 
-Az implementáció lépésenként halad, először a teszt adatokkal, majd a P0-P3 prioritási sorrendben az új analitika funkciókkal.
+2. **Helyszín Penetráció**
+   - Metrika: Márka részesedés venue-nként
+   - Vizualizáció: Heatmap
+
+3. **Kampány Hatékonyság**
+   - Metrika: Szponzorált promóciók konverziója
+   - Vizualizáció: A/B összehasonlítás chart
+
+4. **Versenyképesség**
+   - Metrika: Márka vs kategória átlag
+   - Vizualizáció: Benchmark gauge chart
