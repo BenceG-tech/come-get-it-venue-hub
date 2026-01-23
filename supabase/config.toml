@@ -144,3 +144,9 @@ verify_jwt = false
 
 [functions.get-user-stats-extended]
 verify_jwt = false
+
+[functions.get-live-platform-status]
+verify_jwt = false
+
+[functions.get-anomaly-report]
+verify_jwt = false
