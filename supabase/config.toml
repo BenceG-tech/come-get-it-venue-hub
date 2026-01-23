@@ -135,3 +135,12 @@ verify_jwt = false
 
 [functions.void-redemption]
 verify_jwt = false
+
+[functions.analyze-user-behavior]
+verify_jwt = false
+
+[functions.generate-user-story]
+verify_jwt = false
+
+[functions.get-user-stats-extended]
+verify_jwt = false

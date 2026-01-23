@@ -1183,6 +1183,38 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_type: string
+          earned_at: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          achievement_type: string
+          earned_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          achievement_type?: string
+          earned_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_activity_logs: {
         Row: {
           app_version: string | null
@@ -1227,6 +1259,44 @@ export type Database = {
           },
         ]
       }
+      user_behavior_patterns: {
+        Row: {
+          cluster_id: string | null
+          cluster_name: string | null
+          computed_at: string | null
+          created_at: string | null
+          patterns: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cluster_id?: string | null
+          cluster_name?: string | null
+          computed_at?: string | null
+          created_at?: string | null
+          patterns?: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cluster_id?: string | null
+          cluster_name?: string | null
+          computed_at?: string | null
+          created_at?: string | null
+          patterns?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_behavior_patterns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_points: {
         Row: {
           balance: number
@@ -1259,6 +1329,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_predictions: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          id: string
+          prediction_data: Json
+          prediction_type: string
+          user_id: string
+          verified_at: string | null
+          was_correct: boolean | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          prediction_data: Json
+          prediction_type: string
+          user_id: string
+          verified_at?: string | null
+          was_correct?: boolean | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          prediction_data?: Json
+          prediction_type?: string
+          user_id?: string
+          verified_at?: string | null
+          was_correct?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_predictions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_qr_tokens: {
         Row: {
