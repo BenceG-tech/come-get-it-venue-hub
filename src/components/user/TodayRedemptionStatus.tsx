@@ -31,15 +31,16 @@ export function TodayRedemptionStatus({ data, venueName, className }: TodayRedem
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-sm font-medium text-cgi-success">Ma már beváltott</p>
-              <InfoTooltip content={`A felhasználó naponta 1 ingyen italt válthat be helyszínenként. Itt (${venueName}) ma már élt ezzel a lehetőséggel.`} />
+              <InfoTooltip content="A felhasználó naponta összesen 1 ingyen italt válthat be (bármelyik helyszínen). Ma már élt ezzel a lehetőséggel." />
             </div>
             <p className="text-sm text-cgi-surface-foreground">
               <span className="text-cgi-muted-foreground">{redeemTime}-kor:</span>{" "}
               <span className="font-medium">{data.drink_name || "Ingyen ital"}</span>
+              <span className="text-cgi-muted-foreground ml-1">@ {venueName}</span>
             </p>
             <p className="text-xs text-cgi-muted-foreground mt-1 flex items-center gap-1">
               <X className="h-3 w-3" />
-              Következő lehetőség: holnap
+              Következő lehetőség: holnap (bármelyik helyszínen)
             </p>
           </div>
         </div>
@@ -57,7 +58,7 @@ export function TodayRedemptionStatus({ data, venueName, className }: TodayRedem
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <p className="text-sm font-medium text-cgi-surface-foreground">Ma még nem váltott be</p>
-            <InfoTooltip content={`A felhasználó naponta 1 ingyen italt válthat be helyszínenként. Itt (${venueName}) ma még nem használta fel.`} />
+            <InfoTooltip content="A felhasználó naponta összesen 1 ingyen italt válthat be (bármelyik helyszínen). Ma még nem használta fel." />
           </div>
           
           {data.next_window ? (

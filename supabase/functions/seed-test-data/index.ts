@@ -22,7 +22,7 @@ const DRINKS = [
   { id: "f26a4f88-83c9-47e2-bb72-a122e771ffe6", name: "Limonádé", venue_id: "fb1a7c64-95e5-4ad7-b351-a5206ce4de59" },
 ];
 
-// Virtual user "profiles" - using existing user ID but simulating different personas
+// Virtual user "profiles" - using existing user ID
 const EXISTING_USER_ID = "46b15f9d-ed46-41b0-aa6a-5aa2334c407e";
 
 const ACTIVITY_TYPES = [
@@ -75,7 +75,8 @@ function getHourWeight(hour: number): number {
 }
 
 function getDateKey(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Get date in Budapest timezone
+  return date.toLocaleDateString('en-CA', { timeZone: 'Europe/Budapest' }); // "YYYY-MM-DD"
 }
 
 function generateRandomDateWithHour(daysAgo: number): Date {
@@ -139,18 +140,21 @@ serve(async (req) => {
 
     const userId = EXISTING_USER_ID;
 
-    // Track used venue+date combinations to enforce 1 redemption per day per venue
-    // Key format: "venue_id:YYYY-MM-DD"
-    const usedVenueDays = new Set<string>();
+    // ============================================================
+    // GLOBAL DAILY LIMIT: 1 free drink per day per user (across ALL venues)
+    // ============================================================
+    // Track used dates to enforce GLOBAL 1 redemption per day rule
+    // Key format: "YYYY-MM-DD" (date only, no venue)
+    const usedDays = new Set<string>();
 
-    // 1. Create redemptions respecting 1 per day per venue rule
-    console.log("Creating redemptions with 1/day/venue rule...");
+    // 1. Create redemptions respecting GLOBAL 1 per day rule
+    console.log("Creating redemptions with GLOBAL 1/day rule...");
     const redemptionsToInsert: any[] = [];
     
-    // Generate up to 100 valid redemptions (since we're limited by 30 days * 5 venues = 150 max)
+    // Generate up to 30 valid redemptions (since we're limited by 30 days = max 30)
     let attempts = 0;
-    const maxAttempts = 500;
-    const targetRedemptions = 100;
+    const maxAttempts = 300;
+    const targetRedemptions = 25; // ~25 days out of 30 with redemptions
     
     while (redemptionsToInsert.length < targetRedemptions && attempts < maxAttempts) {
       attempts++;
@@ -166,16 +170,15 @@ serve(async (req) => {
       else daysAgo = randomInt(22, 30);
       
       const redeemDate = generateRandomDateWithHour(daysAgo);
-      const dateKey = getDateKey(redeemDate);
-      const venueDay = `${venue.id}:${dateKey}`;
+      const dateKey = getDateKey(redeemDate); // "YYYY-MM-DD" - date only!
       
-      // Skip if this venue+day combo was already used
-      if (usedVenueDays.has(venueDay)) {
+      // GLOBAL LIMIT: Skip if this DATE was already used (regardless of venue!)
+      if (usedDays.has(dateKey)) {
         continue;
       }
       
-      // Mark as used
-      usedVenueDays.add(venueDay);
+      // Mark as used (GLOBAL - just the date, not venue-specific)
+      usedDays.add(dateKey);
       
       const venueDrinks = DRINKS.filter(d => d.venue_id === venue.id);
       const drink = venueDrinks.length > 0 ? randomChoice(venueDrinks) : null;
@@ -206,7 +209,8 @@ serve(async (req) => {
       throw redemptionError;
     }
     results.redemptions = redemptionsToInsert.length;
-    console.log(`Created ${results.redemptions} redemptions (respecting 1/day/venue rule)`);
+    console.log(`Created ${results.redemptions} redemptions (respecting GLOBAL 1/day rule)`);
+    console.log(`Days used: ${Array.from(usedDays).sort().join(', ')}`);
 
     // 2. Create activity logs (500+)
     console.log("Creating activity logs...");
@@ -314,10 +318,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Test data seeded successfully (with 1 drink/day/venue rule)",
+        message: "Test data seeded successfully (with GLOBAL 1 drink/day rule)",
         results,
         userId,
-        note: "Redemptions now respect the 1 drink per day per venue per user rule"
+        note: "Redemptions now respect the GLOBAL 1 drink per day per user rule (max 1 per day across ALL venues)"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
