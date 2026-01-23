@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ExportDropdown } from "@/components/ExportDropdown";
 import { InfoTooltip } from "@/components/ui/mobile-tooltip";
-import { UserQuickView } from "@/components/user";
+import { UserQuickView, UserBulkActionsToolbar } from "@/components/user";
 import {
   Search,
   Users as UsersIcon,
   ChevronRight,
+  ChevronLeft,
   TrendingUp,
   Gift,
   Calendar,
@@ -23,11 +25,12 @@ import {
   BarChart3,
   ListFilter,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
-import { exportUsersToCSV } from "@/lib/exportUtils";
+import { exportUsersToCSV, type UserExportData } from "@/lib/exportUtils";
 
 // Chart components
 import { UserActivityChart } from "@/components/UserActivityChart";
@@ -91,13 +94,28 @@ interface AnalyticsData {
   };
 }
 
+const PAGE_SIZE = 50;
+
 export default function Users() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"analytics" | "users">("analytics");
   const [quickViewUserId, setQuickViewUserId] = useState<string | null>(null);
+  
+  // Selection state
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  
+  // Pagination state
+  const [page, setPage] = useState(0);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+    setSelectedUserIds(new Set());
+  }, [debouncedSearch, statusFilter]);
 
   // Debounce search
   useEffect(() => {
@@ -106,14 +124,14 @@ export default function Users() {
   }, [search]);
 
   // Fetch users list
-  const { data, isLoading, error } = useQuery<UsersResponse>({
-    queryKey: ["users", debouncedSearch, statusFilter],
+  const { data, isLoading, error, refetch } = useQuery<UsersResponse>({
+    queryKey: ["users", debouncedSearch, statusFilter, page],
     queryFn: async () => {
       const params = new URLSearchParams({
         search: debouncedSearch,
         status: statusFilter,
-        limit: "50",
-        offset: "0",
+        limit: PAGE_SIZE.toString(),
+        offset: (page * PAGE_SIZE).toString(),
       });
 
       const session = await supabase.auth.getSession();
@@ -161,6 +179,36 @@ export default function Users() {
     enabled: activeTab === "analytics",
   });
 
+  // Selection handlers
+  const handleSelectUser = (userId: string, checked: boolean) => {
+    const next = new Set(selectedUserIds);
+    if (checked) {
+      next.add(userId);
+    } else {
+      next.delete(userId);
+    }
+    setSelectedUserIds(next);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && data?.users) {
+      setSelectedUserIds(new Set(data.users.map((u) => u.id)));
+    } else {
+      setSelectedUserIds(new Set());
+    }
+  };
+
+  const isAllSelected = data?.users && data.users.length > 0 && 
+    data.users.every((u) => selectedUserIds.has(u.id));
+  
+  const isSomeSelected = selectedUserIds.size > 0 && !isAllSelected;
+
+  // Get selected users for export
+  const selectedUsers = useMemo(() => {
+    if (!data?.users) return [];
+    return data.users.filter((u) => selectedUserIds.has(u.id));
+  }, [data?.users, selectedUserIds]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -204,6 +252,11 @@ export default function Users() {
     avg_sessions_per_user: 0,
     avg_redemptions_per_user: 0,
   };
+
+  // Pagination
+  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+  const startIndex = page * PAGE_SIZE + 1;
+  const endIndex = Math.min((page + 1) * PAGE_SIZE, data?.total || 0);
 
   return (
     <PageLayout>
@@ -385,6 +438,17 @@ export default function Users() {
         {/* Users Tab */}
         {activeTab === "users" && (
           <>
+            {/* Bulk Actions Toolbar */}
+            <UserBulkActionsToolbar
+              selectedUserIds={selectedUserIds}
+              selectedUsers={selectedUsers}
+              onClearSelection={() => setSelectedUserIds(new Set())}
+              onRefresh={() => {
+                refetch();
+                setSelectedUserIds(new Set());
+              }}
+            />
+
             {/* Filters */}
             <Card className="cgi-card">
               <CardContent className="pt-6">
@@ -433,10 +497,19 @@ export default function Users() {
 
             {/* Users List */}
             <Card className="cgi-card">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-cgi-surface-foreground">
                   Felhasználók listája
                 </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => refetch()}
+                  className="h-8 w-8"
+                  title="Frissítés"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -446,6 +519,7 @@ export default function Users() {
                         key={i}
                         className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20"
                       >
+                        <Skeleton className="h-4 w-4" />
                         <Skeleton className="h-12 w-12 rounded-full" />
                         <div className="flex-1 space-y-2">
                           <Skeleton className="h-4 w-48" />
@@ -456,104 +530,198 @@ export default function Users() {
                     ))}
                   </div>
                 ) : error ? (
-                  <div className="text-center py-8 text-red-400">
-                    Hiba történt a felhasználók betöltése közben
+                  <div className="text-center py-8">
+                    <p className="text-red-400 mb-4">
+                      Hiba történt a felhasználók betöltése közben
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => refetch()}
+                      className="gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Újrapróbálás
+                    </Button>
                   </div>
                 ) : data?.users.length === 0 ? (
                   <div className="text-center py-8 text-cgi-muted-foreground">
-                    Nincs találat a keresési feltételekre
+                    {debouncedSearch || statusFilter !== "all" ? (
+                      <p>
+                        Nincs találat a keresési feltételekre
+                        {debouncedSearch && ` („${debouncedSearch}")`}
+                      </p>
+                    ) : (
+                      <p>Nincs felhasználó a rendszerben</p>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {data?.users.map((user) => (
-                      <div
-                        key={user.id}
-                        onClick={() => navigate(`/users/${user.id}`)}
-                        className="flex items-center gap-4 p-4 rounded-lg bg-cgi-muted/20 hover:bg-cgi-muted/40 cursor-pointer transition-colors group"
-                      >
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={user.avatar_url || undefined} />
-                          <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary">
-                            {getInitials(user.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                  <>
+                    {/* Select All Header */}
+                    <div className="flex items-center gap-4 p-2 mb-2 border-b border-cgi-muted/30">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        className="data-[state=checked]:bg-cgi-primary"
+                        aria-label="Összes kijelölése"
+                      />
+                      <span className="text-sm text-cgi-muted-foreground">
+                        {selectedUserIds.size > 0
+                          ? `${selectedUserIds.size} kiválasztva`
+                          : "Összes kijelölése"}
+                      </span>
+                    </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-cgi-surface-foreground truncate">
-                              {user.name}
-                            </p>
-                            {getStatusBadge(user.status)}
-                            {user.is_admin && (
-                              <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-                                Admin
-                              </Badge>
+                    {/* User List */}
+                    <div className="space-y-2">
+                      {data?.users.map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center gap-4 p-4 rounded-lg transition-colors group cursor-pointer ${
+                            selectedUserIds.has(user.id)
+                              ? "bg-cgi-primary/10 border border-cgi-primary/30"
+                              : "bg-cgi-muted/20 hover:bg-cgi-muted/40"
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <Checkbox
+                            checked={selectedUserIds.has(user.id)}
+                            onCheckedChange={(checked) =>
+                              handleSelectUser(user.id, !!checked)
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                            className="data-[state=checked]:bg-cgi-primary"
+                            aria-label={`${user.name} kijelölése`}
+                          />
+
+                          {/* Avatar & Info - Clickable for navigation */}
+                          <div
+                            className="flex items-center gap-4 flex-1 min-w-0"
+                            onClick={() => navigate(`/users/${user.id}`)}
+                          >
+                            <Avatar className="h-12 w-12">
+                              <AvatarImage src={user.avatar_url || undefined} />
+                              <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary">
+                                {getInitials(user.name)}
+                              </AvatarFallback>
+                            </Avatar>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-cgi-surface-foreground truncate">
+                                  {user.name}
+                                </p>
+                                {getStatusBadge(user.status)}
+                                {user.is_admin && (
+                                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                    Admin
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-cgi-muted-foreground truncate">
+                                {user.email || "Nincs email"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Stats - Desktop */}
+                          <div className="hidden md:flex items-center gap-6 text-sm">
+                            <div className="text-center">
+                              <p className="font-medium text-cgi-secondary">
+                                {user.points_balance}
+                              </p>
+                              <p className="text-xs text-cgi-muted-foreground">
+                                pont
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="font-medium text-cgi-surface-foreground">
+                                {user.total_redemptions}
+                              </p>
+                              <p className="text-xs text-cgi-muted-foreground">
+                                beváltás
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="font-medium text-cgi-surface-foreground">
+                                {user.total_sessions}
+                              </p>
+                              <p className="text-xs text-cgi-muted-foreground">
+                                munkamenet
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Last Seen - Large Screens */}
+                          <div className="hidden lg:block text-right text-sm">
+                            {user.last_seen_at ? (
+                              <div className="flex items-center gap-1 text-cgi-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {formatDistanceToNow(new Date(user.last_seen_at), {
+                                  addSuffix: true,
+                                  locale: hu,
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-cgi-muted-foreground">Soha</span>
                             )}
                           </div>
-                          <p className="text-sm text-cgi-muted-foreground truncate">
-                            {user.email || "Nincs email"}
-                          </p>
+
+                          {/* Quick View Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuickViewUserId(user.id);
+                            }}
+                            title="Gyorsnézet"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+
+                          <ChevronRight
+                            className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors"
+                            onClick={() => navigate(`/users/${user.id}`)}
+                          />
                         </div>
+                      ))}
+                    </div>
 
-                        <div className="hidden md:flex items-center gap-6 text-sm">
-                          <div className="text-center">
-                            <p className="font-medium text-cgi-secondary">
-                              {user.points_balance}
-                            </p>
-                            <p className="text-xs text-cgi-muted-foreground">
-                              pont
-                            </p>
-                          </div>
-                          <div className="text-center">
-                            <p className="font-medium text-cgi-surface-foreground">
-                              {user.total_redemptions}
-                            </p>
-                            <p className="text-xs text-cgi-muted-foreground">
-                              beváltás
-                            </p>
-                          </div>
-                          <div className="text-center">
-                            <p className="font-medium text-cgi-surface-foreground">
-                              {user.total_sessions}
-                            </p>
-                            <p className="text-xs text-cgi-muted-foreground">
-                              munkamenet
-                            </p>
-                          </div>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-cgi-muted/30">
+                        <p className="text-sm text-cgi-muted-foreground">
+                          {startIndex}-{endIndex} / {data.total} felhasználó
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage((p) => Math.max(0, p - 1))}
+                            disabled={page === 0}
+                            className="gap-1"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Előző
+                          </Button>
+                          <span className="text-sm text-cgi-muted-foreground px-2">
+                            {page + 1} / {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                            disabled={page >= totalPages - 1}
+                            className="gap-1"
+                          >
+                            Következő
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
                         </div>
-
-                        <div className="hidden lg:block text-right text-sm">
-                          {user.last_seen_at ? (
-                            <div className="flex items-center gap-1 text-cgi-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {formatDistanceToNow(new Date(user.last_seen_at), {
-                                addSuffix: true,
-                                locale: hu,
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-cgi-muted-foreground">Soha</span>
-                          )}
-                        </div>
-
-                        {/* Quick View Button */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuickViewUserId(user.id);
-                          }}
-                          title="Gyorsnézet"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-
-                        <ChevronRight className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors" />
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

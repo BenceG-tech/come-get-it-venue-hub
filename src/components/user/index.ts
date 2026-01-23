@@ -19,3 +19,8 @@ export { UserComparison } from "./UserComparison";
 export { ChurnWarningPanel } from "./ChurnWarningPanel";
 export { UserPredictions } from "./UserPredictions";
 export { UserQuickView } from "./UserQuickView";
+// Bulk action components
+export { UserBulkActionsToolbar } from "./UserBulkActionsToolbar";
+export { BulkNotificationModal } from "./BulkNotificationModal";
+export { BulkBonusPointsModal } from "./BulkBonusPointsModal";
+export { UserTagsManager } from "./UserTagsManager";
