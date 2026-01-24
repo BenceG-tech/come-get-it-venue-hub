@@ -165,3 +165,6 @@ verify_jwt = false
 
 [functions.saltedge-webhook]
 verify_jwt = false
+
+[functions.get-venue-free-drink-stats]
+verify_jwt = false
