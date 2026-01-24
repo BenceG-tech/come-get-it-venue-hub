@@ -39,7 +39,14 @@ export function ImageUploadInput({
     if (!file) return;
 
     setIsUploading(true);
-    const safeName = file.name.replace(/\s+/g, "-").toLowerCase();
+    // Sanitize filename: remove accented characters, special chars, and spaces
+    const safeName = file.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove accent marks
+      .replace(/[^a-zA-Z0-9.\-_]/g, "-") // Replace non-alphanumeric with dash
+      .replace(/-+/g, "-") // Collapse multiple dashes
+      .replace(/^-|-$/g, "") // Trim leading/trailing dashes
+      .toLowerCase();
     const path = `${folder}/${Date.now()}-${safeName}`;
 
     console.log("[ImageUploadInput] uploading to path:", path);
