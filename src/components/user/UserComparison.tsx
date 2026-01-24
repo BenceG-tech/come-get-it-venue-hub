@@ -33,34 +33,38 @@ export function UserComparison({
   userRoi,
   platformAvg
 }: UserComparisonProps) {
-  const metrics: ComparisonMetric[] = [
+  const metrics: (ComparisonMetric & { tooltip: string })[] = [
     {
       label: "Beváltások/hó",
       userValue: userRedemptionsPerMonth,
       platformValue: platformAvg.avg_redemptions_per_month,
       format: (val) => `${val.toFixed(1)} db`,
-      higherIsBetter: true
+      higherIsBetter: true,
+      tooltip: "Havi átlagos beváltások száma. Magasabb = aktívabb felhasználó."
     },
     {
       label: "Költés/beváltás",
       userValue: userSpendPerRedemption,
       platformValue: platformAvg.avg_spend_per_redemption,
       format: (val) => `${val.toLocaleString("hu-HU")} Ft`,
-      higherIsBetter: true
+      higherIsBetter: true,
+      tooltip: "Átlagos költés minden beváltás után. Magasabb = értékesebb vendég."
     },
     {
       label: "Látogatott helyek",
       userValue: userVenuesVisited,
       platformValue: platformAvg.avg_venues_visited,
       format: (val) => `${val} db`,
-      higherIsBetter: true
+      higherIsBetter: true,
+      tooltip: "Hány különböző helyszínen volt aktív a platformon."
     },
     {
       label: "ROI",
       userValue: userRoi,
       platformValue: platformAvg.avg_roi,
       format: (val) => `${val.toFixed(1)}x`,
-      higherIsBetter: true
+      higherIsBetter: true,
+      tooltip: "Megtérülés: a vendég által generált bevétel vs. ingyen italok költsége. 2x+ = nyereséges."
     }
   ];
 
@@ -146,7 +150,10 @@ export function UserComparison({
             return (
               <div key={metric.label} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
                 <div className="flex-1">
-                  <p className="text-sm text-cgi-muted-foreground">{metric.label}</p>
+                  <p className="text-sm text-cgi-muted-foreground flex items-center gap-1">
+                    {metric.label}
+                    <InfoTooltip content={metric.tooltip} />
+                  </p>
                   <p className="text-lg font-semibold text-cgi-surface-foreground">
                     {metric.format(metric.userValue)}
                   </p>

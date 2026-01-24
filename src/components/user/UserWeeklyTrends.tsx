@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend
 } from "recharts";
+import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 
 interface WeeklyTrendsData {
   week: string;
@@ -64,13 +65,8 @@ export function UserWeeklyTrends({ data }: UserWeeklyTrendsProps) {
                 allowDecimals={false}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--cgi-surface))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  color: "hsl(var(--cgi-surface-foreground))"
-                }}
-                labelStyle={{ color: "hsl(var(--cgi-surface-foreground))" }}
+                {...chartTooltipStyle}
+                cursor={barChartCursor}
               />
               <Legend 
                 wrapperStyle={{ fontSize: 12 }}

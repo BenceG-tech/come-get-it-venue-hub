@@ -35,6 +35,7 @@ import {
   Tooltip,
   Legend
 } from "recharts";
+import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 
 interface VenueInsights {
   push_notification_lift: number;
@@ -328,11 +329,8 @@ export default function DataInsights() {
                         tickLine={{ stroke: 'hsl(var(--cgi-muted))' }}
                       />
                       <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--cgi-surface))', 
-                          border: '1px solid hsl(var(--cgi-muted))',
-                          borderRadius: '8px'
-                        }}
+                        {...chartTooltipStyle}
+                        cursor={barChartCursor}
                       />
                       <Legend />
                       <Bar dataKey="total_redemptions" name="Beváltások" fill="hsl(var(--cgi-secondary))" radius={[4, 4, 0, 0]} />
@@ -422,11 +420,7 @@ export default function DataInsights() {
                           ))}
                         </Pie>
                         <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--cgi-surface))', 
-                            border: '1px solid hsl(var(--cgi-muted))',
-                            borderRadius: '8px'
-                          }}
+                          {...chartTooltipStyle}
                         />
                       </RechartsPie>
                     </ResponsiveContainer>

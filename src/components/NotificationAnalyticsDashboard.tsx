@@ -18,6 +18,7 @@ import {
   Cell,
 } from "recharts";
 import { TrendingUp, TrendingDown, Send, Eye, MousePointer, Clock } from "lucide-react";
+import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 
 interface NotificationAnalytics {
   summary: {
@@ -205,10 +206,7 @@ export function NotificationAnalyticsDashboard() {
                 />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))" 
-                  }}
+                  {...chartTooltipStyle}
                   labelFormatter={(value) => new Date(value).toLocaleDateString("hu-HU")}
                 />
                 <Line 
@@ -262,10 +260,8 @@ export function NotificationAnalyticsDashboard() {
                   interval={3}
                 />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))" 
-                  }}
+                  {...chartTooltipStyle}
+                  cursor={barChartCursor}
                 />
               </BarChart>
             </ResponsiveContainer>
