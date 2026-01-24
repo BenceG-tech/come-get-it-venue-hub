@@ -1,211 +1,307 @@
 
 
-# FreeDrinkManager Component - Implementációs Terv
+# Grafikon Háttér Javítása, Felhasználói Áttekintés Fejlesztése és Tooltip Bővítés
 
 ## Összefoglaló
 
-Létrehozunk egy új `FreeDrinkManager` komponenst, amely a venue owner-ek számára biztosítja a napi Welcome Drink kiválasztását, időablak beállítását és cap (limit) kezelését. A komponens egy önálló, dashboard-ba integrálható widget lesz, amely a VenueFormModal "Italok" tabjának egyszerűsített, gyors kezelői változata.
+A felhasználó három fő területen kér javítást:
+1. **Grafikon háttérszín probléma**: A kijelölt részek fehér háttérrel jelennek meg, ami rontja az élményt a sötét témában
+2. **Felhasználói áttekintés érthetősége**: A jelenlegi user detail oldal túlságosan zsúfolt és nehezen érthető
+3. **Helyszínenkénti bontás (Bevétel Hatás)**: Az aktuális venue breakdown nem intuitív
+4. **Tooltip hiányosságok**: Több komponensből hiányoznak a magyarázó tooltip-ek
 
-## Komponens Funkciók
+---
 
-### 1. Aktív Welcome Drink Kiválasztás
-- Megjelenítés: aktuális aktív ital neve, képe, kategóriája
-- Dropdown a `venue_drinks` tábla alapján (is_free_drink = true)
-- Gyors váltás a már beállított ingyenes italok között
+## 1. GRAFIKON HÁTTÉR PROBLÉMA - ANALÍZIS
 
-### 2. Időablak Kezelés
-- Aktív időablakok megjelenítése
-- Mai státusz: van-e aktív ablak most, mikor kezdődik/végződik
-- Szerkesztés: napok (H-V checkbox), start/end time
-- "Következő akció" előnézet
+### Azonosított Problémák
 
-### 3. Cap (Limit) Beállítások
-- Napi limit szám megjelenítése és módosítása
-- Óránkénti limit (opcionális)
-- Per-user napi limit
-- Kihasználtság progress bar (mai beváltások / napi cap)
-- "onExhaust" viselkedés: zárás / alternatív ajánlat mutatása
+A Recharts könyvtárban a `Tooltip` komponens `contentStyle` beállításai a legtöbb helyen jók, de a **cursor háttér** és a **BarChart background** nem mindig van explicit beállítva.
 
-### 4. Valós Idejű Státusz
-- Mai beváltások száma (redemptions táblából)
-- Cap kihasználtság (%) 
-- Aktív/Inaktív státusz badge
+**Érintett fájlok:**
 
-## Technikai Megvalósítás
+| Fájl | Probléma |
+|------|----------|
+| `DataInsights.tsx` (330-336. sor) | Tooltip-ból hiányzik a `color` tulajdonság |
+| `NotificationAnalyticsDashboard.tsx` (207-211, 264-268) | `hsl(var(--card))` fehér lehet, ha nincs jól definiálva |
+| `AdminDashboard.tsx` (125. sor) | `background={{ fill: 'transparent' }}` jó, de a cursor nincs kezelve |
+| `UserPointsFlow.tsx` (119-125, 162-168) | Hiányzik a `labelStyle` és `itemStyle` beállítás |
+| `UserDrinkPreferences.tsx` (74-81) | Hiányzik a `labelStyle` |
+| `UserWeeklyTrends.tsx` (66-74) | Részben jó, de a cursor háttér nem definiált |
 
-### Fájlok
+### Javasolt Megoldás
 
-| Fájl | Típus | Leírás |
-|------|-------|--------|
-| `src/components/venue/FreeDrinkManager.tsx` | ÚJ | Fő komponens |
-| `src/components/dashboard/OwnerDashboard.tsx` | MÓDOSÍT | Widget integráció |
-| `supabase/functions/get-venue-free-drink-stats/index.ts` | ÚJ | Valós idejű statisztikák |
+Egységes tooltip stílus létrehozása és cursor styling:
 
-### Komponens Struktúra
+```typescript
+// Új közös stílus definíció (pl. src/lib/chartStyles.ts)
+export const chartTooltipStyle = {
+  contentStyle: {
+    backgroundColor: "hsl(var(--cgi-surface))",
+    border: "1px solid hsl(var(--cgi-muted))",
+    borderRadius: "8px",
+    color: "hsl(var(--cgi-surface-foreground))",
+  },
+  labelStyle: { 
+    color: "hsl(var(--cgi-surface-foreground))" 
+  },
+  itemStyle: { 
+    color: "hsl(var(--cgi-muted-foreground))" 
+  },
+  cursor: { 
+    fill: "hsl(var(--cgi-muted))", 
+    opacity: 0.2 
+  }
+};
+
+// BarChart-hoz
+<BarChart>
+  <Tooltip 
+    {...chartTooltipStyle}
+    cursor={{ fill: "rgba(31, 177, 183, 0.1)" }} // Átlátszó cgi-primary
+  />
+</BarChart>
+```
+
+---
+
+## 2. FELHASZNÁLÓI ÁTTEKINTÉS - JELENLEGI ÁLLAPOT
+
+### Probléma Leírás
+
+A UserDetail oldal "Áttekintés" (overview) fül jelenleg **túl sok komponenst** tartalmaz egymás alatt:
+1. ChurnWarningPanel (ha van)
+2. UserRevenueImpact 
+3. UserComparison
+4. UserBehaviorStory
+5. UserWeeklyTrends + UserDrinkPreferences grid
+6. UserPredictions
+7. UserActivityHeatmap
+
+Ez **információs túlterhelést** okoz és nehéz gyorsan átlátni.
+
+### Javasolt Megoldások (3 Opció)
+
+#### **Opció A: Kompakt Kártya Layout (Ajánlott)**
+
+Egy "vizuális dashboard" stílus, ahol a legfontosabb metrikák kártyaként jelennek meg:
 
 ```text
-FreeDrinkManager
-├── Header
-│   ├── Cím + Tooltip
-│   └── Aktív/Inaktív Badge
-├── Aktív Ital Szekció
-│   ├── Ital Kártya (kép, név, kategória)
-│   └── Ital Váltó Dropdown
-├── Időablak Szekció
-│   ├── Mai Státusz (aktív ablak)
-│   ├── Időablak Lista
-│   └── "Szerkesztés" Modal/Drawer
-├── Cap Beállítások Szekció
-│   ├── CapProgressBar
-│   ├── Limit Beállító Input
-│   └── OnExhaust Selector
-└── Gyors Akciók
-    ├── "Mentés" gomb
-    └── Link a teljes szerkesztéshez
+┌────────────────────────────────────────────────────────────────────┐
+│  FELHASZNÁLÓI ÖSSZEFOGLALÓ                                         │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │
+│  │ 📅 67 nap   │ │ 🍺 12 db    │ │ 💳 34,500Ft │ │ 📈 3.2x ROI │   │
+│  │ óta tag     │ │ beváltás    │ │ költés      │ │             │   │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘   │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │ 💡 FŐBB JELLEMZŐK                                           │   │
+│  │                                                             │   │
+│  │ • Kedvenc helyszín: Vinozza (8 látogatás)                  │   │
+│  │ • Kedvenc ital: Peroni Nastro Azzurro                      │   │
+│  │ • Tipikus időpont: Péntek 17:00-19:00                      │   │
+│  │ • Státusz: Aktív felhasználó ✓                             │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  [Engagement: 72] [Churn: Alacsony ✓] [LTV: 45,200 Ft]             │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-### API / Adatlekérdezés
+**Előnyök:**
+- Egy pillantással áttekinthető
+- Legfontosabb adatok kiemelve
+- Kevesebb görgetés
 
-A komponens a következő adatokat kérdezi le:
+#### **Opció B: Tab-alapú Szekcionálás**
 
-1. **Venue adatok** (drinks, freeDrinkWindows, caps)
-2. **Mai beváltások száma** - új edge function vagy meglévő bővítése
-3. **Aktív státusz** - calculateból (isWindowActive)
+Az "Áttekintés" fülön belül további alfülek:
+- **Pénzügyi** (ROI, Revenue Impact)
+- **Viselkedés** (Trends, Heatmap)
+- **Előrejelzés** (Predictions, AI)
 
-### Props Interface
+**Előnyök:**
+- Logikus csoportosítás
+- Kevésbé zsúfolt
 
-```typescript
-interface FreeDrinkManagerProps {
-  venueId: string;
-  onUpdate?: (updates: Partial<Venue>) => Promise<void>;
-  compact?: boolean; // Dashboard widget vs full page mode
-}
-```
+**Hátrányok:**
+- Több kattintás
+- Dupla tab-struktúra zavaró lehet
 
-### State Management
+#### **Opció C: Collapsible Accordion Layout**
 
-- React Query cache: `['venue-free-drink-config', venueId]`
-- Lokális form state a szerkesztéshez
-- Optimistic updates a cap módosításhoz
-
-## UI/UX Design
-
-### Desktop Layout (Widget)
+Minden szekció összecsukható, alapból csak a címek látszanak:
 
 ```text
-┌────────────────────────────────────────────────────────────────┐
-│  🍺 NAPI ITAL BEÁLLÍTÁS                    [Aktív ⚫️]        │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ [IMG] Peroni Nastro Azzurro              [Váltás ▼]     │ │
-│  │       Kategória: beer                                    │ │
-│  │       Időablak: 14:00 - 18:00 (H-P)                     │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ Napi kapacitás                          [Elérhető ✓]    │ │
-│  │ [███████████████░░░░░░░░] 67%                           │ │
-│  │ 67 / 100 beváltás                                       │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐               │
-│  │ Napi limit │ │ Per-user   │ │ Ha elfogy  │               │
-│  │    100     │ │     1      │ │  Zárás     │               │
-│  └────────────┘ └────────────┘ └────────────┘               │
-│                                                                │
-│  [Időablak szerkesztése]              [Mentés]               │
-└────────────────────────────────────────────────────────────────┘
+▼ Bevétel Hatás (ROI: 3.2x)
+  [teljes UserRevenueImpact tartalom]
+
+▶ Platform Összehasonlítás (+15% vs átlag)
+  [összecsukott]
+
+▶ Heti Trendek
+  [összecsukott]
+
+▶ AI Előrejelzések (80% bizalom)
+  [összecsukott]
 ```
 
-### Mobile Layout
+**Előnyök:**
+- Felhasználó választja mit lát
+- Minden adat elérhető
 
-- Collapsible card design
-- Bottom sheet for editing time windows
-- Touch-friendly day selector
+**Hátrányok:**
+- Több kattintás az információhoz
 
-### Branding
+---
 
-- Primary: `#0d7377` (Teal Blue)
-- Dark Navy: `#1a1a2e`
-- Typography: Inter (body), system fonts for numbers
-- CSS Classes: `cgi-card`, `cgi-input`, `cgi-button-primary`
+## 3. HELYSZÍNENKÉNTI BONTÁS (BEVÉTEL HATÁS) - ÚJRATERVEZÉS
 
-## Edge Function: get-venue-free-drink-stats
+### Jelenlegi Probléma
 
-### Request
+A `UserRevenueImpact` komponensben a venue breakdown:
+- Túl sok badge egy sorban (Ma, Heti, Havi, Összes)
+- Nem egyértelmű mi a "free drinks" vs "költés" kapcsolat
+- ROI érték nem magyarázott
+
+### Javasolt Megoldások (2 Opció)
+
+#### **Opció 1: Vizuális Progress Bar Layout (Ajánlott)**
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  📍 VINOZZA                                              🔥 +3.2x  │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Ingyen italok értéke:     3,000 Ft (2 db)                         │
+│  [████░░░░░░░░░░░░░░░░░░░░░░░░░░░]                                 │
+│                                                                     │
+│  Többletköltés:            9,600 Ft                                │
+│  [████████████████████████████████████████░░░░░░░░]                │
+│                                                                     │
+│  ────────────────────────────────────────                          │
+│  Eredmény: +6,600 Ft tiszta profit ℹ️                              │
+│           (3.2x megtérülés az ingyen italra)                       │
+│                                                                     │
+│  📊 Látogatások: 8 összesen (2 ezen a héten)                       │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Változtatások:**
+- Vizuális progress bar mutatja az arányt
+- Egyértelmű "profit" sor
+- Tooltip magyarázza a ROI számítást
+- Egyszerűsített látogatás sor (nem 4 badge)
+
+#### **Opció 2: Táblázatos Layout**
+
+```text
+┌─────────────────┬──────────────┬─────────────┬─────────┐
+│ Helyszín        │ Free Drinks  │ Költés      │ ROI     │
+├─────────────────┼──────────────┼─────────────┼─────────┤
+│ 📍 Vinozza      │ 2 db (3k Ft) │ 9,600 Ft    │ 3.2x 🔥 │
+│ 📍 A KERT       │ 1 db (1.5k)  │ 4,200 Ft    │ 2.8x    │
+│ 📍 Bartl Janos  │ 3 db (4.5k)  │ 8,100 Ft    │ 1.8x    │
+└─────────────────┴──────────────┴─────────────┴─────────┘
+
+[Bővebben ▼] ← kattintásra mutatja a részleteket
+```
+
+**Előnyök:**
+- Kompakt
+- Gyorsan összehasonlítható
+
+---
+
+## 4. TOOLTIP BŐVÍTÉSEK
+
+### Hiányzó Tooltip-ek Azonosítása
+
+| Komponens | Hiányzó Tooltip Helyek |
+|-----------|------------------------|
+| `UserRevenueImpact.tsx` | Free drinks / Költés cellák, Visit badge-ek |
+| `UserComparison.tsx` | Egyedi metrika sorok (mi az "ROI"?) |
+| `QuickOverviewCard.tsx` | "MA" szekció, "Heti VIP" badge |
+| `UserScorecard.tsx` | Meglévők jók ✓ |
+| `AdminDashboard.tsx` | Chart tengelyek, adatpontok |
+| `DataInsights.tsx` | Egyes metric card-ok |
+
+### Javasolt Tooltip Szövegek
 
 ```typescript
-{
-  venue_id: string;
-}
+// UserRevenueImpact - Venue breakdown
+const tooltips = {
+  freeDrinks: "Ingyen italok száma és becsült értéke (1 ital ≈ 1,500 Ft alapján)",
+  posSpend: "Tényleges kártyás költés a helyszínen (POS/banki adatból)",
+  roi: "ROI = Költés ÷ Ingyen italok értéke. 2x+ = nyereséges vendég",
+  visits: "Látogatások száma: összes / ezen a héten / ma",
+  matchConfidence: "Mennyire biztos a beváltás-tranzakció párosítás (időablak alapján)"
+};
+
+// UserComparison - Metrics
+const comparisonTooltips = {
+  redemptionsPerMonth: "Átlagos havi beváltások száma. Platform átlag: X db/hó",
+  spendPerRedemption: "Átlagos költés beváltásonként. Magasabb = értékesebb vendég",
+  venuesVisited: "Hány különböző helyszínen volt aktív",
+  roiExplain: "Megtérülés: a vendég által generált bevétel vs. ingyen italok költsége"
+};
 ```
 
-### Response
+---
 
-```typescript
-{
-  today_redemptions: number;
-  cap_usage_pct: number;
-  active_free_drinks: Array<{
-    id: string;
-    name: string;
-    image_url?: string;
-    category?: string;
-    windows: FreeDrinkWindow[];
-  }>;
-  current_active_window: FreeDrinkWindow | null;
-  next_window: FreeDrinkWindow | null;
-  caps: RedemptionCap;
-  is_active_now: boolean;
-}
-```
+## 5. IMPLEMENTÁCIÓS TERV
 
-## Implementációs Lépések
+### Fázis 1: Grafikon Háttér Javítás (1-2 óra)
 
-### 1. Edge Function létrehozása (30 perc)
-- `get-venue-free-drink-stats` endpoint
-- Mai redemption count lekérdezés
-- Aktív státusz kalkuláció
+**Érintett fájlok:**
+1. `src/lib/chartStyles.ts` - ÚJ közös stílus fájl
+2. `src/pages/DataInsights.tsx` - Tooltip cursor javítás
+3. `src/components/NotificationAnalyticsDashboard.tsx` - Tooltip stílus
+4. `src/components/dashboard/AdminDashboard.tsx` - BarChart cursor
+5. `src/components/user/UserWeeklyTrends.tsx` - Cursor hozzáadás
+6. `src/components/user/UserPointsFlow.tsx` - Stílus kiegészítés
+7. `src/components/user/UserDrinkPreferences.tsx` - labelStyle
 
-### 2. FreeDrinkManager komponens (2-3 óra)
-- Alap layout és styling
-- Venue adatok lekérdezése
-- Aktív ital megjelenítés
-- CapProgressBar integráció
-- Időablak megjelenítés
+### Fázis 2: UserRevenueImpact Átdolgozás (2-3 óra)
 
-### 3. Szerkesztő Modal (1-2 óra)
-- Cap beállítások form
-- Időablak szerkesztő (újrafelhasználva EnhancedDrinkSelector logikáját)
-- Ital váltó dropdown
+**Módosítandó fájl:** `src/components/user/UserRevenueImpact.tsx`
 
-### 4. OwnerDashboard integráció (30 perc)
-- Widget hozzáadása a "Venue Menedzsment" szekcióhoz
-- Responsive layout
+Változások:
+- Venue breakdown új layout (progress bar vagy táblázat)
+- Egyszerűsített visit counter (1 sor, nem 4 badge)
+- ROI magyarázó tooltip
+- "Eredmény/Profit" sor hozzáadása
 
-### 5. Tesztelés és finomhangolás (1 óra)
-- Mobile responsive ellenőrzés
-- Loading/error states
-- Edge case-ek kezelése
+### Fázis 3: User Overview Egyszerűsítés (2-3 óra)
 
-## Függőségek
+**Módosítandó fájl:** `src/pages/UserDetail.tsx`
 
-### Meglévő Komponensek (Újrafelhasználás)
-- `CapProgressBar` - kapacitás vizualizáció
-- `TimeRangeInput` - idő szerkesztés
-- `ScheduleGrid` / `ScheduleGridMobile` - időablak vizualizáció
-- `Select`, `Input`, `Button`, `Card` - shadcn/ui
+**Opció A implementálása (Kompakt Kártya Layout):**
+1. Új `UserOverviewSummary` komponens létrehozása
+2. A legfontosabb metrikák kiemelése egy kompakt kártyában
+3. Másodlagos komponensek átmozgatása más tab-okra vagy összecsukhatóvá tétele
 
-### Meglévő Típusok
-- `Venue`, `VenueDrink`, `FreeDrinkWindow`, `RedemptionCap`
-- `CapUsage`, `ActiveFreeDrinkStatus`
+### Fázis 4: Tooltip Bővítés (1-2 óra)
 
-### Meglévő Business Logic
-- `isWindowActive()` - ablak aktivitás
-- `getActiveFreeDrinkStatus()` - aktuális státusz
-- `calculateCapUsage()` - kihasználtság
-- `getNextActiveWindow()` - következő ablak
+**Érintett fájlok:**
+- `UserRevenueImpact.tsx` - 5+ új tooltip
+- `UserComparison.tsx` - 4 új tooltip a metrikákhoz
+- `QuickOverviewCard.tsx` - 2-3 új tooltip
+- `AdminDashboard.tsx` - Chart tooltip bővítés
 
-## Összesen Becsült Idő: ~5-6 óra
+---
+
+## 6. ÖSSZEFOGLALÁS ÉS AJÁNLÁS
+
+| Terület | Javasolt Opció |
+|---------|----------------|
+| Grafikon háttér | Egységes chartTooltipStyle + cursor fix |
+| User Overview | **Opció A**: Kompakt Kártya Layout |
+| Venue Breakdown | **Opció 1**: Vizuális Progress Bar |
+| Tooltipek | Minden metrikához magyar nyelvű tooltip |
+
+**Becsült Implementációs Idő:** 6-10 óra
 
