@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FirstGlassWidget } from "./FirstGlassWidget";
 import { SimplifiedROIWidget } from "./SimplifiedROIWidget";
 import { CSRWidget } from "./CSRWidget";
+import { FreeDrinkManager } from "@/components/venue/FreeDrinkManager";
 
 export function OwnerDashboard() {
   // Get user's primary venue
@@ -190,6 +191,9 @@ export function OwnerDashboard() {
       {/* Integration-specific Analytics Widgets */}
       {venueId && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Free Drink Manager Widget - always show for venue owners */}
+          <FreeDrinkManager venueId={venueId} compact />
+
           {/* First Glass Widget for Goorderz venues */}
           {isGoorderz && (
             <FirstGlassWidget venueId={venueId} />
