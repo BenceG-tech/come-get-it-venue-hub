@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
-import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage } from '@/lib/types';
+import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage, VenueIntegrationType } from '@/lib/types';
 import { Plus, Trash2, AlertCircle, HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageUploadInput } from './ImageUploadInput';
@@ -21,6 +21,7 @@ import VenueMapPreview from './VenueMapPreview';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { VenueIntegrationSettings } from './VenueIntegrationSettings';
 
 interface VenueFormModalProps {
   venue?: Venue;
@@ -70,7 +71,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         7: { open: '10:00', close: '21:00' },
       },
       specialDates: []
-    }
+    },
+    // Integration fields
+    integration_type: venue?.integration_type || 'none',
+    goorderz_external_id: venue?.goorderz_external_id || '',
+    saltedge_connection_id: venue?.saltedge_connection_id || '',
   });
 
 
@@ -103,7 +108,11 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           7: { open: '10:00', close: '21:00' },
         },
         specialDates: []
-      }
+      },
+      // Integration fields
+      integration_type: venue?.integration_type || 'none',
+      goorderz_external_id: venue?.goorderz_external_id || '',
+      saltedge_connection_id: venue?.saltedge_connection_id || '',
     });
   }, [open, venue?.id]);
 
@@ -308,6 +317,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Italok</TabsTrigger>
           <TabsTrigger value="hours" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Nyitva</TabsTrigger>
           <TabsTrigger value="caps" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Limitek</TabsTrigger>
+          <TabsTrigger value="integration" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Integráció</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4">
@@ -657,6 +667,17 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 initialHours={formData.business_hours}
                 onSave={async (hours) => {
                   setFormData(prev => ({ ...prev, business_hours: hours }));
+                }}
+              />
+            </TabsContent>
+
+            <TabsContent value="integration" className="space-y-4">
+              <VenueIntegrationSettings
+                integrationType={formData.integration_type || 'none'}
+                goorderzExternalId={formData.goorderz_external_id}
+                saltedgeConnectionId={formData.saltedge_connection_id}
+                onChange={(updates) => {
+                  setFormData(prev => ({ ...prev, ...updates }));
                 }}
               />
             </TabsContent>

@@ -48,6 +48,10 @@ const VENUE_COLUMNS = new Set([
   "google_maps_url",
   "caps",
   "notifications",
+  // Integration type fields
+  "integration_type",
+  "goorderz_external_id",
+  "saltedge_connection_id",
 ]);
 
 function pickVenueColumns(payload: any) {

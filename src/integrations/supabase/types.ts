@@ -1061,6 +1061,64 @@ export type Database = {
           },
         ]
       }
+      redemption_transaction_matches: {
+        Row: {
+          created_at: string | null
+          id: string
+          match_confidence: number | null
+          match_method: string | null
+          matched_at: string | null
+          redemption_id: string
+          saltedge_transaction_id: string | null
+          time_delta_seconds: number | null
+          transaction_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_at?: string | null
+          redemption_id: string
+          saltedge_transaction_id?: string | null
+          time_delta_seconds?: number | null
+          transaction_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_at?: string | null
+          redemption_id?: string
+          saltedge_transaction_id?: string | null
+          time_delta_seconds?: number | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redemption_transaction_matches_redemption_id_fkey"
+            columns: ["redemption_id"]
+            isOneToOne: false
+            referencedRelation: "redemptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "redemption_transaction_matches_saltedge_transaction_id_fkey"
+            columns: ["saltedge_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "fidel_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "redemption_transaction_matches_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "pos_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       redemptions: {
         Row: {
           created_at: string
@@ -1977,9 +2035,11 @@ export type Database = {
           distance: number | null
           formatted_address: string | null
           google_maps_url: string | null
+          goorderz_external_id: string | null
           hero_image_url: string | null
           id: string
           image_url: string | null
+          integration_type: string | null
           is_paused: boolean
           merchant_match_rules: Json | null
           name: string
@@ -1993,6 +2053,7 @@ export type Database = {
           points_rules: Json | null
           price_tier: number | null
           rating: number | null
+          saltedge_connection_id: string | null
           tags: string[] | null
           updated_at: string
           website_url: string | null
@@ -2007,9 +2068,11 @@ export type Database = {
           distance?: number | null
           formatted_address?: string | null
           google_maps_url?: string | null
+          goorderz_external_id?: string | null
           hero_image_url?: string | null
           id?: string
           image_url?: string | null
+          integration_type?: string | null
           is_paused?: boolean
           merchant_match_rules?: Json | null
           name: string
@@ -2023,6 +2086,7 @@ export type Database = {
           points_rules?: Json | null
           price_tier?: number | null
           rating?: number | null
+          saltedge_connection_id?: string | null
           tags?: string[] | null
           updated_at?: string
           website_url?: string | null
@@ -2037,9 +2101,11 @@ export type Database = {
           distance?: number | null
           formatted_address?: string | null
           google_maps_url?: string | null
+          goorderz_external_id?: string | null
           hero_image_url?: string | null
           id?: string
           image_url?: string | null
+          integration_type?: string | null
           is_paused?: boolean
           merchant_match_rules?: Json | null
           name?: string
@@ -2053,6 +2119,7 @@ export type Database = {
           points_rules?: Json | null
           price_tier?: number | null
           rating?: number | null
+          saltedge_connection_id?: string | null
           tags?: string[] | null
           updated_at?: string
           website_url?: string | null
