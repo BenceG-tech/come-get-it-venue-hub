@@ -1,40 +1,27 @@
 
-
-# Grafikon Háttér Javítása, Felhasználói Áttekintés Fejlesztése és Tooltip Bővítés
+# Grafikon Háttér, Felhasználói Áttekintés és Tooltip Javítások
 
 ## Összefoglaló
 
-A felhasználó három fő területen kér javítást:
-1. **Grafikon háttérszín probléma**: A kijelölt részek fehér háttérrel jelennek meg, ami rontja az élményt a sötét témában
-2. **Felhasználói áttekintés érthetősége**: A jelenlegi user detail oldal túlságosan zsúfolt és nehezen érthető
-3. **Helyszínenkénti bontás (Bevétel Hatás)**: Az aktuális venue breakdown nem intuitív
-4. **Tooltip hiányosságok**: Több komponensből hiányoznak a magyarázó tooltip-ek
+Ez a terv három fő területet fed le:
+1. **Grafikon háttérszín javítása** - A BarChart/AreaChart cursor-ánál megjelenő fehér háttér kijavítása egységes stílussal
+2. **Felhasználói áttekintés egyszerűsítése** - A UserDetail "Áttekintés" tab átszervezése érthetőbb, kompaktabb formába
+3. **Helyszínenkénti bontás újratervezése** - A UserRevenueImpact komponens venue breakdown részének vizuális javítása
+4. **Tooltip bővítés** - Magyarázó tooltip-ek hozzáadása a metrikákhoz
 
 ---
 
-## 1. GRAFIKON HÁTTÉR PROBLÉMA - ANALÍZIS
+## 1. GRAFIKON HÁTTÉR JAVÍTÁS
 
-### Azonosított Problémák
+### Probléma
+A Recharts BarChart és egyéb grafikonoknál a kijelölt (hover) oszlop mögött fehér háttér jelenik meg a sötét témában, mert a `cursor` prop nincs explicit beállítva.
 
-A Recharts könyvtárban a `Tooltip` komponens `contentStyle` beállításai a legtöbb helyen jók, de a **cursor háttér** és a **BarChart background** nem mindig van explicit beállítva.
+### Megoldás: Központi Chart Stílus Definíció
 
-**Érintett fájlok:**
-
-| Fájl | Probléma |
-|------|----------|
-| `DataInsights.tsx` (330-336. sor) | Tooltip-ból hiányzik a `color` tulajdonság |
-| `NotificationAnalyticsDashboard.tsx` (207-211, 264-268) | `hsl(var(--card))` fehér lehet, ha nincs jól definiálva |
-| `AdminDashboard.tsx` (125. sor) | `background={{ fill: 'transparent' }}` jó, de a cursor nincs kezelve |
-| `UserPointsFlow.tsx` (119-125, 162-168) | Hiányzik a `labelStyle` és `itemStyle` beállítás |
-| `UserDrinkPreferences.tsx` (74-81) | Hiányzik a `labelStyle` |
-| `UserWeeklyTrends.tsx` (66-74) | Részben jó, de a cursor háttér nem definiált |
-
-### Javasolt Megoldás
-
-Egységes tooltip stílus létrehozása és cursor styling:
+**Új fájl:** `src/lib/chartStyles.ts`
 
 ```typescript
-// Új közös stílus definíció (pl. src/lib/chartStyles.ts)
+// Egységes Recharts stílusok a sötét témához
 export const chartTooltipStyle = {
   contentStyle: {
     backgroundColor: "hsl(var(--cgi-surface))",
@@ -48,29 +35,41 @@ export const chartTooltipStyle = {
   itemStyle: { 
     color: "hsl(var(--cgi-muted-foreground))" 
   },
-  cursor: { 
-    fill: "hsl(var(--cgi-muted))", 
-    opacity: 0.2 
-  }
 };
 
-// BarChart-hoz
-<BarChart>
-  <Tooltip 
-    {...chartTooltipStyle}
-    cursor={{ fill: "rgba(31, 177, 183, 0.1)" }} // Átlátszó cgi-primary
-  />
-</BarChart>
+// BarChart cursor (hover háttér) - átlátszó sötét
+export const barChartCursor = { 
+  fill: "rgba(31, 177, 183, 0.1)" // cgi-primary 10% opacity
+};
+
+// AreaChart cursor - vékony vonal
+export const areaChartCursor = {
+  stroke: "hsl(var(--cgi-primary))",
+  strokeWidth: 1,
+  strokeDasharray: "3 3"
+};
 ```
+
+### Érintett Fájlok és Módosítások
+
+| Fájl | Probléma | Javítás |
+|------|----------|---------|
+| `AdminDashboard.tsx` (87-95, 135-142) | Tooltip jó, de BarChart cursor hiányzik | `cursor={barChartCursor}` hozzáadása |
+| `DataInsights.tsx` (330-336, 424-430) | Tooltip-ból hiányzik color | `chartTooltipStyle` import + használat |
+| `NotificationAnalyticsDashboard.tsx` (207-211, 264-268) | `hsl(var(--card))` lehet fehér | Cserélni `chartTooltipStyle`-ra |
+| `UserWeeklyTrends.tsx` (66-74) | Hiányzik cursor beállítás | `cursor={barChartCursor}` |
+| `UserPointsFlow.tsx` (119-125, 162-168) | Hiányzik labelStyle | `chartTooltipStyle` |
+| `UserDrinkPreferences.tsx` (74-81) | Hiányzik labelStyle | `chartTooltipStyle` |
+| `RedemptionTrendsChart.tsx` (50-62) | cursor nincs kezelve | `cursor={barChartCursor}` |
+| `UserActivityChart.tsx` (76-85) | AreaChart cursor | `cursor={areaChartCursor}` |
 
 ---
 
-## 2. FELHASZNÁLÓI ÁTTEKINTÉS - JELENLEGI ÁLLAPOT
+## 2. FELHASZNÁLÓI ÁTTEKINTÉS EGYSZERŰSÍTÉS
 
-### Probléma Leírás
-
-A UserDetail oldal "Áttekintés" (overview) fül jelenleg **túl sok komponenst** tartalmaz egymás alatt:
-1. ChurnWarningPanel (ha van)
+### Jelenlegi Probléma
+A UserDetail "Áttekintés" tab túl sok komponenst tartalmaz egymás alatt:
+1. ChurnWarningPanel (feltételes)
 2. UserRevenueImpact 
 3. UserComparison
 4. UserBehaviorStory
@@ -78,230 +77,228 @@ A UserDetail oldal "Áttekintés" (overview) fül jelenleg **túl sok komponenst
 6. UserPredictions
 7. UserActivityHeatmap
 
-Ez **információs túlterhelést** okoz és nehéz gyorsan átlátni.
+Ez információs túlterhelést okoz.
 
-### Javasolt Megoldások (3 Opció)
+### Megoldás: Kompakt Összefoglaló Kártya + Accordion
 
-#### **Opció A: Kompakt Kártya Layout (Ajánlott)**
+**Változtatások a `src/pages/UserDetail.tsx` fájlban:**
 
-Egy "vizuális dashboard" stílus, ahol a legfontosabb metrikák kártyaként jelennek meg:
+1. **Új összefoglaló szekció** az "Áttekintés" tab tetején:
+   - Kompakt grid a legfontosabb metrikákkal
+   - "Főbb jellemzők" lista: kedvenc hely, ital, időpont, státusz
 
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│  FELHASZNÁLÓI ÖSSZEFOGLALÓ                                         │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │
-│  │ 📅 67 nap   │ │ 🍺 12 db    │ │ 💳 34,500Ft │ │ 📈 3.2x ROI │   │
-│  │ óta tag     │ │ beváltás    │ │ költés      │ │             │   │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘   │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ 💡 FŐBB JELLEMZŐK                                           │   │
-│  │                                                             │   │
-│  │ • Kedvenc helyszín: Vinozza (8 látogatás)                  │   │
-│  │ • Kedvenc ital: Peroni Nastro Azzurro                      │   │
-│  │ • Tipikus időpont: Péntek 17:00-19:00                      │   │
-│  │ • Státusz: Aktív felhasználó ✓                             │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  [Engagement: 72] [Churn: Alacsony ✓] [LTV: 45,200 Ft]             │
-│                                                                     │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-**Előnyök:**
-- Egy pillantással áttekinthető
-- Legfontosabb adatok kiemelve
-- Kevesebb görgetés
-
-#### **Opció B: Tab-alapú Szekcionálás**
-
-Az "Áttekintés" fülön belül további alfülek:
-- **Pénzügyi** (ROI, Revenue Impact)
-- **Viselkedés** (Trends, Heatmap)
-- **Előrejelzés** (Predictions, AI)
-
-**Előnyök:**
-- Logikus csoportosítás
-- Kevésbé zsúfolt
-
-**Hátrányok:**
-- Több kattintás
-- Dupla tab-struktúra zavaró lehet
-
-#### **Opció C: Collapsible Accordion Layout**
-
-Minden szekció összecsukható, alapból csak a címek látszanak:
+2. **Collapsible (Accordion) layout** a részletes komponensekhez:
+   - "Bevétel Hatás" - alapból nyitva
+   - "Platform Összehasonlítás" - összecsukva
+   - "Viselkedés & Trendek" - összecsukva
+   - "Előrejelzések" - összecsukva
 
 ```text
-▼ Bevétel Hatás (ROI: 3.2x)
-  [teljes UserRevenueImpact tartalom]
+JAVASOLT LAYOUT:
+
+┌─────────────────────────────────────────────────────────────────┐
+│  GYORS ÁTTEKINTÉS                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                            │
+│ │67 nap│ │12 db │ │34.5k │ │3.2x  │                            │
+│ │ tag  │ │bevált│ │ Ft   │ │ ROI  │                            │
+│ └──────┘ └──────┘ └──────┘ └──────┘                            │
+│                                                                 │
+│ 💡 Kedvenc: Vinozza (8×) • 🍺 Peroni • ⏰ Péntek 17-19          │
+│                                                                 │
+│ [Engagement: 72] [Churn: Alacsony ✓] [LTV: 45.2k Ft]           │
+└─────────────────────────────────────────────────────────────────┘
+
+▼ Bevétel Hatás (Részletek)
+  [UserRevenueImpact - átdolgozott]
 
 ▶ Platform Összehasonlítás (+15% vs átlag)
-  [összecsukott]
+  
+▶ Viselkedési Minták
+  [Trends + Preferences + Heatmap]
 
-▶ Heti Trendek
-  [összecsukott]
-
-▶ AI Előrejelzések (80% bizalom)
-  [összecsukott]
+▶ AI Előrejelzések
 ```
 
-**Előnyök:**
-- Felhasználó választja mit lát
-- Minden adat elérhető
+### Új Komponens: `UserOverviewSummary.tsx`
 
-**Hátrányok:**
-- Több kattintás az információhoz
+```typescript
+interface UserOverviewSummaryProps {
+  stats: UserStats;
+  scores: UserScores;
+  predictions: UserPredictions | null;
+}
+
+// Megjelenít:
+// - 4 fő KPI kártya (tag óta, beváltások, költés, ROI)
+// - "Főbb jellemzők" sor ikonokkal
+// - Engagement/Churn/LTV badge-ek
+```
 
 ---
 
-## 3. HELYSZÍNENKÉNTI BONTÁS (BEVÉTEL HATÁS) - ÚJRATERVEZÉS
+## 3. HELYSZÍNENKÉNTI BONTÁS ÁTDOLGOZÁS
 
 ### Jelenlegi Probléma
-
-A `UserRevenueImpact` komponensben a venue breakdown:
+A `UserRevenueImpact.tsx` venue breakdown szekciója:
 - Túl sok badge egy sorban (Ma, Heti, Havi, Összes)
-- Nem egyértelmű mi a "free drinks" vs "költés" kapcsolat
+- Nem egyértelmű a "free drinks" vs "költés" kapcsolat
 - ROI érték nem magyarázott
 
-### Javasolt Megoldások (2 Opció)
+### Megoldás: Vizuális Progress Bar Layout
 
-#### **Opció 1: Vizuális Progress Bar Layout (Ajánlott)**
-
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│  📍 VINOZZA                                              🔥 +3.2x  │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Ingyen italok értéke:     3,000 Ft (2 db)                         │
-│  [████░░░░░░░░░░░░░░░░░░░░░░░░░░░]                                 │
-│                                                                     │
-│  Többletköltés:            9,600 Ft                                │
-│  [████████████████████████████████████████░░░░░░░░]                │
-│                                                                     │
-│  ────────────────────────────────────────                          │
-│  Eredmény: +6,600 Ft tiszta profit ℹ️                              │
-│           (3.2x megtérülés az ingyen italra)                       │
-│                                                                     │
-│  📊 Látogatások: 8 összesen (2 ezen a héten)                       │
-│                                                                     │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-**Változtatások:**
-- Vizuális progress bar mutatja az arányt
-- Egyértelmű "profit" sor
-- Tooltip magyarázza a ROI számítást
-- Egyszerűsített látogatás sor (nem 4 badge)
-
-#### **Opció 2: Táblázatos Layout**
+**Módosítás:** `src/components/user/UserRevenueImpact.tsx`
 
 ```text
-┌─────────────────┬──────────────┬─────────────┬─────────┐
-│ Helyszín        │ Free Drinks  │ Költés      │ ROI     │
-├─────────────────┼──────────────┼─────────────┼─────────┤
-│ 📍 Vinozza      │ 2 db (3k Ft) │ 9,600 Ft    │ 3.2x 🔥 │
-│ 📍 A KERT       │ 1 db (1.5k)  │ 4,200 Ft    │ 2.8x    │
-│ 📍 Bartl Janos  │ 3 db (4.5k)  │ 8,100 Ft    │ 1.8x    │
-└─────────────────┴──────────────┴─────────────┴─────────┘
+JAVASOLT ÚJ LAYOUT:
 
-[Bővebben ▼] ← kattintásra mutatja a részleteket
+┌────────────────────────────────────────────────────────────────┐
+│  📍 VINOZZA                                          🔥 +3.2x  │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  Ingyen italok értéke:                                         │
+│  [█████░░░░░░░░░░░░░░░░░░░░░░░░░] 3,000 Ft (2 db)  ℹ️          │
+│                                                                │
+│  Többletköltés:                                                │
+│  [█████████████████████████████░░░░░░░░] 9,600 Ft  ℹ️          │
+│                                                                │
+│  ─────────────────────────────────────────────                 │
+│  ✨ Tiszta profit: +6,600 Ft                                   │
+│     (Az ingyen italra 3.2x megtérülés) ℹ️                      │
+│                                                                │
+│  📊 Összesen 8 látogatás (2 ezen a héten)                      │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-**Előnyök:**
-- Kompakt
-- Gyorsan összehasonlítható
+**Főbb Változtatások:**
+
+1. **Vizuális progress bar** a költés és free drink értékhez
+2. **"Tiszta profit" sor** - egyértelműen mutatja az eredményt
+3. **Egyszerűsített látogatás** - 1 sor, nem 4 badge
+4. **InfoTooltip minden metrikához**
+
+**Új helper komponens:** `VenueROICard`
+
+```typescript
+interface VenueROICardProps {
+  venue: VenueRevenue;
+  maxSpend: number; // A progress bar skálázásához
+}
+
+// Progress bar számítás:
+// freeDrinkBar = (free_drinks_value / maxSpend) * 100
+// spendBar = (pos_spend / maxSpend) * 100
+```
 
 ---
 
 ## 4. TOOLTIP BŐVÍTÉSEK
 
-### Hiányzó Tooltip-ek Azonosítása
+### Hiányzó Tooltip-ek és Javasolt Szövegek
 
-| Komponens | Hiányzó Tooltip Helyek |
-|-----------|------------------------|
-| `UserRevenueImpact.tsx` | Free drinks / Költés cellák, Visit badge-ek |
-| `UserComparison.tsx` | Egyedi metrika sorok (mi az "ROI"?) |
-| `QuickOverviewCard.tsx` | "MA" szekció, "Heti VIP" badge |
-| `UserScorecard.tsx` | Meglévők jók ✓ |
-| `AdminDashboard.tsx` | Chart tengelyek, adatpontok |
-| `DataInsights.tsx` | Egyes metric card-ok |
+#### UserRevenueImpact.tsx
 
-### Javasolt Tooltip Szövegek
+| Elem | Tooltip Szöveg |
+|------|----------------|
+| Ingyen italok | "Az ingyen italok becsült értéke (1 ital ≈ 1,500 Ft)" |
+| Többletköltés | "A vendég által a helyszínen elköltött összeg (POS/banki adatból)" |
+| ROI badge | "ROI = Költés ÷ Ingyen italok értéke. 2x felett nyereséges!" |
+| Tiszta profit | "Többletköltés - Ingyen italok értéke = A helyszín profitja" |
+| Látogatások | "Összes látogatás a regisztráció óta / ezen a héten" |
 
-```typescript
-// UserRevenueImpact - Venue breakdown
-const tooltips = {
-  freeDrinks: "Ingyen italok száma és becsült értéke (1 ital ≈ 1,500 Ft alapján)",
-  posSpend: "Tényleges kártyás költés a helyszínen (POS/banki adatból)",
-  roi: "ROI = Költés ÷ Ingyen italok értéke. 2x+ = nyereséges vendég",
-  visits: "Látogatások száma: összes / ezen a héten / ma",
-  matchConfidence: "Mennyire biztos a beváltás-tranzakció párosítás (időablak alapján)"
-};
+#### UserComparison.tsx
 
-// UserComparison - Metrics
-const comparisonTooltips = {
-  redemptionsPerMonth: "Átlagos havi beváltások száma. Platform átlag: X db/hó",
-  spendPerRedemption: "Átlagos költés beváltásonként. Magasabb = értékesebb vendég",
-  venuesVisited: "Hány különböző helyszínen volt aktív",
-  roiExplain: "Megtérülés: a vendég által generált bevétel vs. ingyen italok költsége"
-};
-```
+| Metrika | Tooltip Szöveg |
+|---------|----------------|
+| Beváltások/hó | "Havi átlagos beváltások száma. Magasabb = aktívabb felhasználó." |
+| Költés/beváltás | "Átlagos költés minden beváltás után. Ez mutatja a vendég értékét." |
+| Látogatott helyek | "Hány különböző helyszínen volt aktív a platformon." |
+| ROI | "Megtérülés: a vendég által generált bevétel vs. az ingyen italok költsége." |
+
+#### QuickOverviewCard.tsx
+
+| Elem | Tooltip Szöveg |
+|------|----------------|
+| MA szekció | "A mai napi aktivitás. Szabály: max 1 beváltás/nap összesen." |
+| Heti VIP | "A felhasználó 'VIP' státuszt kapott egy helyszínen, ahol 5+ alkalommal járt a héten." |
+
+#### AdminDashboard.tsx (Chart tengelyek)
+
+| Elem | Módosítás |
+|------|-----------|
+| X tengely | Tooltip a dátumhoz |
+| Y tengely | "Beváltások száma" vagy "Bevétel (Ft)" |
 
 ---
 
 ## 5. IMPLEMENTÁCIÓS TERV
 
-### Fázis 1: Grafikon Háttér Javítás (1-2 óra)
+### Fázis 1: Chart Stílus Központosítás (1 óra)
 
-**Érintett fájlok:**
-1. `src/lib/chartStyles.ts` - ÚJ közös stílus fájl
-2. `src/pages/DataInsights.tsx` - Tooltip cursor javítás
-3. `src/components/NotificationAnalyticsDashboard.tsx` - Tooltip stílus
-4. `src/components/dashboard/AdminDashboard.tsx` - BarChart cursor
-5. `src/components/user/UserWeeklyTrends.tsx` - Cursor hozzáadás
-6. `src/components/user/UserPointsFlow.tsx` - Stílus kiegészítés
-7. `src/components/user/UserDrinkPreferences.tsx` - labelStyle
+1. Létrehozni `src/lib/chartStyles.ts` fájlt
+2. Módosítani az összes chart komponenst:
+   - AdminDashboard.tsx
+   - DataInsights.tsx
+   - NotificationAnalyticsDashboard.tsx
+   - UserWeeklyTrends.tsx
+   - UserPointsFlow.tsx
+   - UserDrinkPreferences.tsx
+   - RedemptionTrendsChart.tsx
+   - UserActivityChart.tsx
 
-### Fázis 2: UserRevenueImpact Átdolgozás (2-3 óra)
+### Fázis 2: UserRevenueImpact Átdolgozás (2 óra)
 
-**Módosítandó fájl:** `src/components/user/UserRevenueImpact.tsx`
-
-Változások:
-- Venue breakdown új layout (progress bar vagy táblázat)
-- Egyszerűsített visit counter (1 sor, nem 4 badge)
-- ROI magyarázó tooltip
-- "Eredmény/Profit" sor hozzáadása
+1. Venue breakdown új layout (progress bar)
+2. Egyszerűsített látogatás sor
+3. "Tiszta profit" sor hozzáadása
+4. Tooltip-ek minden metrikához
 
 ### Fázis 3: User Overview Egyszerűsítés (2-3 óra)
 
-**Módosítandó fájl:** `src/pages/UserDetail.tsx`
+1. Létrehozni `UserOverviewSummary.tsx` komponenst
+2. Accordion layout implementálása az "Áttekintés" tab-ra
+3. Komponensek átrendezése logikus csoportokba
 
-**Opció A implementálása (Kompakt Kártya Layout):**
-1. Új `UserOverviewSummary` komponens létrehozása
-2. A legfontosabb metrikák kiemelése egy kompakt kártyában
-3. Másodlagos komponensek átmozgatása más tab-okra vagy összecsukhatóvá tétele
+### Fázis 4: Tooltip Bővítés (1 óra)
 
-### Fázis 4: Tooltip Bővítés (1-2 óra)
-
-**Érintett fájlok:**
-- `UserRevenueImpact.tsx` - 5+ új tooltip
-- `UserComparison.tsx` - 4 új tooltip a metrikákhoz
-- `QuickOverviewCard.tsx` - 2-3 új tooltip
-- `AdminDashboard.tsx` - Chart tooltip bővítés
+1. UserComparison.tsx - metrika tooltip-ek
+2. QuickOverviewCard.tsx - szekció tooltip-ek
+3. AdminDashboard.tsx - chart tooltip-ek
 
 ---
 
-## 6. ÖSSZEFOGLALÁS ÉS AJÁNLÁS
+## 6. FÁJL VÁLTOZÁSOK ÖSSZEFOGLALÓ
 
-| Terület | Javasolt Opció |
-|---------|----------------|
-| Grafikon háttér | Egységes chartTooltipStyle + cursor fix |
-| User Overview | **Opció A**: Kompakt Kártya Layout |
-| Venue Breakdown | **Opció 1**: Vizuális Progress Bar |
-| Tooltipek | Minden metrikához magyar nyelvű tooltip |
+### Új Fájlok
+| Fájl | Leírás |
+|------|--------|
+| `src/lib/chartStyles.ts` | Központi Recharts stílus definíciók |
+| `src/components/user/UserOverviewSummary.tsx` | Kompakt összefoglaló kártya |
 
-**Becsült Implementációs Idő:** 6-10 óra
+### Módosított Fájlok
+| Fájl | Változás Típusa |
+|------|-----------------|
+| `src/components/dashboard/AdminDashboard.tsx` | Chart cursor + tooltip |
+| `src/pages/DataInsights.tsx` | Tooltip stílus |
+| `src/components/NotificationAnalyticsDashboard.tsx` | Tooltip stílus |
+| `src/components/user/UserWeeklyTrends.tsx` | Chart cursor |
+| `src/components/user/UserPointsFlow.tsx` | Tooltip stílus |
+| `src/components/user/UserDrinkPreferences.tsx` | Tooltip stílus |
+| `src/components/RedemptionTrendsChart.tsx` | Chart cursor |
+| `src/components/UserActivityChart.tsx` | Chart cursor |
+| `src/components/user/UserRevenueImpact.tsx` | Teljes átdolgozás |
+| `src/components/user/UserComparison.tsx` | Tooltip hozzáadás |
+| `src/components/user/QuickOverviewCard.tsx` | Tooltip hozzáadás |
+| `src/pages/UserDetail.tsx` | Overview tab átszervezés |
 
+---
+
+## 7. BECSÜLT IDŐ
+
+| Fázis | Idő |
+|-------|-----|
+| Chart stílus javítás | 1 óra |
+| UserRevenueImpact átdolgozás | 2 óra |
+| User Overview egyszerűsítés | 2-3 óra |
+| Tooltip bővítés | 1 óra |
+| **Összesen** | **6-7 óra** |
