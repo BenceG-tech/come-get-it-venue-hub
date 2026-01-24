@@ -1,4 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
@@ -85,12 +86,7 @@ export function AdminDashboard() {
                 />
                 <YAxis stroke="#9ca3af" fontSize={12} />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1f1f1f', 
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#f3f4f6'
-                  }}
+                  {...chartTooltipStyle}
                   formatter={(value: any) => [value, 'Beváltások']}
                   labelFormatter={(label) => new Date(label).toLocaleDateString('hu-HU')}
                 />
@@ -133,12 +129,8 @@ export function AdminDashboard() {
                   width={100}
                 />
                 <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1f1f1f', 
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#f3f4f6'
-                  }}
+                  {...chartTooltipStyle}
+                  cursor={barChartCursor}
                   formatter={(value: any) => [formatCurrency(value), 'Bevétel']}
                 />
                 <Bar 

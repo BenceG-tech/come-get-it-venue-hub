@@ -29,7 +29,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   UserScorecard,
+  UserOverviewSummary,
   UserWeeklyTrends,
   UserDrinkPreferences,
   UserActivityHeatmap,
@@ -431,60 +438,119 @@ export default function UserDetail() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
+          <TabsContent value="overview" className="space-y-4">
             {/* Churn Warning Panel - Show for medium/high risk */}
             {(scores.churn_risk === "medium" || scores.churn_risk === "high") && (
-              <div className="mb-4">
-                <ChurnWarningPanel
-                  churnRisk={scores.churn_risk}
-                  churnFactors={scores.churn_factors || []}
-                  daysSinceLastActivity={stats.days_since_last_activity}
-                  onSendOffer={handleNavigateToAI}
-                  onSendEmail={handleOpenManualNotification}
-                  onSendPush={handleNavigateToNotifications}
-                />
-              </div>
-            )}
-
-            {/* Revenue Impact - Top of Overview */}
-            <UserRevenueImpact userId={userId!} />
-            
-            {/* Platform Comparison */}
-            {platform_comparison && (
-              <div className="mt-4">
-                <UserComparison
-                  userRedemptionsPerMonth={platform_comparison.user_redemptions_per_month}
-                  userSpendPerRedemption={platform_comparison.user_spend_per_redemption}
-                  userVenuesVisited={platform_comparison.user_venues_visited}
-                  userRoi={platform_comparison.user_roi}
-                  platformAvg={platform_comparison.platform_avg}
-                />
-              </div>
-            )}
-            
-            {/* User Behavior Story - AI generated narrative */}
-            <div className="mt-4">
-              <UserBehaviorStory 
-                userId={userId!} 
-                userName={user.name}
-                onGenerateNotification={handleNavigateToAI}
-                onManualNotification={handleOpenManualNotification}
+              <ChurnWarningPanel
+                churnRisk={scores.churn_risk}
+                churnFactors={scores.churn_factors || []}
+                daysSinceLastActivity={stats.days_since_last_activity}
+                onSendOffer={handleNavigateToAI}
+                onSendEmail={handleOpenManualNotification}
+                onSendPush={handleNavigateToNotifications}
               />
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-              <UserWeeklyTrends data={weekly_trends} />
-              <UserDrinkPreferences preferences={drink_preferences} />
-            </div>
+            )}
 
-            {/* Predictions Panel */}
-            <div className="mt-4">
-              <UserPredictions predictions={data.predictions || null} />
-            </div>
+            {/* NEW: User Overview Summary - compact KPIs with key characteristics */}
+            <UserOverviewSummary
+              daysSinceRegistration={stats.days_since_registration}
+              totalRedemptions={stats.total_free_drink_redemptions + stats.total_reward_redemptions}
+              totalSpend={points.total_spend || 0}
+              roi={points.total_spend && stats.total_free_drink_redemptions > 0 
+                ? points.total_spend / (stats.total_free_drink_redemptions * 1500) 
+                : 0}
+              favoriteVenue={stats.favorite_venue}
+              favoriteDrink={stats.favorite_drink}
+              engagementScore={scores.engagement_score}
+              churnRisk={scores.churn_risk}
+              ltv={scores.ltv}
+              likelyDay={data.predictions?.likely_day?.day_name || null}
+              likelyHour={data.predictions?.likely_hour?.hour ?? null}
+            />
 
-            <div className="mt-4">
-              <UserActivityHeatmap heatmapData={hourly_heatmap} />
-            </div>
+            {/* Accordion for detailed sections */}
+            <Accordion type="multiple" defaultValue={["revenue"]} className="space-y-2">
+              {/* Revenue Impact - open by default */}
+              <AccordionItem value="revenue" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-cgi-primary" />
+                    <span className="font-medium">Bevétel Hatás</span>
+                    {scores.roi && scores.roi > 0 && (
+                      <Badge className="ml-2 bg-cgi-success/20 text-cgi-success text-xs">
+                        {scores.roi.toFixed(1)}x ROI
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 pt-2">
+                  <UserRevenueImpact userId={userId!} />
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Platform Comparison */}
+              {platform_comparison && (
+                <AccordionItem value="comparison" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
+                  <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-cgi-secondary" />
+                      <span className="font-medium">Platform Összehasonlítás</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4 pt-2">
+                    <UserComparison
+                      userRedemptionsPerMonth={platform_comparison.user_redemptions_per_month}
+                      userSpendPerRedemption={platform_comparison.user_spend_per_redemption}
+                      userVenuesVisited={platform_comparison.user_venues_visited}
+                      userRoi={platform_comparison.user_roi}
+                      platformAvg={platform_comparison.platform_avg}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
+              {/* Behavior & Trends */}
+              <AccordionItem value="behavior" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-cgi-primary" />
+                    <span className="font-medium">Viselkedés & Trendek</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 pt-2 space-y-4">
+                  <UserBehaviorStory 
+                    userId={userId!} 
+                    userName={user.name}
+                    onGenerateNotification={handleNavigateToAI}
+                    onManualNotification={handleOpenManualNotification}
+                  />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <UserWeeklyTrends data={weekly_trends} />
+                    <UserDrinkPreferences preferences={drink_preferences} />
+                  </div>
+                  <UserActivityHeatmap heatmapData={hourly_heatmap} />
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Predictions */}
+              <AccordionItem value="predictions" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-cgi-secondary" />
+                    <span className="font-medium">AI Előrejelzések</span>
+                    {data.predictions?.confidence && (
+                      <Badge className="ml-2 bg-cgi-muted text-cgi-muted-foreground text-xs">
+                        {data.predictions.confidence === "high" ? "Magas" : 
+                         data.predictions.confidence === "medium" ? "Közepes" : "Alacsony"} bizalom
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 pt-2">
+                  <UserPredictions predictions={data.predictions || null} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
           <TabsContent value="behavior">

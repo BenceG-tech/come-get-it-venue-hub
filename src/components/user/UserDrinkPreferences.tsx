@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wine } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { chartTooltipStyle } from "@/lib/chartStyles";
 
 interface DrinkPreference {
   drink_name: string;
@@ -72,12 +73,7 @@ export function UserDrinkPreferences({ preferences }: UserDrinkPreferencesProps)
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--cgi-surface))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--cgi-surface-foreground))"
-                  }}
+                  {...chartTooltipStyle}
                   formatter={(value: number, name: string) => [`${value} db`, name]}
                 />
               </PieChart>

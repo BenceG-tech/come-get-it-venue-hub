@@ -4,6 +4,7 @@ import { Coins, ArrowUp, ArrowDown } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { format } from "date-fns";
 import { hu } from "date-fns/locale";
+import { chartTooltipStyle } from "@/lib/chartStyles";
 
 interface PointsFlowProps {
   earningsByType: Record<string, number>;
@@ -117,11 +118,7 @@ export function UserPointsFlow({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--cgi-surface))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px"
-                    }}
+                    {...chartTooltipStyle}
                     formatter={(value: number) => [`${value} pont`, ""]}
                   />
                 </PieChart>
@@ -160,11 +157,7 @@ export function UserPointsFlow({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--cgi-surface))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px"
-                    }}
+                    {...chartTooltipStyle}
                     formatter={(value: number) => [`${value} pont`, ""]}
                   />
                 </PieChart>

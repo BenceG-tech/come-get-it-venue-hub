@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ChartCard } from "@/components/ChartCard";
+import { chartTooltipStyle } from "@/lib/chartStyles";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
@@ -74,12 +75,8 @@ export function UserActivityChart({ dailyData, weeklyData }: UserActivityChartPr
           />
           <YAxis stroke="hsl(var(--cgi-muted-foreground))" fontSize={12} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(var(--cgi-surface))",
-              border: "1px solid hsl(var(--cgi-muted))",
-              borderRadius: "8px",
-              color: "hsl(var(--cgi-surface-foreground))",
-            }}
+            {...chartTooltipStyle}
+            cursor={{ stroke: "hsl(var(--cgi-primary))", strokeWidth: 1, strokeDasharray: "3 3" }}
             labelFormatter={formatDate}
             formatter={(value: number) => [`${value} felhasználó`, "Aktív"]}
           />

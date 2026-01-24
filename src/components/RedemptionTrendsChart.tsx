@@ -9,6 +9,7 @@ import {
   Legend,
 } from "recharts";
 import { ChartCard } from "@/components/ChartCard";
+import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 
 interface RedemptionData {
   date: string;
@@ -48,12 +49,8 @@ export function RedemptionTrendsChart({ data }: RedemptionTrendsChartProps) {
           />
           <YAxis stroke="hsl(var(--cgi-muted-foreground))" fontSize={12} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(var(--cgi-surface))",
-              border: "1px solid hsl(var(--cgi-muted))",
-              borderRadius: "8px",
-              color: "hsl(var(--cgi-surface-foreground))",
-            }}
+            {...chartTooltipStyle}
+            cursor={barChartCursor}
             labelFormatter={formatDate}
             formatter={(value: number, name: string) => [
               value,
