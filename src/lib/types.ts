@@ -461,3 +461,26 @@ export interface POSTransaction {
   processed_at?: string;
   created_at?: string;
 }
+
+// ===== CSR (JÓTÉKONYSÁG) TYPES =====
+
+export interface Charity {
+  id: string;
+  name: string;
+  description?: string;
+  logo_url?: string;
+  website_url?: string;
+  is_active: boolean;
+  total_received_huf: number;
+  created_at: string;
+}
+
+export interface CSRDonation {
+  id: string;
+  redemption_id: string;
+  user_id: string;
+  venue_id: string;
+  charity_id: string;
+  amount_huf: number;
+  created_at: string;
+}

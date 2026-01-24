@@ -5,11 +5,44 @@ import { Button } from "@/components/ui/button";
 import { Receipt, DollarSign, Users, TrendingUp, Gift, Settings, ArrowUpRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDashboardStats, formatCurrency } from "@/hooks/useDashboardStats";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { FirstGlassWidget } from "./FirstGlassWidget";
+import { SimplifiedROIWidget } from "./SimplifiedROIWidget";
+import { CSRWidget } from "./CSRWidget";
 
 export function OwnerDashboard() {
-  // TODO: Get venue_id from session/context when available
-  const venueId = undefined; // Will use first venue or all venues
-  const { data: stats, isLoading } = useDashboardStats('owner', venueId);
+  // Get user's primary venue
+  const { data: userVenue, isLoading: venueLoading } = useQuery({
+    queryKey: ['user-primary-venue'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      const { data: membership } = await supabase
+        .from('venue_memberships')
+        .select('venue_id, venues(id, name, integration_type, csr_enabled)')
+        .eq('profile_id', user.id)
+        .limit(1)
+        .single();
+        
+      return membership?.venues as { 
+        id: string; 
+        name: string; 
+        integration_type: string | null;
+        csr_enabled: boolean | null;
+      } | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const venueId = userVenue?.id;
+  const { data: stats, isLoading: statsLoading } = useDashboardStats('owner', venueId);
+  const isLoading = venueLoading || statsLoading;
+
+  const isGoorderz = userVenue?.integration_type === 'goorderz';
+  const isSaltEdge = userVenue?.integration_type === 'saltedge';
+  const csrEnabled = userVenue?.csr_enabled === true;
 
   const kpiData = {
     daily_redemptions: stats?.daily_redemptions ?? 0,
@@ -24,7 +57,9 @@ export function OwnerDashboard() {
   return (
     <div className="space-y-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">Helyszín Dashboard</h1>
+        <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">
+          {userVenue?.name ? `${userVenue.name} Dashboard` : 'Helyszín Dashboard'}
+        </h1>
         <p className="text-cgi-muted-foreground">
           Saját venue teljesítmény és menedzsment
           {isLoading && <Loader2 className="inline-block ml-2 h-4 w-4 animate-spin" />}
@@ -151,6 +186,26 @@ export function OwnerDashboard() {
           )}
         </ChartCard>
       </div>
+
+      {/* Integration-specific Analytics Widgets */}
+      {venueId && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* First Glass Widget for Goorderz venues */}
+          {isGoorderz && (
+            <FirstGlassWidget venueId={venueId} />
+          )}
+
+          {/* Simplified ROI Widget for Salt Edge venues */}
+          {isSaltEdge && (
+            <SimplifiedROIWidget venueId={venueId} />
+          )}
+
+          {/* CSR Widget if enabled */}
+          {csrEnabled && (
+            <CSRWidget venueId={venueId} />
+          )}
+        </div>
+      )}
 
       {/* Owner Management Links */}
       <ChartCard 
