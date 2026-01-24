@@ -83,6 +83,9 @@ interface VenueNotifications {
   weekly_reports: boolean;
 }
 
+// Integration types for venue partnerships
+export type VenueIntegrationType = 'goorderz' | 'saltedge' | 'manual' | 'none';
+
 export interface Venue {
   id: string;
   name: string;
@@ -108,6 +111,11 @@ export interface Venue {
   image_url?: string;       // card/list image
   hero_image_url?: string;  // detail header image
 
+  // Integration configuration
+  integration_type?: VenueIntegrationType;
+  goorderz_external_id?: string;      // External venue ID for POS mapping
+  saltedge_connection_id?: string;    // Salt Edge connection ID
+
   // Salt Edge merchant matching rules
   merchant_match_rules?: {
     names: string[];
@@ -120,6 +128,19 @@ export interface Venue {
     per_huf: number;
     min_amount_huf: number;
   };
+}
+
+// Redemption-Transaction match record for First Glass analytics
+export interface RedemptionTransactionMatch {
+  id: string;
+  redemption_id: string;
+  transaction_id?: string;
+  saltedge_transaction_id?: string;
+  match_confidence: number;
+  match_method: 'time_window' | 'qr_token' | 'user_id' | 'manual';
+  time_delta_seconds?: number;
+  matched_at: string;
+  created_at: string;
 }
 
 // Updated Brand interface with Supabase fields
