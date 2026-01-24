@@ -359,6 +359,91 @@ export type Database = {
           },
         ]
       }
+      charities: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          total_received_huf: number | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          total_received_huf?: number | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          total_received_huf?: number | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      csr_donations: {
+        Row: {
+          amount_huf: number
+          charity_id: string | null
+          created_at: string | null
+          id: string
+          redemption_id: string | null
+          user_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          amount_huf: number
+          charity_id?: string | null
+          created_at?: string | null
+          id?: string
+          redemption_id?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          amount_huf?: number
+          charity_id?: string | null
+          created_at?: string | null
+          id?: string
+          redemption_id?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csr_donations_charity_id_fkey"
+            columns: ["charity_id"]
+            isOneToOne: false
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csr_donations_redemption_id_fkey"
+            columns: ["redemption_id"]
+            isOneToOne: true
+            referencedRelation: "redemptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csr_donations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fidel_transactions: {
         Row: {
           amount: number
@@ -1462,6 +1547,7 @@ export type Database = {
       }
       saltedge_transactions: {
         Row: {
+          amount: number | null
           amount_cents: number
           connection_id: string | null
           created_at: string
@@ -1480,6 +1566,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          amount?: number | null
           amount_cents: number
           connection_id?: string | null
           created_at?: string
@@ -1498,6 +1585,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          amount?: number | null
           amount_cents?: number
           connection_id?: string | null
           created_at?: string
@@ -2031,8 +2119,11 @@ export type Database = {
           category: string | null
           coordinates: Json | null
           created_at: string
+          csr_enabled: boolean | null
+          default_charity_id: string | null
           description: string | null
           distance: number | null
+          donation_per_redemption: number | null
           formatted_address: string | null
           google_maps_url: string | null
           goorderz_external_id: string | null
@@ -2064,8 +2155,11 @@ export type Database = {
           category?: string | null
           coordinates?: Json | null
           created_at?: string
+          csr_enabled?: boolean | null
+          default_charity_id?: string | null
           description?: string | null
           distance?: number | null
+          donation_per_redemption?: number | null
           formatted_address?: string | null
           google_maps_url?: string | null
           goorderz_external_id?: string | null
@@ -2097,8 +2191,11 @@ export type Database = {
           category?: string | null
           coordinates?: Json | null
           created_at?: string
+          csr_enabled?: boolean | null
+          default_charity_id?: string | null
           description?: string | null
           distance?: number | null
+          donation_per_redemption?: number | null
           formatted_address?: string | null
           google_maps_url?: string | null
           goorderz_external_id?: string | null
@@ -2125,6 +2222,13 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "venues_default_charity_id_fkey"
+            columns: ["default_charity_id"]
+            isOneToOne: false
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "venues_owner_profile_id_fkey"
             columns: ["owner_profile_id"]

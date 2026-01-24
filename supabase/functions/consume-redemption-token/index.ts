@@ -227,6 +227,17 @@ Deno.serve(async (req) => {
     if (redemptionError) {
       console.error("Error creating redemption:", redemptionError);
       // Token is already consumed, but log the error
+    } else if (redemption?.id) {
+      // Trigger async matching (don't await)
+      const matchUrl = `${supabaseUrl}/functions/v1/match-redemption-transaction`;
+      fetch(matchUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({ redemption_id: redemption.id })
+      }).catch(err => console.error('Matching trigger failed:', err));
     }
 
     // 12. Return success response
