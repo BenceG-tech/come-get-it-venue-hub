@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  CreditCard, 
-  Gift, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Receipt,
+  CreditCard,
+  Gift,
+  BarChart3,
   Settings,
   Menu,
   Users,
@@ -18,7 +18,8 @@ import {
   ChevronDown,
   Landmark,
   Bell,
-  HelpCircle
+  HelpCircle,
+  Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
@@ -38,6 +39,7 @@ const navigation = [
   { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards' },
   { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions' },
   { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'], tourId: 'nav-analytics' },
+  { name: 'Jótékonysági Hatás', href: '/charity-impact', icon: Heart, roles: ['cgi_admin'], tourId: 'nav-charity' },
   { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users' },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues' },
   { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'], tourId: 'nav-brands' },

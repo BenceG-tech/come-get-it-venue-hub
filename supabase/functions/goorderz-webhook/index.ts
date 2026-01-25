@@ -339,6 +339,77 @@ Deno.serve(async (req) => {
         .eq("id", applied.promotion_id);
     }
 
+    // Create charity donation (if user is identified)
+    let charityImpact = null;
+    if (userId) {
+      try {
+        // Get active charity partner
+        const { data: charityPartner } = await serviceClient
+          .from("charity_partners")
+          .select("id, name, impact_unit, huf_per_unit")
+          .eq("is_active", true)
+          .order("priority", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (charityPartner) {
+          // Calculate donation: 100 HUF total
+          // Split: 50 HUF platform, 50 HUF sponsor (if exists) or venue
+          const totalDonation = 100;
+          const platformShare = 50;
+          const sponsorShare = appliedPromotions.length > 0 && appliedPromotions[0].type === "brand_bonus" ? 50 : 0;
+          const venueShare = sponsorShare === 0 ? 50 : 0;
+
+          const sponsorBrandId = sponsorShare > 0
+            ? (promotions || []).find(p => p.id === appliedPromotions[0].promotion_id)?.sponsor_brand_id
+            : null;
+
+          const impactUnits = Math.floor(totalDonation / charityPartner.huf_per_unit);
+          const impactDescription = impactUnits > 1
+            ? `${impactUnits} ${charityPartner.impact_unit}`
+            : `1 ${charityPartner.impact_unit}`;
+
+          // Insert charity donation
+          const { error: donationError } = await serviceClient
+            .from("charity_donations")
+            .insert({
+              pos_transaction_id: posTransaction.id,
+              user_id: userId,
+              venue_id: venue.id,
+              sponsor_brand_id: sponsorBrandId,
+              platform_contribution_huf: platformShare,
+              sponsor_contribution_huf: sponsorShare,
+              venue_contribution_huf: venueShare,
+              total_donation_huf: totalDonation,
+              charity_partner_id: charityPartner.id,
+              charity_name: charityPartner.name,
+              impact_units: impactUnits,
+              impact_description: impactDescription,
+            });
+
+          if (!donationError) {
+            // Update user CSR stats
+            await serviceClient.rpc("update_user_csr_stats", {
+              p_user_id: userId,
+              p_donation_amount: totalDonation,
+              p_impact_units: impactUnits,
+              p_donation_date: transaction.timestamp.split('T')[0], // YYYY-MM-DD
+            });
+
+            charityImpact = {
+              donation_huf: totalDonation,
+              impact_description: impactDescription,
+              charity_name: charityPartner.name,
+            };
+          } else {
+            console.error("Charity donation error:", donationError);
+          }
+        }
+      } catch (charityError) {
+        console.error("Charity tracking failed:", charityError);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -348,6 +419,7 @@ Deno.serve(async (req) => {
         base_points: basePoints,
         bonus_points: bonusPoints,
         applied_promotions: appliedPromotions.map((p) => p.name),
+        charity_impact: charityImpact,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

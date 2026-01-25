@@ -229,6 +229,71 @@ Deno.serve(async (req) => {
       // Token is already consumed, but log the error
     }
 
+    // 11b. Create charity donation (if redemption succeeded)
+    let charityImpact = null;
+    if (redemption && tokenData.user_id) {
+      try {
+        // Get active charity partner (highest priority)
+        const { data: charityPartner } = await supabase
+          .from("charity_partners")
+          .select("id, name, impact_unit, huf_per_unit")
+          .eq("is_active", true)
+          .order("priority", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (charityPartner) {
+          // Calculate donation: 100 HUF total (50 platform, 50 venue)
+          const totalDonation = 100;
+          const platformShare = 50;
+          const venueShare = 50;
+          const impactUnits = Math.floor(totalDonation / charityPartner.huf_per_unit);
+          const impactDescription = impactUnits > 1
+            ? `${impactUnits} ${charityPartner.impact_unit}`
+            : `1 ${charityPartner.impact_unit}`;
+
+          // Insert charity donation record
+          const { data: donation, error: donationError } = await supabase
+            .from("charity_donations")
+            .insert({
+              redemption_id: redemption.id,
+              user_id: tokenData.user_id,
+              venue_id: tokenData.venue_id,
+              platform_contribution_huf: platformShare,
+              venue_contribution_huf: venueShare,
+              total_donation_huf: totalDonation,
+              charity_partner_id: charityPartner.id,
+              charity_name: charityPartner.name,
+              impact_units: impactUnits,
+              impact_description: impactDescription,
+            })
+            .select()
+            .single();
+
+          if (!donationError && donation) {
+            // Update user CSR stats
+            await supabase.rpc("update_user_csr_stats", {
+              p_user_id: tokenData.user_id,
+              p_donation_amount: totalDonation,
+              p_impact_units: impactUnits,
+              p_donation_date: now.toISOString().split('T')[0], // YYYY-MM-DD
+            });
+
+            charityImpact = {
+              donation_huf: totalDonation,
+              impact_description: impactDescription,
+              charity_name: charityPartner.name,
+            };
+          } else if (donationError) {
+            console.error("Charity donation error:", donationError);
+          }
+        }
+      } catch (charityError) {
+        // Don't fail the redemption if charity tracking fails
+        console.error("Charity tracking failed:", charityError);
+      }
+    }
+
     // 12. Return success response
     return new Response(
       JSON.stringify({
@@ -244,6 +309,7 @@ Deno.serve(async (req) => {
           redeemed_at: now.toISOString(),
           staff_id: staffId,
         },
+        charity_impact: charityImpact,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

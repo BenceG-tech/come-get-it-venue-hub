@@ -135,3 +135,6 @@ verify_jwt = false
 
 [functions.void-redemption]
 verify_jwt = false
+
+[functions.get-user-csr-impact]
+verify_jwt = false

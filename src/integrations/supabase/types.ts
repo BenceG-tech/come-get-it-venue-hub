@@ -115,6 +115,138 @@ export type Database = {
           },
         ]
       }
+      charity_donations: {
+        Row: {
+          id: string
+          redemption_id: string | null
+          pos_transaction_id: string | null
+          user_id: string
+          venue_id: string
+          sponsor_brand_id: string | null
+          platform_contribution_huf: number
+          sponsor_contribution_huf: number
+          venue_contribution_huf: number
+          total_donation_huf: number
+          charity_partner_id: string | null
+          charity_name: string
+          impact_units: number
+          impact_description: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          redemption_id?: string | null
+          pos_transaction_id?: string | null
+          user_id: string
+          venue_id: string
+          sponsor_brand_id?: string | null
+          platform_contribution_huf?: number
+          sponsor_contribution_huf?: number
+          venue_contribution_huf?: number
+          total_donation_huf: number
+          charity_partner_id?: string | null
+          charity_name: string
+          impact_units: number
+          impact_description: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          redemption_id?: string | null
+          pos_transaction_id?: string | null
+          user_id?: string
+          venue_id?: string
+          sponsor_brand_id?: string | null
+          platform_contribution_huf?: number
+          sponsor_contribution_huf?: number
+          venue_contribution_huf?: number
+          total_donation_huf?: number
+          charity_partner_id?: string | null
+          charity_name?: string
+          impact_units?: number
+          impact_description?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charity_donations_redemption_id_fkey"
+            columns: ["redemption_id"]
+            isOneToOne: false
+            referencedRelation: "redemptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charity_donations_pos_transaction_id_fkey"
+            columns: ["pos_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "pos_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charity_donations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charity_donations_sponsor_brand_id_fkey"
+            columns: ["sponsor_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charity_donations_charity_partner_id_fkey"
+            columns: ["charity_partner_id"]
+            isOneToOne: false
+            referencedRelation: "charity_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      charity_partners: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          logo_url: string | null
+          website_url: string | null
+          impact_unit: string
+          huf_per_unit: number
+          is_active: boolean
+          priority: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          logo_url?: string | null
+          website_url?: string | null
+          impact_unit: string
+          huf_per_unit: number
+          is_active?: boolean
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          logo_url?: string | null
+          website_url?: string | null
+          impact_unit?: string
+          huf_per_unit?: number
+          is_active?: boolean
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fidel_transactions: {
         Row: {
           amount: number
@@ -1026,6 +1158,51 @@ export type Database = {
           },
         ]
       }
+      user_csr_stats: {
+        Row: {
+          user_id: string
+          total_donations_huf: number
+          total_impact_units: number
+          total_redemptions_with_charity: number
+          current_streak_days: number
+          longest_streak_days: number
+          last_donation_date: string | null
+          global_rank: number | null
+          city_rank: number | null
+          first_donation_at: string | null
+          last_donation_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          total_donations_huf?: number
+          total_impact_units?: number
+          total_redemptions_with_charity?: number
+          current_streak_days?: number
+          longest_streak_days?: number
+          last_donation_date?: string | null
+          global_rank?: number | null
+          city_rank?: number | null
+          first_donation_at?: string | null
+          last_donation_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          total_donations_huf?: number
+          total_impact_units?: number
+          total_redemptions_with_charity?: number
+          current_streak_days?: number
+          longest_streak_days?: number
+          last_donation_date?: string | null
+          global_rank?: number | null
+          city_rank?: number | null
+          first_donation_at?: string | null
+          last_donation_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_points: {
         Row: {
           balance: number
@@ -1366,7 +1543,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      charity_impact_summary: {
+        Row: {
+          charity_name: string
+          impact_unit: string
+          total_donations: number | null
+          total_huf: number | null
+          total_impact_units: number | null
+          platform_contribution: number | null
+          sponsor_contribution: number | null
+          venue_contribution: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_public_venues: {
@@ -1406,6 +1595,19 @@ export type Database = {
           p_venue_id?: string
         }
         Returns: number
+      }
+      update_user_csr_stats: {
+        Args: {
+          p_user_id: string
+          p_donation_amount: number
+          p_impact_units: number
+          p_donation_date?: string
+        }
+        Returns: undefined
+      }
+      calculate_csr_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       validate_opening_hours: { Args: { hours: Json }; Returns: boolean }
     }
