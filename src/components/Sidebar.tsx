@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -53,6 +53,12 @@ const navigation = [{
   icon: TrendingUp,
   roles: ['cgi_admin'],
   tourId: 'nav-data-insights'
+}, {
+  name: 'Jótékonysági Hatás',
+  href: '/charity-impact',
+  icon: Heart,
+  roles: ['cgi_admin'],
+  tourId: 'nav-charity'
 }, {
   name: 'Felhasználók',
   href: '/users',
