@@ -13,6 +13,7 @@ import Redemptions from "./pages/Redemptions";
 import Transactions from "./pages/Transactions";
 import Rewards from "./pages/Rewards";
 import Analytics from "./pages/Analytics";
+import CharityImpact from "./pages/CharityImpact";
 import Settings from "./pages/Settings";
 import Venues from "./pages/Venues";
 import VenueDetail from "./pages/VenueDetail";
@@ -86,6 +87,12 @@ const App = () => {
             <Route path="/analytics" element={
               <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
                 <Analytics />
+              </RouteGuard>
+            } />
+            
+            <Route path="/charity-impact" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <CharityImpact />
               </RouteGuard>
             } />
             
