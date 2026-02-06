@@ -168,3 +168,6 @@ verify_jwt = false
 
 [functions.get-venue-free-drink-stats]
 verify_jwt = false
+
+[functions.get-user-csr-impact]
+verify_jwt = false
