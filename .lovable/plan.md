@@ -1,116 +1,82 @@
 
 
-# Fix Charity Impact Page - Implementation Plan
+# Fix Mobile App Errors from Supabase Side
 
-## Problem Identified
+## Two Issues to Fix
 
-The "Jótékonysági Hatás" menu item exists in the sidebar but clicking it shows a 404 error because:
+### Issue 1: "column profiles.points does not exist" (Error 42703)
 
-1. **Missing Page Component**: `src/pages/CharityImpact.tsx` does not exist
-2. **Missing Route**: No `/charity-impact` route is configured in `App.tsx`
+The Rork mobile app is querying `SELECT *, points FROM profiles` but the `profiles` table has no `points` column. Points live in the separate `user_points` table.
 
----
+**Fix**: Add a `points` integer column (default 0) to the `profiles` table, and create a trigger to keep it in sync with `user_points.balance`. This way the mobile app's query works without changing mobile code.
 
-## Implementation Steps
+**Database migration**:
+```sql
+-- Add points column to profiles table
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS points integer DEFAULT 0;
 
-### Step 1: Add Route to App.tsx
+-- Sync existing data from user_points
+UPDATE public.profiles p
+SET points = COALESCE(up.balance, 0)
+FROM public.user_points up
+WHERE p.id = up.user_id;
 
-**File**: `src/App.tsx`
+-- Create trigger function to auto-sync points
+CREATE OR REPLACE FUNCTION public.sync_profile_points()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+BEGIN
+  UPDATE public.profiles
+  SET points = NEW.balance, updated_at = now()
+  WHERE id = NEW.user_id;
+  RETURN NEW;
+END;
+$$;
 
-Add import at line 16 (after Analytics import):
-```typescript
-import CharityImpact from "./pages/CharityImpact";
+-- Create trigger on user_points table
+CREATE TRIGGER sync_profile_points_trigger
+AFTER INSERT OR UPDATE OF balance ON public.user_points
+FOR EACH ROW
+EXECUTE FUNCTION public.sync_profile_points();
 ```
 
-Add route after `/analytics` route (around line 90):
-```tsx
-<Route path="/charity-impact" element={
-  <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
-    <CharityImpact />
-  </RouteGuard>
-} />
+### Issue 2: "CSRService Failed to fetch" (Missing Edge Function)
+
+The mobile app calls `get-user-csr-impact` but this edge function was never created.
+
+**Fix**: Create the edge function with proper CORS headers.
+
+**New file**: `supabase/functions/get-user-csr-impact/index.ts`
+
+This function will:
+- Accept authenticated requests from the mobile app
+- Query `csr_donations` for the logged-in user
+- Return total donations, count, favorite charity
+- Include full CORS headers (including Expo/React Native headers)
+- Return zeros gracefully when no donations exist
+
+**Update**: `supabase/config.toml` - add:
+```toml
+[functions.get-user-csr-impact]
+verify_jwt = false
 ```
 
-### Step 2: Create CharityImpact.tsx Page
-
-**New File**: `src/pages/CharityImpact.tsx`
-
-A comprehensive charity impact dashboard (~350 lines) with:
-
-**Components**:
-- PageLayout wrapper (consistent with other admin pages)
-- 4 Stats Cards (Összes Adomány, Összhatás, Felhasználók, Átlag)
-- Bar Chart showing donations per charity partner
-- Pie Chart showing brand/venue contributions
-- Top 10 Donors Leaderboard
-- Detailed charity partners table
-
-**Data Fetching**:
-- Query existing `charities` table for partner list
-- Query existing `csr_donations` table for donation data
-- Aggregate statistics in component
-- Handle empty states gracefully (show zeros, not errors)
-
-**Key Features**:
-- Uses same styling patterns as DataInsights.tsx
-- Recharts for visualizations (BarChart, PieChart)
-- Skeleton loading states
-- Error handling with user-friendly messages
-- Responsive grid layout (mobile-friendly)
-
 ---
 
-## Technical Details
+## Files Summary
 
-### Database Tables Used (Already Exist)
+| Action | File | Purpose |
+|--------|------|---------|
+| DB Migration | -- | Add `points` column to `profiles`, sync trigger |
+| CREATE | `supabase/functions/get-user-csr-impact/index.ts` | New edge function for mobile CSR data |
+| MODIFY | `supabase/config.toml` | Register new edge function |
 
-| Table | Purpose |
-|-------|---------|
-| `charities` | Charity partner info (1 record exists) |
-| `csr_donations` | Individual donations (0 records - empty) |
+## Expected Result
 
-### Page Structure
-
-```text
-+------------------------------------------+
-|  ❤️ Jótékonysági Hatás (Header)          |
-+------------------------------------------+
-| [Stat 1] [Stat 2] [Stat 3] [Stat 4]      |
-+------------------------------------------+
-| [Bar Chart: Donations]  | [Pie Chart]    |
-+------------------------------------------+
-| Top 10 Donors Leaderboard                |
-+------------------------------------------+
-| Detailed Charity Partners Table          |
-+------------------------------------------+
-```
-
-### Empty State Handling
-
-Since the database currently has minimal data:
-- Stats will show "0 Ft" and "0" values
-- Charts will show "Még nincsenek adatok" message
-- Tables will show empty state with helpful message
-- **No crashes or errors** - graceful degradation
-
----
-
-## Files Changed
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/App.tsx` | MODIFY | Add import + route |
-| `src/pages/CharityImpact.tsx` | CREATE | Full dashboard page |
-
----
-
-## Expected Result After Fix
-
-- ✅ Clicking "Jótékonysági Hatás" navigates to `/charity-impact`
-- ✅ Page loads without errors
-- ✅ Shows 4 stat cards (all zeros initially)
-- ✅ Shows empty chart placeholders
-- ✅ Shows empty table with message
-- ✅ No console errors
-- ⚠️ Data will populate once CSR donations are recorded
-
+- The `profiles.points` query from mobile will return the user's current point balance (synced automatically)
+- The CSR endpoint will respond with valid JSON instead of a network error
+- Both errors will be resolved without any changes to the Rork mobile app code
