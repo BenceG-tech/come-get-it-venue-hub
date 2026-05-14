@@ -132,6 +132,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       integration_type: venue?.integration_type || 'none',
       goorderz_external_id: venue?.goorderz_external_id || '',
       saltedge_connection_id: venue?.saltedge_connection_id || '',
+      price_tier: venue?.price_tier ?? null,
     });
   }, [open, venue?.id]);
 
