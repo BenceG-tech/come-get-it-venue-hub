@@ -198,19 +198,31 @@ Deno.serve(async (req) => {
 
   try {
     const webhookSecret = Deno.env.get("GOORDERZ_WEBHOOK_SECRET");
+    if (!webhookSecret) {
+      console.error("GOORDERZ_WEBHOOK_SECRET not configured");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const signature = req.headers.get("X-Webhook-Signature");
     const rawBody = await req.text();
 
-    // Verify signature if secret is configured
-    if (webhookSecret && signature) {
-      const isValid = await verifySignature(rawBody, signature, webhookSecret);
-      if (!isValid) {
-        console.error("Invalid webhook signature");
-        return new Response(
-          JSON.stringify({ error: "Invalid signature" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (!signature) {
+      return new Response(
+        JSON.stringify({ error: "Missing signature" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const isValid = await verifySignature(rawBody, signature, webhookSecret);
+    if (!isValid) {
+      console.error("Invalid webhook signature");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const transaction: GoorderzTransaction = JSON.parse(rawBody);
