@@ -107,6 +107,7 @@ export interface Venue {
   website_url?: string;
   images?: VenueImage[];
   coordinates?: Coordinates;            // for maps
+  price_tier?: number | null;           // 1–4: $, $$, $$$, $$$$
 
   // Added for mobile/consumer compatibility
   image_url?: string;       // card/list image
