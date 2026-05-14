@@ -187,6 +187,7 @@ export default function Venues() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap mb-1">
                 <span className="font-semibold text-sm truncate max-w-[120px]">{venue.name}</span>
+                <PriceTierBadge tier={venue.price_tier} />
                 <Badge className={`${planBadgeColor(venue.plan)} capitalize text-[10px] px-1.5 py-0`}>{venue.plan}</Badge>
                 <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-[10px] px-1.5 py-0`}>
                   {venue.is_paused ? 'Szünetel' : 'Aktív'}
