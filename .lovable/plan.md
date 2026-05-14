@@ -1,82 +1,76 @@
 
-## Cél
-A `VenueFormModal` (jelenleg 7 tab, 866 sor, sok szétszórt mező, nagy egysoros képkártyák) átalakítása letisztult, kompakt és gyorsan átlátható szerkesztővé.
+# Terv — Login UX, Google auth, és stratégiai válasz
 
-## Mit változtatunk
+## 1. Login screen újragondolása
 
-### 1. Tabok újracsoportosítása (7 → 4)
-A jelenlegi 7 tab sok és redundáns. Átcsoportosítás logikus blokkokra:
+Egyetértek: a 4 egyforma szerepkör-csempe pre-loginnál vagy security-rés (bárki bárminek mondhatja magát), vagy felesleges UX-elem (a szerver úgyis a profilból dönt). A jelenlegi kódban (`signInWithEmailPassword`) a szerepkör tényleg a `profiles.is_admin` + `venue_memberships` alapján dől el — vagyis a választó **most is csak demó/mock módban él**. Supabase módban a kiválasztott role-t a backend simán felülírja.
 
-| Új tab | Mit tartalmaz |
-|---|---|
-| **Általános** | Név, csomag, leírás, árkategória, tag-ek, szüneteltetés, telefon, weboldal |
-| **Helyszín & Nyitvatartás** | Cím + térkép, GPS koordináták (összecsukható), nyitvatartás |
-| **Italok & Akciók** | Italok és ingyenes ital időablakok, limitek (caps) – egy helyen |
-| **Képek** | Kompakt galéria nézet |
-| **Integráció** | (Marad külön, technikai) |
+**Javasolt megoldás**
 
-Így az általános napi szerkesztés (név, leírás, kép) 1-2 tabbal megoldható, a haladó beállítások (integráció) elkülönítve.
+- **Login screen** = csak logo + email + jelszó + "Bejelentkezés Google-lel" gomb + "Elfelejtett jelszó". Tiszta, premium, Neon Fidelity-konzisztens (fekete háttér, cyan glow CTA — most a login még nem ezt használja, ez egy következő lépés).
+- A 4 demó-szerepkör csempét levesszük az élesnek szánt nézetből. Mock módra (`runtimeConfig.useSupabase === false`) marad egy diszkrét "Demo belépés" szekció a kártya alján egy `<details>` mögött — fejlesztéshez és investor demo-hoz hasznos, de nem ez az első benyomás.
+- **Post-login szerepkör-váltó**: ha a usernek több kalapja van (pl. `is_admin === true` ÉS `venue_memberships`-ben `venue_owner`), akkor a sidebar tetején a már létező role-dropdown jelenik meg. Ha csak egy szerepköre van, automatikusan oda visz. Ezt a `sessionManager.previewRole` mechanizmus már félig támogatja — csak a feltételt kell `isAdmin && hasVenueMemberships`-ra kötni, és a Login képernyőről eltávolítani a választót.
 
-### 2. Képek tab – kompakt grid + lightbox preview
-Jelenleg minden kép egy nagy függőleges kártya. Helyette:
+## 2. Google bejelentkezés
 
-```text
-┌──────────────────────────────────────────────────┐
-│ [+ Kép feltöltése]  [+ URL hozzáadása]           │
-├──────────────────────────────────────────────────┤
-│ ┌────┐ ┌────┐ ┌────┐ ┌────┐                     │
-│ │IMG │ │IMG │ │IMG │ │IMG │  ← 4–5 oszlopos     │
-│ │⭐ ⋮│ │  ⋮│ │  ⋮│ │  ⋮│     square thumbnail │
-│ └────┘ └────┘ └────┘ └────┘                     │
-└──────────────────────────────────────────────────┘
+Supabase oldalon (Dashboard → Authentication → Providers → Google) a usernek kell:
+1. Google Cloud Console → új OAuth Client ID (Web application).
+2. Authorized redirect URI-nek beilleszteni a Supabase-ben látható callback URL-t (`https://nrxfiblssxwzeziomlvc.supabase.co/auth/v1/callback`).
+3. Authorized JavaScript origins: `https://comegetit-admin.hu`, `https://come-get-it-venue-hub.lovable.app`, és a preview URL.
+4. Client ID + secret beillesztése a Supabase Google provider felületén.
+5. Supabase Auth → URL Configuration → Site URL: `https://comegetit-admin.hu`, Redirect URLs lista bővítve a preview + custom domain URL-ekkel.
+
+Kódoldalon:
+- Új helper `signInWithGoogle()` az `src/auth/supabaseAuth.ts`-ben: `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard' } })`.
+- `onAuthStateChange` listener a `main.tsx`-ben (vagy egy új `AuthBootstrap` komponensben), hogy OAuth-redirect után a Supabase session → `sessionManager` bridge automatikusan felépüljön (a meglévő profile + memberships fetch logikát kiemeljük egy `hydrateSessionFromSupabaseUser(user)` függvénybe, és az `onAuthStateChange` `SIGNED_IN` eseményén meghívjuk).
+- Login screenre egy "Folytatás Google-lel" gomb a Neon Fidelity stílusban.
+
+**Fontos**: az admin felülethez csak az tud belépni Google-lel, akinek a `profiles.is_admin = true` vagy van `venue_memberships` rekordja. Ha egy random Google-user belép, a `handle_new_user` trigger létrehozza a profilját `is_admin=false` értékkel és nincs membershipje → a `RouteGuard` /dashboard-ra dobja, de tartalmat nem lát. Ezt érdemes egy "Nincs jogosultságod ehhez a felülethez, kérj hozzáférést" képernyővel kezelni a néma redirect helyett.
+
+## 3. Stratégiai válasz a gondolataidra (master doksi fényében)
+
+Ezeket nem a kódba építjük, csak a tervezéshez — a doksi szerint Phase 0 (waitlist + alapító partner pipeline) és Phase 1 (BP soft launch, 50 venue, 5000 user, 2026 Q3) most a fókusz.
+
+**A 90 napos prioritás kérdése.** Egyetértek a chicken-and-egg analízissel, és a doksi explicit megerősíti: Phase 1 célja **50 alapító venue Budapesten**, az 5 000 user csak ennek a következménye. Tehát: **partner-side bootstrap először**, user-side waitlist párhuzamos de másodlagos. A doksi 9. szekciója is jelzi, hogy Phase 1 zárás után jön a BD hire — addig founder-led venue acquisition.
+
+**Geo-fókusz.** A doksi a "Budapest urban" célzónát említi de nem szűkít kerületre. A javaslatod (Madách / Király / Kazinczy 500 m sugarú zóna) jó, mert a GIVE + napi ingyen ital értékajánlat csak akkor működik, ha a userek napi/heti rotációval tudnak partnerek között váltani. Ezt mint **"Founding District"** sub-narratívát rá lehet húzni a Founding Partner Programra (10. doksi-szekció).
+
+**Pilot-ajánlat (60 nap ingyen).** Konzisztens a Founding Partner Program-mal. A doksi 25-40k Ft/hó/venue-ról beszél tier-enként; egy 60 napos ingyen pilot + utána "kedvezményes feltételek" pont a Founding Partner narratívához passzol. Konkrét javaslat: első 60 nap ingyen, utána 50% kedvezmény az első évre (vs sima starter 25k → 12.5k Ft/hó).
+
+**Brand Admin nézet nyelvi mix.** Egyetértek — most fele angol, fele magyar. A doksi szerint a brand-target Heineken / Coca-Cola / Pernod, ezek HU leányai magyarul kommunikálnak az operatív szinten. **Javaslat: minden magyar**, az angol csak akkor indokolt, ha tényleg nemzetközi brand HQ a vevő (ami Phase 2+).
+
+**Visszatérő arány vs új/visszatérő bontás.** Egyetértek, érdemes egy második KPI-ként berakni — a doksi 6. szekció szerint a venue value-prop a "no-show 30-40%" megoldása, vagyis a baseline traffic. Az új vs visszatérő bontás pont ezt a sztorit erősíti: "X új vendég jött nálad ezen a héten az appon keresztül, akik máskülönben nem jöttek volna".
+
+**Plusz költés oszlop a Beváltások listában.** Salt Edge integráció a doksi 11. szekciója szerint még nincs kész ("Salt Edge, RevenueCat, push notifications: nincs"), tehát ez a Phase 2 függvénye. Addig "—" placeholder + tooltip ("Salt Edge integráció után elérhető") becsületesebb, mint kihagyni.
+
+**Staff nézet finomítás.** Egyetértek: "Mai top italok" leszedése a Staff dashboardról, a "Cap kihasználtság" radial progress bar-ral kiemelve (zöld→sárga→piros, 90%+ figyelmeztetés). Ez egy elkülönült feladat, nem része ennek a loginhoz kötött PR-nek.
+
+## 4. Mit építünk most ebben a körben
+
+```
+Scope (egy iterációban):
+├── src/auth/supabaseAuth.ts
+│   ├── extract: hydrateSessionFromSupabaseUser(user)   (refactor)
+│   └── add:    signInWithGoogle()
+├── src/main.tsx  (vagy új AuthBootstrap komponens)
+│   └── onAuthStateChange listener → hydrate → sessionManager bridge
+├── src/pages/Login.tsx
+│   ├── remove role-grid for Supabase mode (mock-only, <details>-ben)
+│   ├── add: "Folytatás Google-lel" gomb
+│   ├── add: "Elfelejtett jelszó" link (nem implementálom most, csak placeholder)
+│   └── visual polish: Neon Fidelity (fekete bg, cyan glow CTA, pill button)
+├── src/pages/NoAccess.tsx  (új, opcionális)
+│   └── "Nincs jogosultságod" képernyő Google-userek ki nem osztott role esetére
+└── src/components/Sidebar.tsx
+    └── szerepkör-váltó dropdown csak ha (isAdmin && hasMemberships)
 ```
 
-- **Square thumbnail grid** (Tailwind `grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5`, `aspect-square`).
-- Minden thumbnail-en hover-overlay: csillag (főkép), szemetes (törlés), grip ikon (drag), nagyítás (preview).
-- **Drag & drop megmarad** (`@dnd-kit` már be van kötve), de a `verticalListSortingStrategy` helyett `rectSortingStrategy`-re cseréljük, hogy gridben is működjön.
-- **Címke / URL / Cover** szerkesztés egy „kis ceruza" gombbal nyíló popoverben vagy a thumbnail alatti collapsible mezőkben – nem mindig láthatóan.
-- **Kép preview**: thumbnail-re kattintva lightbox dialog teljes méretben.
-- **Üres URL-ek vizuális jelzése**: szürke placeholder + figyelmeztető badge ("Nincs feltöltve").
+A Google provider-t a Supabase Dashboardon a usernek kell beállítania — ezt a szövegben végigvezetjük, nem hagyatkozunk feltételezésre, hogy már aktív.
 
-### 3. Sticky fejléc + footer a modálban
-- Fejléc (cím + tab sor) és footer (Mégse / Mentés gomb) **sticky**, középen csak a content scrollozik.
-- Mentés gombon a változtatások számának jelzése (pl. „Mentés (3 módosítás)") opcionális.
-- Mobil/Sheet variánsban a footer az alján rögzítve.
+## 5. Amit nem építünk most
 
-### 4. Általános tab tömörítése
-- Név + Csomag + Árkategória egy sorban (3 oszlop desktop).
-- Telefon + Weboldal egy sorba húzva.
-- Tag-ek és Szüneteltetés alulra kompaktan.
-- Leírás `Textarea` rows=2 alapból, auto-grow.
+- Forgot-password flow + `/reset-password` route — külön PR, jelzem a doksiban, hogy enélkül a Google login OK, de email-ből nem tud password-ot resetelni.
+- Sidebar role-switcher átalakítása — ha jelzed, külön körben.
+- Brand Admin nyelvi konzisztencia (magyarítás), Staff "Cap" radial bar, Owner KPI tooltip-ek — külön taskok, mert nem login-scope.
+- Founding Partner Program pitch deck / 1-pager / outreach lista — ezek nem kódfeladatok, hanem dokumentum-munka. Ha akarod, külön körben tudok 1-pager PDF-et generálni `/mnt/documents/`-be a doksi alapján.
 
-### 5. Helyszín tab – térkép nagyobb, GPS rejtve
-- A cím alatt nagyobb térkép preview.
-- GPS koordináták egy „Speciális" `<Collapsible>` alatt, hogy ne foglaljon helyet.
-
-### 6. Apró kényelmi finomítások
-- Minden tab tetején rövid, halvány segéd-szöveg (1 sor), hogy a felhasználó tudja, mit tehet ott.
-- Nem mentett változások jelzése a footer mellett (`* Nem mentett változások`).
-- A „Bezárás megerősítés" felugró kérdés, ha vannak nem mentett módosítások.
-
-## Mit NEM változtatunk
-- Üzleti logika, mentés flow, adat-szerkezet, backend, API hívások – minden marad.
-- A `VenueDetail` oldal (a szerkesztőt megnyitó oldal) változatlan.
-- Az italok / ingyenes italok belső szerkesztője (`EnhancedDrinkSelector`) változatlan, csak új tab alá kerül.
-
-## Érintett fájlok
-- `src/components/VenueFormModal.tsx` – tab-újraszervezés, sticky layout, általános/helyszín tömörítés
-- `src/components/VenueFormModal.tsx` – `SortableImageCard` átírása grid-thumbnail komponensre (új altárgyú komponens vagy refaktor)
-- (Új) `src/components/VenueImageThumbnail.tsx` – kompakt thumb + hover actions + lightbox
-- Esetleg `src/components/ui/dialog.tsx` használat lightbox-hoz (már van)
-
-## Technikai részletek
-- `@dnd-kit/sortable` strategy: `verticalListSortingStrategy` → `rectSortingStrategy`.
-- Lightbox: `Dialog` + `<img>` `max-h-[80vh] object-contain`.
-- Sticky: `sticky top-0 z-10 bg-cgi-surface` a fejlécen, `sticky bottom-0` a footeren, `max-h-[85vh] overflow-y-auto` a középső konténeren.
-- Nem mentett változások: `JSON.stringify(formData) !== JSON.stringify(initial)` referencia összehasonlítással.
-
-## Eredmény
-- 7 → 4 tab, kevesebb scrollozás.
-- Képgaléria 1 oszlop helyett 4–5 oszlopos grid → ~5× több kép látszik egy képernyőn.
-- Lightbox preview → ténylegesen lehet látni a képet feltöltés nélkül is.
-- Sticky mentés gomb → nem kell végigscrollozni a mentéshez.
