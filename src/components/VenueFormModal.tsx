@@ -737,3 +737,92 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     </Dialog>
   );
 }
+
+interface SortableImageCardProps {
+  img: VenueImage;
+  index: number;
+  onRemove: () => void;
+  onUpdate: (updates: Partial<VenueImage>) => void;
+  onSetCover: () => void;
+}
+
+function SortableImageCard({ img, index, onRemove, onUpdate, onSetCover }: SortableImageCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: img.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'p-4 cgi-card bg-cgi-surface border-cgi-muted',
+        isDragging && 'opacity-80 shadow-lg ring-2 ring-cgi-primary',
+      )}
+    >
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="touch-none cursor-grab active:cursor-grabbing rounded p-1 text-cgi-muted-foreground hover:bg-cgi-muted/40 hover:text-cgi-surface-foreground"
+              aria-label="Kép áthelyezése"
+            >
+              <GripVertical className="h-5 w-5" />
+            </button>
+            <h4 className="font-medium text-cgi-surface-foreground">
+              Kép #{index + 1}{img.isCover && <span className="ml-2 text-xs text-cgi-primary">(főkép)</span>}
+            </h4>
+          </div>
+          <Button
+            type="button"
+            onClick={onRemove}
+            variant="ghost"
+            size="sm"
+            className="text-red-500 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <Label>URL</Label>
+          <div className="flex gap-2">
+            <Input
+              value={img.url}
+              onChange={(e) => onUpdate({ url: e.target.value })}
+              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
+              placeholder="https://example.com/image.jpg"
+            />
+            <ImageUploadInput
+              buttonLabel="Feltöltés"
+              onUploaded={(url) => onUpdate({ url })}
+              variant="outline"
+              size="sm"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Címke</Label>
+          <Input
+            value={img.label || ''}
+            onChange={(e) => onUpdate({ label: e.target.value })}
+            className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+            placeholder="pl. Beltér, Terasz"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch checked={!!img.isCover} onCheckedChange={onSetCover} />
+          <Label className="text-cgi-surface-foreground">Főkép</Label>
+        </div>
+      </div>
+    </Card>
+  );
+}
