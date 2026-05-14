@@ -35,6 +35,7 @@ export interface VenueImage {
   url: string;
   label?: string;
   isCover?: boolean;
+  sortOrder?: number;
 }
 
 export interface VenueDrink {
