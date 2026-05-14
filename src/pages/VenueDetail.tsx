@@ -169,7 +169,10 @@ export default function VenueDetail() {
 
       <div className="mb-8 flex flex-col lg:flex-row items-start justify-between gap-4" data-tour="venue-header">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
+          <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2 flex items-center gap-3 flex-wrap">
+            <span>{venue.name}</span>
+            {venue.price_tier ? <PriceTierBadge tier={venue.price_tier} size="md" /> : null}
+          </h1>
           <p className="text-cgi-muted-foreground">
             {venue.address}
             {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}
