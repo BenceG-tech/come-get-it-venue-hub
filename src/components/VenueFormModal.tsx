@@ -194,6 +194,24 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }));
   };
 
+  // Drag & drop image reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleImagesDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setFormData(prev => {
+      const imgs = prev.images || [];
+      const oldIndex = imgs.findIndex(i => i.id === active.id);
+      const newIndex = imgs.findIndex(i => i.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return { ...prev, images: arrayMove(imgs, oldIndex, newIndex) };
+    });
+  };
+
   // Geocoding function
   const geocodeAddress = async (address: string) => {
     setGeocoding(true);
