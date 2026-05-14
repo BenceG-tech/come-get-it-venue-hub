@@ -526,68 +526,36 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {formData.images?.map((img) => (
-                  <Card key={img.id} className="p-4 cgi-card bg-cgi-surface border-cgi-muted">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-cgi-surface-foreground">Kép</h4>
-                        <Button
-                          type="button"
-                          onClick={() => removeImage(img.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              <p className="text-xs text-cgi-muted-foreground">
+                Tipp: ragadd meg a <GripVertical className="inline h-3 w-3" /> ikont és húzd a képet a kívánt sorrendbe. Az első kép lesz a főkép, ha nincs külön kijelölve.
+              </p>
 
-                      <div className="space-y-2">
-                        <Label>URL</Label>
-                        {/* NEW: input + per-image uploader */}
-                        <div className="flex gap-2">
-                          <Input
-                            value={img.url}
-                            onChange={(e) => updateImage(img.id, { url: e.target.value })}
-                            className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
-                            placeholder="https://example.com/image.jpg"
-                          />
-                          <ImageUploadInput
-                            buttonLabel="Feltöltés"
-                            onUploaded={(url) => updateImage(img.id, { url })}
-                            variant="outline"
-                            size="sm"
-                          />
-                        </div>
-                      </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleImagesDragEnd}
+              >
+                <SortableContext
+                  items={(formData.images || []).map(i => i.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4">
+                    {formData.images?.map((img, idx) => (
+                      <SortableImageCard
+                        key={img.id}
+                        img={img}
+                        index={idx}
+                        onRemove={() => removeImage(img.id)}
+                        onUpdate={(updates) => updateImage(img.id, updates)}
+                        onSetCover={() => setCoverImage(img.id)}
+                      />
+                    ))}
 
-                      <div className="space-y-2">
-                        <Label>Címke</Label>
-                        <Input
-                          value={img.label || ''}
-                          onChange={(e) => updateImage(img.id, { label: e.target.value })}
-                          className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                          placeholder="pl. Beltér, Terasz"
-                        />
+                    {!formData.images?.length && (
+                      <div className="text-center py-8 text-cgi-muted-foreground">
+                        Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
                       </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={!!img.isCover}
-                          onCheckedChange={() => setCoverImage(img.id)}
-                        />
-                        <Label className="text-cgi-surface-foreground">Főkép</Label>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-
-                {!formData.images?.length && (
-                  <div className="text-center py-8 text-cgi-muted-foreground">
-                    Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
-                  </div>
-                )}
+                    )}
               </div>
             </TabsContent>
 
