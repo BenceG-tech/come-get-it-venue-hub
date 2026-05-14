@@ -12,7 +12,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage, VenueIntegrationType } from '@/lib/types';
-import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign, Star, Maximize2, Pencil, ImageIcon, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageUploadInput } from './ImageUploadInput';
 import {
