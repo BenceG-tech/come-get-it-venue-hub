@@ -13,17 +13,18 @@ Deno.serve(async (req) => {
 
   try {
     // This endpoint is called by POS systems (Goorderz) with an API key
-    const apiKey = req.headers.get("X-API-Key");
     const expectedApiKey = Deno.env.get("GOORDERZ_API_KEY");
+    if (!expectedApiKey) {
+      console.error("GOORDERZ_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // For now, also allow service role key for testing
-    const authHeader = req.headers.get("Authorization");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    const isServiceRole = authHeader?.includes(serviceKey || "impossible-match");
-    const isValidApiKey = expectedApiKey && apiKey === expectedApiKey;
-
-    if (!isServiceRole && !isValidApiKey) {
+    const apiKey = req.headers.get("X-API-Key");
+    if (apiKey !== expectedApiKey) {
+      console.warn("Invalid API key attempt on validate-user-qr");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
