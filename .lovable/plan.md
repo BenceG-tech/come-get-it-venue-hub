@@ -1,54 +1,82 @@
-## Mit fogok csinálni
 
-### 1. Képek drag & drop sorrendezés
-- **DB migráció**: új `sort_order INTEGER` oszlop a `venue_images` táblához (default 0, indexelve).
-- **Backend (`supabaseProvider.ts`)**:
-  - `fetchVenueImages` → `ORDER BY sort_order ASC, created_at ASC`
-  - `replaceVenueImages` → mentésnél a tömb indexét írja a `sort_order`-be
-- **Form UI (`VenueFormModal.tsx`, Képek tab)**:
-  - `@dnd-kit/core` + `@dnd-kit/sortable` használatával minden képkártyához fogantyú (grip ikon)
-  - Húzással átrendezhető sorrend, mentéskor új sorrend perzisztálódik
-- **Galéria (`VenueImageGallery.tsx`)**: a sorrendet a backendből kapja, nincs külön rendezés szükséges
+## Cél
+A `VenueFormModal` (jelenleg 7 tab, 866 sor, sok szétszórt mező, nagy egysoros képkártyák) átalakítása letisztult, kompakt és gyorsan átlátható szerkesztővé.
 
-### 2. „A3" kép miért nem jelenik meg
-A DB-ben 6 kép van ennél a helyszínnél, de **3 sornak üres az URL-je** (a felhasználó valószínűleg „Kép hozzáadása" gombbal létrehozta a kártyát, de soha nem töltötte fel a fájlt és nem mentette le az URL-t). A galéria thumbnail sorban ezért jelennek meg az ajándék-doboz placeholder ikonok.
+## Mit változtatunk
 
-**Megoldás**:
-- A galéria és a form **szűrje ki az üres URL-ű képeket** (`images.filter(i => i.url?.trim())`)
-- A modal mentési logikája is dobja el az üres URL-ű kártyákat (ne mentsen üres sort a DB-be)
-- Egyszeri DB takarítás: az üres sorok törlése a `venue_images` táblából
+### 1. Tabok újracsoportosítása (7 → 4)
+A jelenlegi 7 tab sok és redundáns. Átcsoportosítás logikus blokkokra:
 
-### 3. Ár-kategória ($) ikonok
-A `price_tier` mező már létezik a `venues` táblán (1–4 közötti érték). Csak megjelenítés és szerkesztés kell:
-- **Új komponens** `PriceTierBadge.tsx`: 4 dollár-ikon, az aktívak teltek (`text-cgi-primary`), a többi halvány (`text-cgi-muted`). Példa: `$$$ $`
-- **Megjelenítés**:
-  - `VenueDetail.tsx` header (név alatt, a tagek mellett)
-  - `Venues.tsx` lista/kártya nézet (cím mellé)
-  - `PublicVenueCard.tsx` és `PublicVenueListItem.tsx` (publikus oldal)
-- **Szerkesztés**: `VenueFormModal.tsx` → „Alapok" tab végére kattintható 1–4 csillag-szerű választó (Nincs / $ / $$ / $$$ / $$$$)
+| Új tab | Mit tartalmaz |
+|---|---|
+| **Általános** | Név, csomag, leírás, árkategória, tag-ek, szüneteltetés, telefon, weboldal |
+| **Helyszín & Nyitvatartás** | Cím + térkép, GPS koordináták (összecsukható), nyitvatartás |
+| **Italok & Akciók** | Italok és ingyenes ital időablakok, limitek (caps) – egy helyen |
+| **Képek** | Kompakt galéria nézet |
+| **Integráció** | (Marad külön, technikai) |
 
-## Technikai részletek
+Így az általános napi szerkesztés (név, leírás, kép) 1-2 tabbal megoldható, a haladó beállítások (integráció) elkülönítve.
 
-- **Új csomag**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (Drag-and-Drop, akadálymentes, jól bevált React-ben)
-- **Migráció**:
-  ```sql
-  ALTER TABLE venue_images ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
-  CREATE INDEX idx_venue_images_sort ON venue_images(venue_id, sort_order);
-  -- Üres URL-ű képek takarítása:
-  DELETE FROM venue_images WHERE url IS NULL OR trim(url) = '';
-  ```
-- **`PriceTierBadge` props**: `tier?: number` (1–4), `size?: 'sm' | 'md'` — visszafelé kompatibilis (ha `null`/`undefined`, nem renderel semmit)
-- **TypeScript**: `VenueImage` típus kap egy opcionális `sortOrder?: number` mezőt
-- **Nincs változás**: a Rork mobil app oldalon, mert a `price_tier` és a képek API-ja nem törik (csak új mező + sorrend)
+### 2. Képek tab – kompakt grid + lightbox preview
+Jelenleg minden kép egy nagy függőleges kártya. Helyette:
+
+```text
+┌──────────────────────────────────────────────────┐
+│ [+ Kép feltöltése]  [+ URL hozzáadása]           │
+├──────────────────────────────────────────────────┤
+│ ┌────┐ ┌────┐ ┌────┐ ┌────┐                     │
+│ │IMG │ │IMG │ │IMG │ │IMG │  ← 4–5 oszlopos     │
+│ │⭐ ⋮│ │  ⋮│ │  ⋮│ │  ⋮│     square thumbnail │
+│ └────┘ └────┘ └────┘ └────┘                     │
+└──────────────────────────────────────────────────┘
+```
+
+- **Square thumbnail grid** (Tailwind `grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5`, `aspect-square`).
+- Minden thumbnail-en hover-overlay: csillag (főkép), szemetes (törlés), grip ikon (drag), nagyítás (preview).
+- **Drag & drop megmarad** (`@dnd-kit` már be van kötve), de a `verticalListSortingStrategy` helyett `rectSortingStrategy`-re cseréljük, hogy gridben is működjön.
+- **Címke / URL / Cover** szerkesztés egy „kis ceruza" gombbal nyíló popoverben vagy a thumbnail alatti collapsible mezőkben – nem mindig láthatóan.
+- **Kép preview**: thumbnail-re kattintva lightbox dialog teljes méretben.
+- **Üres URL-ek vizuális jelzése**: szürke placeholder + figyelmeztető badge ("Nincs feltöltve").
+
+### 3. Sticky fejléc + footer a modálban
+- Fejléc (cím + tab sor) és footer (Mégse / Mentés gomb) **sticky**, középen csak a content scrollozik.
+- Mentés gombon a változtatások számának jelzése (pl. „Mentés (3 módosítás)") opcionális.
+- Mobil/Sheet variánsban a footer az alján rögzítve.
+
+### 4. Általános tab tömörítése
+- Név + Csomag + Árkategória egy sorban (3 oszlop desktop).
+- Telefon + Weboldal egy sorba húzva.
+- Tag-ek és Szüneteltetés alulra kompaktan.
+- Leírás `Textarea` rows=2 alapból, auto-grow.
+
+### 5. Helyszín tab – térkép nagyobb, GPS rejtve
+- A cím alatt nagyobb térkép preview.
+- GPS koordináták egy „Speciális" `<Collapsible>` alatt, hogy ne foglaljon helyet.
+
+### 6. Apró kényelmi finomítások
+- Minden tab tetején rövid, halvány segéd-szöveg (1 sor), hogy a felhasználó tudja, mit tehet ott.
+- Nem mentett változások jelzése a footer mellett (`* Nem mentett változások`).
+- A „Bezárás megerősítés" felugró kérdés, ha vannak nem mentett módosítások.
+
+## Mit NEM változtatunk
+- Üzleti logika, mentés flow, adat-szerkezet, backend, API hívások – minden marad.
+- A `VenueDetail` oldal (a szerkesztőt megnyitó oldal) változatlan.
+- Az italok / ingyenes italok belső szerkesztője (`EnhancedDrinkSelector`) változatlan, csak új tab alá kerül.
 
 ## Érintett fájlok
-- `supabase/migrations/...` (új)
-- `src/lib/dataProvider/supabaseProvider.ts`
-- `src/lib/types.ts`
-- `src/components/VenueFormModal.tsx`
-- `src/components/VenueImageGallery.tsx`
-- `src/components/PriceTierBadge.tsx` (új)
-- `src/pages/VenueDetail.tsx`
-- `src/pages/Venues.tsx`
-- `src/components/PublicVenueCard.tsx`, `PublicVenueListItem.tsx`
-- `package.json` (dnd-kit)
+- `src/components/VenueFormModal.tsx` – tab-újraszervezés, sticky layout, általános/helyszín tömörítés
+- `src/components/VenueFormModal.tsx` – `SortableImageCard` átírása grid-thumbnail komponensre (új altárgyú komponens vagy refaktor)
+- (Új) `src/components/VenueImageThumbnail.tsx` – kompakt thumb + hover actions + lightbox
+- Esetleg `src/components/ui/dialog.tsx` használat lightbox-hoz (már van)
+
+## Technikai részletek
+- `@dnd-kit/sortable` strategy: `verticalListSortingStrategy` → `rectSortingStrategy`.
+- Lightbox: `Dialog` + `<img>` `max-h-[80vh] object-contain`.
+- Sticky: `sticky top-0 z-10 bg-cgi-surface` a fejlécen, `sticky bottom-0` a footeren, `max-h-[85vh] overflow-y-auto` a középső konténeren.
+- Nem mentett változások: `JSON.stringify(formData) !== JSON.stringify(initial)` referencia összehasonlítással.
+
+## Eredmény
+- 7 → 4 tab, kevesebb scrollozás.
+- Képgaléria 1 oszlop helyett 4–5 oszlopos grid → ~5× több kép látszik egy képernyőn.
+- Lightbox preview → ténylegesen lehet látni a képet feltöltés nélkül is.
+- Sticky mentés gomb → nem kell végigscrollozni a mentéshez.
