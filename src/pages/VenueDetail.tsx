@@ -19,6 +19,7 @@ import { VenueImageGallery } from '@/components/VenueImageGallery';
 import ScheduleGrid from '@/components/ScheduleGrid';
 import BusinessHoursEditor from '@/components/BusinessHoursEditor';
 import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManager';
+import { PriceTierBadge } from '@/components/PriceTierBadge';
 import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { seedData } from '@/lib/mock/seed';
