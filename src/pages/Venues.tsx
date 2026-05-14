@@ -232,8 +232,9 @@ export default function Venues() {
           
           {/* Info */}
           <div className="p-3">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
               <span className="font-semibold truncate text-sm">{venue.name}</span>
+              <PriceTierBadge tier={venue.price_tier} />
             </div>
             <p className="text-xs text-cgi-muted-foreground truncate mb-2">{venue.address}</p>
             <div className="flex items-center justify-between">
