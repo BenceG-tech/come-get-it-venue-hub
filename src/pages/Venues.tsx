@@ -12,6 +12,7 @@ import { VenueFormModal } from '@/components/VenueFormModal';
 import { useToast } from '@/hooks/use-toast';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import type { Venue } from '@/lib/types';
+import { PriceTierBadge } from '@/components/PriceTierBadge';
 
 type VenueRow = {
   id: string;
@@ -25,6 +26,7 @@ type VenueRow = {
   business_hours?: any;
   image_url?: string | null;
   hero_image_url?: string | null;
+  price_tier?: number | null;
 };
 
 const PAGE_SIZE = 20;
