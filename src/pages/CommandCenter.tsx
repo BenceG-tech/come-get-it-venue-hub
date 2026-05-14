@@ -103,7 +103,7 @@ export default function CommandCenter() {
     fetchStatus();
     
     // Auto-refresh every 30 seconds if enabled
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (autoRefresh) {
       interval = setInterval(fetchStatus, 30000);
     }

@@ -19,6 +19,7 @@ import { VenueImageGallery } from '@/components/VenueImageGallery';
 import ScheduleGrid from '@/components/ScheduleGrid';
 import BusinessHoursEditor from '@/components/BusinessHoursEditor';
 import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManager';
+import { PriceTierBadge } from '@/components/PriceTierBadge';
 import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { seedData } from '@/lib/mock/seed';
@@ -168,7 +169,10 @@ export default function VenueDetail() {
 
       <div className="mb-8 flex flex-col lg:flex-row items-start justify-between gap-4" data-tour="venue-header">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2">{venue.name}</h1>
+          <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2 flex items-center gap-3 flex-wrap">
+            <span>{venue.name}</span>
+            {venue.price_tier ? <PriceTierBadge tier={venue.price_tier} size="md" /> : null}
+          </h1>
           <p className="text-cgi-muted-foreground">
             {venue.address}
             {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}

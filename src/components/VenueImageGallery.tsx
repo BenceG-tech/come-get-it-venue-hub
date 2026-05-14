@@ -9,7 +9,9 @@ interface VenueImageGalleryProps {
   venueName: string;
 }
 
-export function VenueImageGallery({ images, venueName }: VenueImageGalleryProps) {
+export function VenueImageGallery({ images: rawImages, venueName }: VenueImageGalleryProps) {
+  // Skip entries without a real URL (would render placeholder otherwise)
+  const images = (rawImages || []).filter(i => i?.url && String(i.url).trim() !== '');
   const [selectedImage, setSelectedImage] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
 

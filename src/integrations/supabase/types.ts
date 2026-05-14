@@ -2006,6 +2006,7 @@ export type Database = {
           id: string
           is_cover: boolean
           label: string | null
+          sort_order: number
           url: string
           venue_id: string
         }
@@ -2014,6 +2015,7 @@ export type Database = {
           id?: string
           is_cover?: boolean
           label?: string | null
+          sort_order?: number
           url: string
           venue_id: string
         }
@@ -2022,6 +2024,7 @@ export type Database = {
           id?: string
           is_cover?: boolean
           label?: string | null
+          sort_order?: number
           url?: string
           venue_id?: string
         }

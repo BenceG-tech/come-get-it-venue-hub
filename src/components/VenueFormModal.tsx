@@ -12,9 +12,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage, VenueIntegrationType } from '@/lib/types';
-import { Plus, Trash2, AlertCircle, HelpCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageUploadInput } from './ImageUploadInput';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import BusinessHoursEditor from './BusinessHoursEditor';
 import VenueMapPreview from './VenueMapPreview';
@@ -76,6 +94,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     integration_type: venue?.integration_type || 'none',
     goorderz_external_id: venue?.goorderz_external_id || '',
     saltedge_connection_id: venue?.saltedge_connection_id || '',
+    price_tier: venue?.price_tier ?? null,
   });
 
 
@@ -113,6 +132,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       integration_type: venue?.integration_type || 'none',
       goorderz_external_id: venue?.goorderz_external_id || '',
       saltedge_connection_id: venue?.saltedge_connection_id || '',
+      price_tier: venue?.price_tier ?? null,
     });
   }, [open, venue?.id]);
 
@@ -172,6 +192,24 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         isCover: img.id === id
       })) || []
     }));
+  };
+
+  // Drag & drop image reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleImagesDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setFormData(prev => {
+      const imgs = prev.images || [];
+      const oldIndex = imgs.findIndex(i => i.id === active.id);
+      const newIndex = imgs.findIndex(i => i.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return { ...prev, images: arrayMove(imgs, oldIndex, newIndex) };
+    });
   };
 
   // Geocoding function
@@ -387,6 +425,45 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               </div>
 
               <div className="space-y-2">
+                <Label className="text-cgi-surface-foreground">Árkategória</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { v: null, label: 'Nincs' },
+                    { v: 1, label: '$' },
+                    { v: 2, label: '$$' },
+                    { v: 3, label: '$$$' },
+                    { v: 4, label: '$$$$' },
+                  ].map(opt => {
+                    const active = (formData.price_tier ?? null) === opt.v;
+                    return (
+                      <button
+                        type="button"
+                        key={String(opt.v)}
+                        onClick={() => setFormData(prev => ({ ...prev, price_tier: opt.v as any }))}
+                        className={cn(
+                          'px-3 py-1.5 rounded-md border text-sm font-medium transition-colors inline-flex items-center gap-1',
+                          active
+                            ? 'border-cgi-primary bg-cgi-primary/10 text-cgi-primary'
+                            : 'border-cgi-muted bg-cgi-surface text-cgi-muted-foreground hover:text-cgi-surface-foreground hover:border-cgi-primary/40',
+                        )}
+                      >
+                        {opt.v === null ? (
+                          <span>Nincs</span>
+                        ) : (
+                          Array.from({ length: opt.v }).map((_, i) => (
+                            <DollarSign key={i} className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          ))
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-cgi-muted-foreground">
+                  Megjelenik a vendégoldali kártyákon és a helyszín fejlécében.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label className="text-cgi-surface-foreground">Tag-ek</Label>
                 <TagInput
                   tags={formData.tags || []}
@@ -488,69 +565,39 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {formData.images?.map((img) => (
-                  <Card key={img.id} className="p-4 cgi-card bg-cgi-surface border-cgi-muted">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-cgi-surface-foreground">Kép</h4>
-                        <Button
-                          type="button"
-                          onClick={() => removeImage(img.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              <p className="text-xs text-cgi-muted-foreground">
+                Tipp: ragadd meg a <GripVertical className="inline h-3 w-3" /> ikont és húzd a képet a kívánt sorrendbe. Az első kép lesz a főkép, ha nincs külön kijelölve.
+              </p>
 
-                      <div className="space-y-2">
-                        <Label>URL</Label>
-                        {/* NEW: input + per-image uploader */}
-                        <div className="flex gap-2">
-                          <Input
-                            value={img.url}
-                            onChange={(e) => updateImage(img.id, { url: e.target.value })}
-                            className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
-                            placeholder="https://example.com/image.jpg"
-                          />
-                          <ImageUploadInput
-                            buttonLabel="Feltöltés"
-                            onUploaded={(url) => updateImage(img.id, { url })}
-                            variant="outline"
-                            size="sm"
-                          />
-                        </div>
-                      </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleImagesDragEnd}
+              >
+                <SortableContext
+                  items={(formData.images || []).map(i => i.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4">
+                    {formData.images?.map((img, idx) => (
+                      <SortableImageCard
+                        key={img.id}
+                        img={img}
+                        index={idx}
+                        onRemove={() => removeImage(img.id)}
+                        onUpdate={(updates) => updateImage(img.id, updates)}
+                        onSetCover={() => setCoverImage(img.id)}
+                      />
+                    ))}
 
-                      <div className="space-y-2">
-                        <Label>Címke</Label>
-                        <Input
-                          value={img.label || ''}
-                          onChange={(e) => updateImage(img.id, { label: e.target.value })}
-                          className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                          placeholder="pl. Beltér, Terasz"
-                        />
+                    {!formData.images?.length && (
+                      <div className="text-center py-8 text-cgi-muted-foreground">
+                        Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
                       </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={!!img.isCover}
-                          onCheckedChange={() => setCoverImage(img.id)}
-                        />
-                        <Label className="text-cgi-surface-foreground">Főkép</Label>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-
-                {!formData.images?.length && (
-                  <div className="text-center py-8 text-cgi-muted-foreground">
-                    Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
+                    )}
                   </div>
-                )}
-              </div>
+                </SortableContext>
+              </DndContext>
             </TabsContent>
 
             <TabsContent value="drinks" className="space-y-4">
@@ -727,5 +774,94 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         {formContent}
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface SortableImageCardProps {
+  img: VenueImage;
+  index: number;
+  onRemove: () => void;
+  onUpdate: (updates: Partial<VenueImage>) => void;
+  onSetCover: () => void;
+}
+
+function SortableImageCard({ img, index, onRemove, onUpdate, onSetCover }: SortableImageCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: img.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'p-4 cgi-card bg-cgi-surface border-cgi-muted',
+        isDragging && 'opacity-80 shadow-lg ring-2 ring-cgi-primary',
+      )}
+    >
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="touch-none cursor-grab active:cursor-grabbing rounded p-1 text-cgi-muted-foreground hover:bg-cgi-muted/40 hover:text-cgi-surface-foreground"
+              aria-label="Kép áthelyezése"
+            >
+              <GripVertical className="h-5 w-5" />
+            </button>
+            <h4 className="font-medium text-cgi-surface-foreground">
+              Kép #{index + 1}{img.isCover && <span className="ml-2 text-xs text-cgi-primary">(főkép)</span>}
+            </h4>
+          </div>
+          <Button
+            type="button"
+            onClick={onRemove}
+            variant="ghost"
+            size="sm"
+            className="text-red-500 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <Label>URL</Label>
+          <div className="flex gap-2">
+            <Input
+              value={img.url}
+              onChange={(e) => onUpdate({ url: e.target.value })}
+              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
+              placeholder="https://example.com/image.jpg"
+            />
+            <ImageUploadInput
+              buttonLabel="Feltöltés"
+              onUploaded={(url) => onUpdate({ url })}
+              variant="outline"
+              size="sm"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Címke</Label>
+          <Input
+            value={img.label || ''}
+            onChange={(e) => onUpdate({ label: e.target.value })}
+            className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+            placeholder="pl. Beltér, Terasz"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch checked={!!img.isCover} onCheckedChange={onSetCover} />
+          <Label className="text-cgi-surface-foreground">Főkép</Label>
+        </div>
+      </div>
+    </Card>
   );
 }

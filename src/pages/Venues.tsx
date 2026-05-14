@@ -12,6 +12,7 @@ import { VenueFormModal } from '@/components/VenueFormModal';
 import { useToast } from '@/hooks/use-toast';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import type { Venue } from '@/lib/types';
+import { PriceTierBadge } from '@/components/PriceTierBadge';
 
 type VenueRow = {
   id: string;
@@ -25,6 +26,7 @@ type VenueRow = {
   business_hours?: any;
   image_url?: string | null;
   hero_image_url?: string | null;
+  price_tier?: number | null;
 };
 
 const PAGE_SIZE = 20;
@@ -185,6 +187,7 @@ export default function Venues() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap mb-1">
                 <span className="font-semibold text-sm truncate max-w-[120px]">{venue.name}</span>
+                <PriceTierBadge tier={venue.price_tier} />
                 <Badge className={`${planBadgeColor(venue.plan)} capitalize text-[10px] px-1.5 py-0`}>{venue.plan}</Badge>
                 <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-[10px] px-1.5 py-0`}>
                   {venue.is_paused ? 'Szünetel' : 'Aktív'}
@@ -229,8 +232,9 @@ export default function Venues() {
           
           {/* Info */}
           <div className="p-3">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
               <span className="font-semibold truncate text-sm">{venue.name}</span>
+              <PriceTierBadge tier={venue.price_tier} />
             </div>
             <p className="text-xs text-cgi-muted-foreground truncate mb-2">{venue.address}</p>
             <div className="flex items-center justify-between">

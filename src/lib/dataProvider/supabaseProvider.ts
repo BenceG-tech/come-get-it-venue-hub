@@ -52,6 +52,7 @@ const VENUE_COLUMNS = new Set([
   "integration_type",
   "goorderz_external_id",
   "saltedge_connection_id",
+  "price_tier",
 ]);
 
 function pickVenueColumns(payload: any) {
@@ -69,20 +70,24 @@ function pickVenueColumns(payload: any) {
 async function fetchVenueImages(venueId: string) {
   const { data: imgs, error: imgsErr } = await supabase
     .from("venue_images")
-    .select("id, url, label, is_cover, created_at")
+    .select("id, url, label, is_cover, sort_order, created_at")
     .eq("venue_id", venueId)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (imgsErr) {
     logSbError("fetchVenueImages", imgsErr);
     throw imgsErr;
   }
-  // Map to camelCase for UI
-  return (imgs || []).map((i: any) => ({
-    id: i.id,
-    url: i.url,
-    label: i.label || "",
-    isCover: !!i.is_cover,
-  }));
+  // Map to camelCase for UI; skip empty URLs
+  return (imgs || [])
+    .filter((i: any) => i.url && String(i.url).trim() !== "")
+    .map((i: any) => ({
+      id: i.id,
+      url: i.url,
+      label: i.label || "",
+      isCover: !!i.is_cover,
+      sortOrder: i.sort_order ?? 0,
+    }));
 }
 
 async function replaceVenueImages(venueId: string, images: any[]) {
@@ -96,13 +101,16 @@ async function replaceVenueImages(venueId: string, images: any[]) {
     throw delErr;
   }
 
-  if (!images || images.length === 0) return [];
+  // Drop empty-URL entries before insert
+  const cleaned = (images || []).filter((img: any) => img?.url && String(img.url).trim() !== "");
+  if (cleaned.length === 0) return [];
 
-  const rows = images.map((img: any) => ({
+  const rows = cleaned.map((img: any, idx: number) => ({
     venue_id: venueId,
     url: img.url,
     label: img.label || null,
     is_cover: !!img.isCover,
+    sort_order: idx,
   }));
 
   const { data: inserted, error: insErr } = await supabase
