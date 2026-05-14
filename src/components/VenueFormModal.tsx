@@ -425,6 +425,45 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               </div>
 
               <div className="space-y-2">
+                <Label className="text-cgi-surface-foreground">Árkategória</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { v: null, label: 'Nincs' },
+                    { v: 1, label: '$' },
+                    { v: 2, label: '$$' },
+                    { v: 3, label: '$$$' },
+                    { v: 4, label: '$$$$' },
+                  ].map(opt => {
+                    const active = (formData.price_tier ?? null) === opt.v;
+                    return (
+                      <button
+                        type="button"
+                        key={String(opt.v)}
+                        onClick={() => setFormData(prev => ({ ...prev, price_tier: opt.v as any }))}
+                        className={cn(
+                          'px-3 py-1.5 rounded-md border text-sm font-medium transition-colors inline-flex items-center gap-1',
+                          active
+                            ? 'border-cgi-primary bg-cgi-primary/10 text-cgi-primary'
+                            : 'border-cgi-muted bg-cgi-surface text-cgi-muted-foreground hover:text-cgi-surface-foreground hover:border-cgi-primary/40',
+                        )}
+                      >
+                        {opt.v === null ? (
+                          <span>Nincs</span>
+                        ) : (
+                          Array.from({ length: opt.v }).map((_, i) => (
+                            <DollarSign key={i} className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          ))
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-cgi-muted-foreground">
+                  Megjelenik a vendégoldali kártyákon és a helyszín fejlécében.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label className="text-cgi-surface-foreground">Tag-ek</Label>
                 <TagInput
                   tags={formData.tags || []}
