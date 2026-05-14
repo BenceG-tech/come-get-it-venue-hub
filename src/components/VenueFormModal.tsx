@@ -12,9 +12,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage, VenueIntegrationType } from '@/lib/types';
-import { Plus, Trash2, AlertCircle, HelpCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageUploadInput } from './ImageUploadInput';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import BusinessHoursEditor from './BusinessHoursEditor';
 import VenueMapPreview from './VenueMapPreview';
@@ -76,6 +94,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     integration_type: venue?.integration_type || 'none',
     goorderz_external_id: venue?.goorderz_external_id || '',
     saltedge_connection_id: venue?.saltedge_connection_id || '',
+    price_tier: venue?.price_tier ?? null,
   });
 
 
