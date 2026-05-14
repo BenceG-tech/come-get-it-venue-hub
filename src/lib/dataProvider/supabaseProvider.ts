@@ -52,6 +52,7 @@ const VENUE_COLUMNS = new Set([
   "integration_type",
   "goorderz_external_id",
   "saltedge_connection_id",
+  "price_tier",
 ]);
 
 function pickVenueColumns(payload: any) {
