@@ -347,400 +347,375 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
   };
 
-  const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-auto min-h-[40px] flex-wrap sm:flex-nowrap p-1">
-          <TabsTrigger value="basic" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Alapok</TabsTrigger>
-          <TabsTrigger value="contact" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Kontakt</TabsTrigger>
-          <TabsTrigger value="images" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Képek</TabsTrigger>
-          <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Italok</TabsTrigger>
-          <TabsTrigger value="hours" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Nyitva</TabsTrigger>
-          <TabsTrigger value="caps" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Limitek</TabsTrigger>
-          <TabsTrigger value="integration" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Integráció</TabsTrigger>
-        </TabsList>
+  const imageCount = formData.images?.length || 0;
 
-        <TabsContent value="basic" className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      <Tabs defaultValue="basic" className="w-full flex-1 flex flex-col min-h-0">
+        <div className="sticky top-0 z-10 bg-cgi-surface pb-2 -mx-1 px-1">
+          <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-auto min-h-[40px] p-1">
+            <TabsTrigger value="basic" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Általános</TabsTrigger>
+            <TabsTrigger value="location" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Helyszín & Nyitva</TabsTrigger>
+            <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Italok & Limitek</TabsTrigger>
+            <TabsTrigger value="images" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">
+              Képek{imageCount > 0 && <span className="ml-1.5 text-xs text-cgi-muted-foreground">({imageCount})</span>}
+            </TabsTrigger>
+            <TabsTrigger value="integration" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Integráció</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <div className="flex-1 overflow-y-auto pt-4">
+
+        {/* ÁLTALÁNOS */}
+        <TabsContent value="basic" className="space-y-4 mt-0">
+          <p className="text-xs text-cgi-muted-foreground">Alap adatok, elérhetőség és megjelenés a vendégoldalon.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="name" className="text-cgi-surface-foreground">Név *</Label>
               <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="plan" className="text-cgi-surface-foreground">Csomag *</Label>
-                  <Select value={formData.plan} onValueChange={(value) => setFormData(prev => ({ ...prev, plan: value as any }))}>
-                    <SelectTrigger className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-cgi-surface border-cgi-muted">
-                      <SelectItem value="basic">Basic</SelectItem>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-cgi-surface-foreground">Cím *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => {
-                    setFormData(prev => ({ ...prev, address: e.target.value }));
-                    setGeocodeError(null);
-                  }}
-                  className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                  required
-                />
-                {geocodeError && (
-                  <Alert variant="destructive" className="mt-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{geocodeError}</AlertDescription>
-                  </Alert>
-                )}
-                <div className="mt-3">
-                  <VenueMapPreview
-                    lat={formData.coordinates?.lat || 0}
-                    lng={formData.coordinates?.lng || 0}
-                    isLoading={geocoding}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-cgi-surface-foreground">Leírás</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-cgi-surface-foreground">Árkategória</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
-                    { v: null, label: 'Nincs' },
-                    { v: 1, label: '$' },
-                    { v: 2, label: '$$' },
-                    { v: 3, label: '$$$' },
-                    { v: 4, label: '$$$$' },
-                  ].map(opt => {
-                    const active = (formData.price_tier ?? null) === opt.v;
-                    return (
-                      <button
-                        type="button"
-                        key={String(opt.v)}
-                        onClick={() => setFormData(prev => ({ ...prev, price_tier: opt.v as any }))}
-                        className={cn(
-                          'px-3 py-1.5 rounded-md border text-sm font-medium transition-colors inline-flex items-center gap-1',
-                          active
-                            ? 'border-cgi-primary bg-cgi-primary/10 text-cgi-primary'
-                            : 'border-cgi-muted bg-cgi-surface text-cgi-muted-foreground hover:text-cgi-surface-foreground hover:border-cgi-primary/40',
-                        )}
-                      >
-                        {opt.v === null ? (
-                          <span>Nincs</span>
-                        ) : (
-                          Array.from({ length: opt.v }).map((_, i) => (
-                            <DollarSign key={i} className="h-3.5 w-3.5" strokeWidth={2.5} />
-                          ))
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-cgi-muted-foreground">
-                  Megjelenik a vendégoldali kártyákon és a helyszín fejlécében.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-cgi-surface-foreground">Tag-ek</Label>
-                <TagInput
-                  tags={formData.tags || []}
-                  onChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={formData.is_paused}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_paused: checked }))}
-                />
-                <Label className="text-cgi-surface-foreground">Szüneteltetve</Label>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="contact" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-cgi-surface-foreground">Telefonszám</Label>
-                  <Input
-                    value={formData.phone_number || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
-                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                    placeholder="+36 1 234 5678"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-cgi-surface-foreground">Weboldal</Label>
-                  <Input
-                    value={formData.website_url || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, website_url: e.target.value }))}
-                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                    placeholder="https://example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-cgi-muted/20 border border-cgi-muted rounded-lg p-4">
-                  <h4 className="font-medium text-cgi-surface-foreground mb-2">GPS Koordináták (Opcionális)</h4>
-                  <p className="text-sm text-cgi-muted-foreground mb-3">
-                    A GPS koordináták segítenek a pontos helyszín meghatározásában térképes alkalmazásokban. 
-                    Ha nem tölti ki, a rendszer a címből próbálja meghatározni a helyszínt.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-cgi-surface-foreground">Szélesség (Latitude)</Label>
-                      <Input
-                        value={formData.coordinates?.lat ?? ''}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev, 
-                          coordinates: { 
-                            ...(prev.coordinates || { lat: 0, lng: 0 }), 
-                            lat: Number(e.target.value) || 0 
-                          }
-                        }))}
-                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                        inputMode="decimal"
-                        placeholder="47.4979"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-cgi-surface-foreground">Hosszúság (Longitude)</Label>
-                      <Input
-                        value={formData.coordinates?.lng ?? ''}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev, 
-                          coordinates: { 
-                            ...(prev.coordinates || { lat: 0, lng: 0 }), 
-                            lng: Number(e.target.value) || 0 
-                          }
-                        }))}
-                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-                        inputMode="decimal"
-                        placeholder="19.0402"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="images" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-cgi-surface-foreground">Képek</Label>
-                <div className="flex items-center gap-2">
-                  {/* NEW: Upload and auto-add as new image */}
-                  <ImageUploadInput
-                    buttonLabel="Kép feltöltése"
-                    onUploaded={(url) => addImageWithUrl(url)}
-                    variant="outline"
-                    size="sm"
-                  />
-                  <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Kép hozzáadása
-                  </Button>
-                </div>
-              </div>
-
-              <p className="text-xs text-cgi-muted-foreground">
-                Tipp: ragadd meg a <GripVertical className="inline h-3 w-3" /> ikont és húzd a képet a kívánt sorrendbe. Az első kép lesz a főkép, ha nincs külön kijelölve.
-              </p>
-
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleImagesDragEnd}
-              >
-                <SortableContext
-                  items={(formData.images || []).map(i => i.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-4">
-                    {formData.images?.map((img, idx) => (
-                      <SortableImageCard
-                        key={img.id}
-                        img={img}
-                        index={idx}
-                        onRemove={() => removeImage(img.id)}
-                        onUpdate={(updates) => updateImage(img.id, updates)}
-                        onSetCover={() => setCoverImage(img.id)}
-                      />
-                    ))}
-
-                    {!formData.images?.length && (
-                      <div className="text-center py-8 text-cgi-muted-foreground">
-                        Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
-                      </div>
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </TabsContent>
-
-            <TabsContent value="drinks" className="space-y-4">
-              <EnhancedDrinkSelector
-                ref={drinkSelectorRef}
-                drinks={formData.drinks || []}
-                freeDrinkWindows={formData.freeDrinkWindows || []}
-                onChange={(drinks) => {
-                  setFormData(prev => ({ ...prev, drinks }));
-                }}
-                onFreeDrinkWindowsChange={(windows) => {
-                  setFormData(prev => ({ ...prev, freeDrinkWindows: windows }));
-                }}
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                required
               />
-            </TabsContent>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan" className="text-cgi-surface-foreground">Csomag *</Label>
+              <Select value={formData.plan} onValueChange={(value) => setFormData(prev => ({ ...prev, plan: value as any }))}>
+                <SelectTrigger className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-cgi-surface border-cgi-muted">
+                  <SelectItem value="basic">Basic</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-            <TabsContent value="caps" className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-cgi-surface-foreground">Leírás</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+              rows={2}
+              placeholder="Rövid leírás a helyszínről"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-cgi-surface-foreground">Telefonszám</Label>
+              <Input
+                value={formData.phone_number || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
+                className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                placeholder="+36 1 234 5678"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-cgi-surface-foreground">Weboldal</Label>
+              <Input
+                value={formData.website_url || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, website_url: e.target.value }))}
+                className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                placeholder="https://example.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-cgi-surface-foreground">Árkategória</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { v: null, label: 'Nincs' },
+                { v: 1, label: '$' },
+                { v: 2, label: '$$' },
+                { v: 3, label: '$$$' },
+                { v: 4, label: '$$$$' },
+              ].map(opt => {
+                const active = (formData.price_tier ?? null) === opt.v;
+                return (
+                  <button
+                    type="button"
+                    key={String(opt.v)}
+                    onClick={() => setFormData(prev => ({ ...prev, price_tier: opt.v as any }))}
+                    className={cn(
+                      'px-3 py-1.5 rounded-md border text-sm font-medium transition-colors inline-flex items-center gap-1',
+                      active
+                        ? 'border-cgi-primary bg-cgi-primary/10 text-cgi-primary'
+                        : 'border-cgi-muted bg-cgi-surface text-cgi-muted-foreground hover:text-cgi-surface-foreground hover:border-cgi-primary/40',
+                    )}
+                  >
+                    {opt.v === null ? (
+                      <span>Nincs</span>
+                    ) : (
+                      Array.from({ length: opt.v }).map((_, i) => (
+                        <DollarSign key={i} className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      ))
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-cgi-surface-foreground">Tag-ek</Label>
+            <TagInput
+              tags={formData.tags || []}
+              onChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-md border border-cgi-muted bg-cgi-muted/10">
+            <div>
+              <Label className="text-cgi-surface-foreground">Szüneteltetve</Label>
+              <p className="text-xs text-cgi-muted-foreground mt-0.5">A helyszín ideiglenesen rejtve a vendégek elől.</p>
+            </div>
+            <Switch
+              checked={formData.is_paused}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_paused: checked }))}
+            />
+          </div>
+        </TabsContent>
+
+        {/* HELYSZÍN & NYITVATARTÁS */}
+        <TabsContent value="location" className="space-y-4 mt-0">
+          <p className="text-xs text-cgi-muted-foreground">Cím, térkép és nyitvatartási idők.</p>
+
+          <div className="space-y-2">
+            <Label htmlFor="address" className="text-cgi-surface-foreground">Cím *</Label>
+            <Input
+              id="address"
+              value={formData.address}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, address: e.target.value }));
+                setGeocodeError(null);
+              }}
+              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+              required
+              placeholder="1051 Budapest, Példa utca 1."
+            />
+            {geocodeError && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{geocodeError}</AlertDescription>
+              </Alert>
+            )}
+            <div className="mt-2">
+              <VenueMapPreview
+                lat={formData.coordinates?.lat || 0}
+                lng={formData.coordinates?.lng || 0}
+                isLoading={geocoding}
+              />
+            </div>
+          </div>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-cgi-muted-foreground hover:text-cgi-surface-foreground transition-colors">
+              <ChevronDown className="h-4 w-4" />
+              Speciális: GPS koordináták kézi megadása
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-md border border-cgi-muted bg-cgi-muted/10">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label htmlFor="daily-cap" className="text-cgi-surface-foreground">Napi limit</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-cgi-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p>Maximum ennyi ingyenes italt lehet beváltani naponta összesen ezen a helyszínen.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <Label className="text-cgi-surface-foreground text-xs">Szélesség (lat)</Label>
                   <Input
-                    id="daily-cap"
-                    type="number"
-                    value={formData.caps?.daily || ''}
-                    onChange={(e) => updateCaps({ daily: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="cgi-input"
-                    min="0"
+                    value={formData.coordinates?.lat ?? ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      coordinates: { ...(prev.coordinates || { lat: 0, lng: 0 }), lat: Number(e.target.value) || 0 }
+                    }))}
+                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                    inputMode="decimal"
+                    placeholder="47.4979"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="hourly-cap" className="text-cgi-surface-foreground">Óránkénti limit</Label>
+                  <Label className="text-cgi-surface-foreground text-xs">Hosszúság (lng)</Label>
                   <Input
-                    id="hourly-cap"
-                    type="number"
-                    value={formData.caps?.hourly || ''}
-                    onChange={(e) => updateCaps({ hourly: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="cgi-input"
-                    min="0"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="monthly-cap" className="text-cgi-surface-foreground">Havi limit</Label>
-                  <Input
-                    id="monthly-cap"
-                    type="number"
-                    value={formData.caps?.monthly || ''}
-                    onChange={(e) => updateCaps({ monthly: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="cgi-input"
-                    min="0"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="per-user-cap" className="text-cgi-surface-foreground">Felhasználónkénti napi limit</Label>
-                  <Input
-                    id="per-user-cap"
-                    type="number"
-                    value={formData.caps?.perUserDaily || ''}
-                    onChange={(e) => updateCaps({ perUserDaily: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="cgi-input"
-                    min="0"
+                    value={formData.coordinates?.lng ?? ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      coordinates: { ...(prev.coordinates || { lat: 0, lng: 0 }), lng: Number(e.target.value) || 0 }
+                    }))}
+                    className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                    inputMode="decimal"
+                    placeholder="19.0402"
                   />
                 </div>
               </div>
+            </CollapsibleContent>
+          </Collapsible>
 
-              <div className="space-y-2">
-                <Label className="text-cgi-surface-foreground">Elfogyás esetén</Label>
-                <Select 
-                  value={formData.caps?.onExhaust || 'close'} 
-                  onValueChange={(value) => updateCaps({ onExhaust: value as any })}
-                >
-                  <SelectTrigger className="cgi-input">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="close">Ingyenes ital bezárása</SelectItem>
-                    <SelectItem value="show_alt_offer">Alternatív ajánlat mutatása</SelectItem>
-                    <SelectItem value="do_nothing">Semmi (folytatás)</SelectItem>
-                  </SelectContent>
-                </Select>
+          <div className="pt-2">
+            <h4 className="text-sm font-medium text-cgi-surface-foreground mb-3">Nyitvatartás</h4>
+            <BusinessHoursEditor
+              initialHours={formData.business_hours}
+              onSave={async (hours) => {
+                setFormData(prev => ({ ...prev, business_hours: hours }));
+              }}
+            />
+          </div>
+        </TabsContent>
+
+        {/* ITALOK & LIMITEK */}
+        <TabsContent value="drinks" className="space-y-6 mt-0">
+          <div>
+            <p className="text-xs text-cgi-muted-foreground mb-3">Italok, ingyenes ital időablakok és napi/órás beváltási limitek.</p>
+            <EnhancedDrinkSelector
+              ref={drinkSelectorRef}
+              drinks={formData.drinks || []}
+              freeDrinkWindows={formData.freeDrinkWindows || []}
+              onChange={(drinks) => setFormData(prev => ({ ...prev, drinks }))}
+              onFreeDrinkWindowsChange={(windows) => setFormData(prev => ({ ...prev, freeDrinkWindows: windows }))}
+            />
+          </div>
+
+          <div className="pt-4 border-t border-cgi-muted">
+            <h4 className="text-sm font-medium text-cgi-surface-foreground mb-3">Beváltási limitek</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="daily-cap" className="text-cgi-surface-foreground text-xs">Napi</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3 w-3 text-cgi-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Max ingyenes ital naponta összesen.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Input id="daily-cap" type="number" value={formData.caps?.daily || ''} onChange={(e) => updateCaps({ daily: e.target.value ? parseInt(e.target.value) : undefined })} className="cgi-input" min="0" />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="hourly-cap" className="text-cgi-surface-foreground text-xs">Óránkénti</Label>
+                <Input id="hourly-cap" type="number" value={formData.caps?.hourly || ''} onChange={(e) => updateCaps({ hourly: e.target.value ? parseInt(e.target.value) : undefined })} className="cgi-input" min="0" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="monthly-cap" className="text-cgi-surface-foreground text-xs">Havi</Label>
+                <Input id="monthly-cap" type="number" value={formData.caps?.monthly || ''} onChange={(e) => updateCaps({ monthly: e.target.value ? parseInt(e.target.value) : undefined })} className="cgi-input" min="0" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="per-user-cap" className="text-cgi-surface-foreground text-xs">User/nap</Label>
+                <Input id="per-user-cap" type="number" value={formData.caps?.perUserDaily || ''} onChange={(e) => updateCaps({ perUserDaily: e.target.value ? parseInt(e.target.value) : undefined })} className="cgi-input" min="0" />
+              </div>
+            </div>
 
+            <div className="space-y-2 mt-4">
+              <Label className="text-cgi-surface-foreground text-xs">Elfogyás esetén</Label>
+              <Select value={formData.caps?.onExhaust || 'close'} onValueChange={(value) => updateCaps({ onExhaust: value as any })}>
+                <SelectTrigger className="cgi-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="close">Ingyenes ital bezárása</SelectItem>
+                  <SelectItem value="show_alt_offer">Alternatív ajánlat mutatása</SelectItem>
+                  <SelectItem value="do_nothing">Semmi (folytatás)</SelectItem>
+                </SelectContent>
+              </Select>
               {formData.caps?.onExhaust === 'show_alt_offer' && (
-                <div className="space-y-2">
-                  <Label htmlFor="alt-offer" className="text-cgi-surface-foreground">Alternatív ajánlat szövege</Label>
-                  <Textarea
-                    id="alt-offer"
-                    value={formData.caps?.altOfferText || ''}
-                    onChange={(e) => updateCaps({ altOfferText: e.target.value })}
-                    className="cgi-input"
-                    placeholder="Pl: 20% kedvezmény minden italból!"
-                    rows={2}
+                <Textarea
+                  value={formData.caps?.altOfferText || ''}
+                  onChange={(e) => updateCaps({ altOfferText: e.target.value })}
+                  className="cgi-input mt-2"
+                  placeholder="Pl: 20% kedvezmény minden italból!"
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* KÉPEK – kompakt grid */}
+        <TabsContent value="images" className="space-y-4 mt-0">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <Label className="text-cgi-surface-foreground">Képek</Label>
+              <p className="text-xs text-cgi-muted-foreground mt-0.5">
+                Húzd a képeket a sorrend változtatásához. Az első kép a főkép, ha nincs külön kijelölve.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ImageUploadInput
+                buttonLabel="Feltöltés"
+                onUploaded={(url) => addImageWithUrl(url)}
+                variant="outline"
+                size="sm"
+              />
+              <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
+                <Plus className="h-4 w-4 mr-1" />
+                URL
+              </Button>
+            </div>
+          </div>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleImagesDragEnd}
+          >
+            <SortableContext
+              items={(formData.images || []).map(i => i.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {formData.images?.map((img, idx) => (
+                  <ThumbnailImageCard
+                    key={img.id}
+                    img={img}
+                    index={idx}
+                    isImplicitCover={idx === 0 && !formData.images?.some(i => i.isCover)}
+                    onRemove={() => removeImage(img.id)}
+                    onUpdate={(updates) => updateImage(img.id, updates)}
+                    onSetCover={() => setCoverImage(img.id)}
                   />
+                ))}
+              </div>
+
+              {!formData.images?.length && (
+                <div className="text-center py-12 text-cgi-muted-foreground border-2 border-dashed border-cgi-muted rounded-lg">
+                  <ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Még nincsenek képek hozzáadva.</p>
+                  <p className="text-xs mt-1">Tölts fel egyet a "Feltöltés" gombbal.</p>
                 </div>
               )}
-            </TabsContent>
+            </SortableContext>
+          </DndContext>
+        </TabsContent>
 
-            <TabsContent value="hours" className="space-y-4">
-              <BusinessHoursEditor
-                initialHours={formData.business_hours}
-                onSave={async (hours) => {
-                  setFormData(prev => ({ ...prev, business_hours: hours }));
-                }}
-              />
-            </TabsContent>
+        {/* INTEGRÁCIÓ */}
+        <TabsContent value="integration" className="space-y-4 mt-0">
+          <p className="text-xs text-cgi-muted-foreground">Külső rendszerek (Goorderz, Salt Edge) összekötése.</p>
+          <VenueIntegrationSettings
+            integrationType={formData.integration_type || 'none'}
+            goorderzExternalId={formData.goorderz_external_id}
+            saltedgeConnectionId={formData.saltedge_connection_id}
+            onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+          />
+        </TabsContent>
 
-            <TabsContent value="integration" className="space-y-4">
-              <VenueIntegrationSettings
-                integrationType={formData.integration_type || 'none'}
-                goorderzExternalId={formData.goorderz_external_id}
-                saltedgeConnectionId={formData.saltedge_connection_id}
-                onChange={(updates) => {
-                  setFormData(prev => ({ ...prev, ...updates }));
-                }}
-              />
-            </TabsContent>
-          </Tabs>
+        </div>
+      </Tabs>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t border-cgi-muted">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto" disabled={saving || geocoding}>
-              Mégse
-            </Button>
-            <Button type="submit" className="cgi-button-primary w-full sm:w-auto" disabled={saving || geocoding}>
-              {geocoding ? 'Geocoding...' : saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
-            </Button>
-          </div>
-        </form>
+      <div className="sticky bottom-0 z-10 bg-cgi-surface flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 pt-4 mt-2 border-t border-cgi-muted">
+        <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto" disabled={saving || geocoding}>
+          Mégse
+        </Button>
+        <Button type="submit" className="cgi-button-primary w-full sm:w-auto" disabled={saving || geocoding}>
+          {geocoding ? 'Geocoding...' : saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
+        </Button>
+      </div>
+    </form>
   );
 
   // Use Sheet on mobile, Dialog on desktop
@@ -750,13 +725,15 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         <SheetTrigger asChild>
           {trigger}
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[95vh] overflow-y-auto bg-cgi-surface border-cgi-muted p-4">
-          <SheetHeader className="mb-4">
+        <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted p-4 flex flex-col">
+          <SheetHeader className="mb-2 flex-shrink-0">
             <SheetTitle className="text-cgi-surface-foreground">
               {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
             </SheetTitle>
           </SheetHeader>
-          {formContent}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {formContent}
+          </div>
         </SheetContent>
       </Sheet>
     );
@@ -767,103 +744,194 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] bg-cgi-surface border-cgi-muted max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[900px] bg-cgi-surface border-cgi-muted h-[90vh] flex flex-col p-6">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-cgi-surface-foreground">
             {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
           </DialogTitle>
         </DialogHeader>
-        {formContent}
+        <div className="flex-1 min-h-0 flex flex-col">
+          {formContent}
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-interface SortableImageCardProps {
+interface ThumbnailImageCardProps {
   img: VenueImage;
   index: number;
+  isImplicitCover: boolean;
   onRemove: () => void;
   onUpdate: (updates: Partial<VenueImage>) => void;
   onSetCover: () => void;
 }
 
-function SortableImageCard({ img, index, onRemove, onUpdate, onSetCover }: SortableImageCardProps) {
+function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, onSetCover }: ThumbnailImageCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: img.id });
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : 'auto',
   };
 
+  const isCover = !!img.isCover;
+  const hasUrl = !!img.url?.trim();
+
   return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        'p-4 cgi-card bg-cgi-surface border-cgi-muted',
-        isDragging && 'opacity-80 shadow-lg ring-2 ring-cgi-primary',
-      )}
-    >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={cn(
+          'group relative aspect-square rounded-lg overflow-hidden border bg-cgi-muted/20',
+          isCover ? 'border-cgi-primary ring-2 ring-cgi-primary/40' : 'border-cgi-muted',
+          isDragging && 'opacity-80 shadow-lg ring-2 ring-cgi-primary',
+        )}
+      >
+        {/* Image or placeholder */}
+        {hasUrl ? (
+          <img
+            src={img.url}
+            alt={img.label || `Kép ${index + 1}`}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = '0.2'; }}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-cgi-muted-foreground p-2 text-center">
+            <ImageIcon className="h-8 w-8 mb-1 opacity-60" />
+            <span className="text-[10px] uppercase tracking-wide">Nincs feltöltve</span>
+          </div>
+        )}
+
+        {/* Cover badge */}
+        {(isCover || isImplicitCover) && (
+          <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-cgi-primary text-cgi-primary-foreground text-[10px] font-medium">
+            <Star className="h-3 w-3 fill-current" />
+            {isCover ? 'Főkép' : 'Auto főkép'}
+          </div>
+        )}
+
+        {/* Index badge */}
+        <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium">
+          #{index + 1}
+        </div>
+
+        {/* Drag handle (always visible top middle) */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="absolute top-1.5 left-1/2 -translate-x-1/2 touch-none cursor-grab active:cursor-grabbing rounded p-1 bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Áthúzás"
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Hover action overlay */}
+        <div className="absolute inset-x-0 bottom-0 p-1.5 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1">
+            {hasUrl && (
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                className="p-1.5 rounded bg-black/60 hover:bg-black/80 text-white"
+                aria-label="Nagyítás"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
               type="button"
-              {...attributes}
-              {...listeners}
-              className="touch-none cursor-grab active:cursor-grabbing rounded p-1 text-cgi-muted-foreground hover:bg-cgi-muted/40 hover:text-cgi-surface-foreground"
-              aria-label="Kép áthelyezése"
+              onClick={onSetCover}
+              className={cn(
+                'p-1.5 rounded text-white',
+                isCover ? 'bg-cgi-primary' : 'bg-black/60 hover:bg-black/80'
+              )}
+              aria-label="Főkép kijelölése"
+              title="Főkép kijelölése"
             >
-              <GripVertical className="h-5 w-5" />
+              <Star className={cn('h-3.5 w-3.5', isCover && 'fill-current')} />
             </button>
-            <h4 className="font-medium text-cgi-surface-foreground">
-              Kép #{index + 1}{img.isCover && <span className="ml-2 text-xs text-cgi-primary">(főkép)</span>}
-            </h4>
+            <Popover open={editOpen} onOpenChange={setEditOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="p-1.5 rounded bg-black/60 hover:bg-black/80 text-white"
+                  aria-label="Szerkesztés"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 bg-cgi-surface border-cgi-muted" side="top">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-cgi-surface-foreground">URL</Label>
+                    <div className="flex gap-1">
+                      <Input
+                        value={img.url}
+                        onChange={(e) => onUpdate({ url: e.target.value })}
+                        className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground text-xs flex-1"
+                        placeholder="https://..."
+                      />
+                      <ImageUploadInput
+                        buttonLabel="↑"
+                        onUploaded={(url) => onUpdate({ url })}
+                        variant="outline"
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-cgi-surface-foreground">Címke</Label>
+                    <Input
+                      value={img.label || ''}
+                      onChange={(e) => onUpdate({ label: e.target.value })}
+                      className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground text-xs"
+                      placeholder="pl. Beltér, Terasz"
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-          <Button
+          <button
             type="button"
             onClick={onRemove}
-            variant="ghost"
-            size="sm"
-            className="text-red-500 hover:text-red-700"
+            className="p-1.5 rounded bg-red-500/80 hover:bg-red-500 text-white"
+            aria-label="Törlés"
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
 
-        <div className="space-y-2">
-          <Label>URL</Label>
-          <div className="flex gap-2">
-            <Input
-              value={img.url}
-              onChange={(e) => onUpdate({ url: e.target.value })}
-              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
-              placeholder="https://example.com/image.jpg"
-            />
-            <ImageUploadInput
-              buttonLabel="Feltöltés"
-              onUploaded={(url) => onUpdate({ url })}
-              variant="outline"
-              size="sm"
-            />
+        {/* Label strip at bottom (always shown if exists) */}
+        {img.label && (
+          <div className="absolute bottom-0 inset-x-0 px-2 py-1 bg-black/60 text-white text-[10px] truncate group-hover:opacity-0 transition-opacity">
+            {img.label}
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Címke</Label>
-          <Input
-            value={img.label || ''}
-            onChange={(e) => onUpdate({ label: e.target.value })}
-            className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-            placeholder="pl. Beltér, Terasz"
-          />
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch checked={!!img.isCover} onCheckedChange={onSetCover} />
-          <Label className="text-cgi-surface-foreground">Főkép</Label>
-        </div>
+        )}
       </div>
-    </Card>
+
+      {/* Lightbox */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-4xl bg-cgi-surface border-cgi-muted p-2">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{img.label || `Kép ${index + 1}`}</DialogTitle>
+          </DialogHeader>
+          <img
+            src={img.url}
+            alt={img.label || `Kép ${index + 1}`}
+            className="w-full max-h-[80vh] object-contain rounded"
+          />
+          {img.label && (
+            <p className="text-center text-sm text-cgi-muted-foreground py-2">{img.label}</p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
