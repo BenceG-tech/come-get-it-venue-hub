@@ -556,7 +556,9 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                         Még nincsenek képek hozzáadva. Tölts fel egy képet a "Kép feltöltése" gombbal, vagy add meg az URL-t.
                       </div>
                     )}
-              </div>
+                  </div>
+                </SortableContext>
+              </DndContext>
             </TabsContent>
 
             <TabsContent value="drinks" className="space-y-4">
