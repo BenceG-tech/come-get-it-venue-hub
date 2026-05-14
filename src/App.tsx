@@ -4,9 +4,15 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import { RouteGuard } from "@/components/RouteGuard";
 import { TourProvider } from "@/contexts/TourContext";
+import { supabase } from "@/integrations/supabase/client";
+import { hydrateSessionFromSupabaseUser } from "@/auth/supabaseAuth";
+import { sessionManager } from "@/auth/mockSession";
+import { runtimeConfig } from "@/config/runtime";
 import Login from "./pages/Login";
+import NoAccess from "./pages/NoAccess";
 import Dashboard from "./pages/Dashboard";
 import ConsumerApp from "./pages/ConsumerApp";
 import Redemptions from "./pages/Redemptions";
@@ -44,6 +50,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => {
+  useEffect(() => {
+    if (!runtimeConfig.useSupabase) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[App] auth event", event);
+      if (event === "SIGNED_IN" && session?.user) {
+        // Defer to avoid running supabase calls inside the callback
+        setTimeout(() => {
+          hydrateSessionFromSupabaseUser(session.user).catch((e) =>
+            console.error("[App] hydrate failed", e)
+          );
+        }, 0);
+      } else if (event === "SIGNED_OUT") {
+        sessionManager.clear?.();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TourProvider>
@@ -54,6 +78,9 @@ const App = () => {
               <Route path="/" element={<Login />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             
+            {/* No-access fallback for authenticated users without admin/owner role */}
+            <Route path="/no-access" element={<NoAccess />} />
+
             {/* Consumer app */}
             <Route path="/app" element={<ConsumerApp />} />
             <Route path="/app/venue/:id" element={<PublicVenueDetail />} />
