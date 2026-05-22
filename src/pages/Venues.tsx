@@ -46,6 +46,7 @@ type VenueRow = {
   image_url?: string | null;
   hero_image_url?: string | null;
   price_tier?: number | null;
+  display_order?: number | null;
 };
 
 const PAGE_SIZE = 20;
