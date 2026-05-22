@@ -60,9 +60,16 @@ export default function Venues() {
   const [csvExporting, setCsvExporting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [reorderMode, setReorderMode] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const dataProvider = getDataProvider();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     loadVenues();
