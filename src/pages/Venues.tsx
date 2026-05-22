@@ -83,8 +83,8 @@ export default function Venues() {
     try {
       const rows = await dataProvider.getList<VenueRow>('venues', {
         search: searchTerm || undefined,
-        orderBy: 'created_at',
-        orderDir: 'desc',
+        orderBy: 'display_order',
+        orderDir: 'asc',
         limit: PAGE_SIZE + 1,
         offset,
       } as any);
