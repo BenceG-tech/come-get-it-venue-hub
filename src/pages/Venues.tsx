@@ -235,7 +235,7 @@ export default function Venues() {
   const getVenueImage = (venue: VenueRow) => venue.image_url || venue.hero_image_url;
 
   // Sortable wrapper — renders drag handle when active, otherwise just children
-  const SortableItem = ({ id, children, layout }: { id: string; children: React.ReactNode; layout: 'grid' | 'row' }) => {
+  const SortableItem = ({ id, children, layout }: { id: string; children: ReactNode; layout: 'grid' | 'row' }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style = {
       transform: CSS.Transform.toString(transform),
