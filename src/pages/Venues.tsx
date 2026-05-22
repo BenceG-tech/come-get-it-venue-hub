@@ -456,13 +456,30 @@ export default function Venues() {
             </div>
           </Card>
 
+          {reorderMode && (
+            <div className="p-3 rounded-lg bg-cgi-primary/10 border border-cgi-primary/30 text-sm text-cgi-surface-foreground">
+              🔀 <strong>Sorrend szerkesztése aktív.</strong> Húzd a kártyákat a kívánt sorrendbe. A változások automatikusan mentődnek, és a felhasználói appban is ez a sorrend jelenik meg (a távolság alapú rendezés figyelmen kívül lesz hagyva).
+              {isSavingOrder && <span className="ml-2 text-cgi-muted-foreground">(mentés...)</span>}
+            </div>
+          )}
+
           {/* Venues Display */}
           {isMobile ? (
             // Mobile: Compact horizontal cards
             <div className="space-y-2">
-              {venues.map((venue) => (
-                <MobileVenueCard key={venue.id} venue={venue} />
-              ))}
+              {reorderMode ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={venues.map(v => v.id)} strategy={verticalListSortingStrategy}>
+                    {venues.map((venue) => (
+                      <SortableItem key={venue.id} id={venue.id} layout="row">
+                        <div className="pointer-events-none"><MobileVenueCard venue={venue} /></div>
+                      </SortableItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                venues.map((venue) => <MobileVenueCard key={venue.id} venue={venue} />)
+              )}
               {venues.length === 0 && (
                 <Card className="cgi-card">
                   <CardContent className="text-center py-8 text-cgi-muted-foreground">
@@ -474,11 +491,25 @@ export default function Venues() {
           ) : viewMode === 'grid' ? (
             // Desktop Grid View
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {venues.map((venue) => (
-                  <GridVenueCard key={venue.id} venue={venue} />
-                ))}
-              </div>
+              {reorderMode ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={venues.map(v => v.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {venues.map((venue) => (
+                        <SortableItem key={venue.id} id={venue.id} layout="grid">
+                          <div className="pointer-events-none"><GridVenueCard venue={venue} /></div>
+                        </SortableItem>
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {venues.map((venue) => (
+                    <GridVenueCard key={venue.id} venue={venue} />
+                  ))}
+                </div>
+              )}
               {venues.length === 0 && (
                 <Card className="cgi-card">
                   <CardContent className="text-center py-8 text-cgi-muted-foreground">
