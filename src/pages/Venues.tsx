@@ -137,6 +137,48 @@ export default function Venues() {
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = venues.findIndex(v => v.id === active.id);
+    const newIndex = venues.findIndex(v => v.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(venues, oldIndex, newIndex);
+    setVenues(reordered); // optimistic
+
+    setIsSavingOrder(true);
+    try {
+      // Assign 10-step display_order based on page offset
+      const updates = reordered.map((v, idx) => ({
+        id: v.id,
+        display_order: (offset + idx + 1) * 10,
+      }));
+
+      // Batch update in parallel
+      const results = await Promise.all(
+        updates.map(u =>
+          supabase.from('venues').update({ display_order: u.display_order }).eq('id', u.id)
+        )
+      );
+      const firstErr = results.find(r => r.error);
+      if (firstErr?.error) throw firstErr.error;
+
+      toast({ title: 'Sorrend frissítve', description: 'A helyszínek sorrendje sikeresen mentve.' });
+    } catch (err: any) {
+      console.error('Reorder failed:', err);
+      toast({
+        title: 'Hiba',
+        description: 'Nem sikerült menteni a sorrendet. Próbáld újra.',
+        variant: 'destructive',
+      });
+      await loadVenues(); // revert
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
   const planBadgeColor = (plan: VenueRow['plan']) => {
     switch (plan) {
       case 'premium':
