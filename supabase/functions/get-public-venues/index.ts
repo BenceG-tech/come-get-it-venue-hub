@@ -33,9 +33,10 @@ serve(async (req) => {
         website_url, image_url, hero_image_url, is_paused, 
         created_at, tags, opening_hours, participates_in_points, 
         points_per_visit, distance, coordinates, formatted_address,
-        google_maps_url, category, price_tier, rating
+        google_maps_url, category, price_tier, rating, display_order
       `)
       .eq('is_paused', false)
+      .order('display_order', { ascending: true })
       .order('created_at', { ascending: false })
       .limit(limitCount)
 

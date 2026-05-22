@@ -1,18 +1,37 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building, Plus, Search, Eye, Phone, Globe, Clock, Grid, List } from 'lucide-react';
+import { Building, Plus, Search, Eye, Phone, Globe, Clock, Grid, List, GripVertical, ArrowUpDown, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
 import { VenueFormModal } from '@/components/VenueFormModal';
 import { useToast } from '@/hooks/use-toast';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
+import { supabase } from '@/integrations/supabase/client';
 import type { Venue } from '@/lib/types';
 import { PriceTierBadge } from '@/components/PriceTierBadge';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type VenueRow = {
   id: string;
@@ -27,6 +46,7 @@ type VenueRow = {
   image_url?: string | null;
   hero_image_url?: string | null;
   price_tier?: number | null;
+  display_order?: number | null;
 };
 
 const PAGE_SIZE = 20;
@@ -40,9 +60,16 @@ export default function Venues() {
   const [csvExporting, setCsvExporting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [reorderMode, setReorderMode] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const dataProvider = getDataProvider();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     loadVenues();
@@ -56,8 +83,8 @@ export default function Venues() {
     try {
       const rows = await dataProvider.getList<VenueRow>('venues', {
         search: searchTerm || undefined,
-        orderBy: 'created_at',
-        orderDir: 'desc',
+        orderBy: 'display_order',
+        orderDir: 'asc',
         limit: PAGE_SIZE + 1,
         offset,
       } as any);
@@ -107,6 +134,48 @@ export default function Venues() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = venues.findIndex(v => v.id === active.id);
+    const newIndex = venues.findIndex(v => v.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(venues, oldIndex, newIndex);
+    setVenues(reordered); // optimistic
+
+    setIsSavingOrder(true);
+    try {
+      // Assign 10-step display_order based on page offset
+      const updates = reordered.map((v, idx) => ({
+        id: v.id,
+        display_order: (offset + idx + 1) * 10,
+      }));
+
+      // Batch update in parallel
+      const results = await Promise.all(
+        updates.map(u =>
+          supabase.from('venues').update({ display_order: u.display_order }).eq('id', u.id)
+        )
+      );
+      const firstErr = results.find(r => r.error);
+      if (firstErr?.error) throw firstErr.error;
+
+      toast({ title: 'Sorrend frissítve', description: 'A helyszínek sorrendje sikeresen mentve.' });
+    } catch (err: any) {
+      console.error('Reorder failed:', err);
+      toast({
+        title: 'Hiba',
+        description: 'Nem sikerült menteni a sorrendet. Próbáld újra.',
+        variant: 'destructive',
+      });
+      await loadVenues(); // revert
+    } finally {
+      setIsSavingOrder(false);
     }
   };
 
@@ -164,6 +233,32 @@ export default function Venues() {
   };
 
   const getVenueImage = (venue: VenueRow) => venue.image_url || venue.hero_image_url;
+
+  // Sortable wrapper — renders drag handle when active, otherwise just children
+  const SortableItem = ({ id, children, layout }: { id: string; children: ReactNode; layout: 'grid' | 'row' }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+    return (
+      <div ref={setNodeRef} style={style} className={`relative ${isDragging ? 'z-50' : ''}`}>
+        <div
+          {...attributes}
+          {...listeners}
+          className={`absolute ${layout === 'grid' ? 'top-2 left-2' : 'left-1 top-1/2 -translate-y-1/2'} z-10 p-1.5 rounded-md bg-cgi-background/90 border border-cgi-muted cursor-grab active:cursor-grabbing hover:bg-cgi-primary/10 hover:border-cgi-primary touch-none`}
+          aria-label="Húzd a sorrend változtatásához"
+        >
+          <GripVertical className="h-4 w-4 text-cgi-muted-foreground" />
+        </div>
+        <div className={layout === 'row' ? 'pl-8' : ''}>
+          {children}
+        </div>
+      </div>
+    );
+  };
+
 
   // Compact Mobile Card Component
   const MobileVenueCard = ({ venue }: { venue: VenueRow }) => {
@@ -307,10 +402,19 @@ export default function Venues() {
                 }
               />
               <div className="flex gap-2">
-                <Button variant="outline" className="cgi-button-secondary flex-1 sm:flex-initial" onClick={() => setPage(1)}>
+                <Button
+                  variant={reorderMode ? 'default' : 'outline'}
+                  className={reorderMode ? 'cgi-button-primary flex-1 sm:flex-initial' : 'cgi-button-secondary flex-1 sm:flex-initial'}
+                  onClick={() => setReorderMode(m => !m)}
+                  disabled={!!searchTerm || isSavingOrder}
+                  title={searchTerm ? 'Töröld a keresést a sorrend szerkesztéséhez' : ''}
+                >
+                  {reorderMode ? <><Check className="h-4 w-4 mr-2" />Kész</> : <><ArrowUpDown className="h-4 w-4 mr-2" />Sorrend</>}
+                </Button>
+                <Button variant="outline" className="cgi-button-secondary flex-1 sm:flex-initial" onClick={() => setPage(1)} disabled={reorderMode}>
                   Frissítés
                 </Button>
-                <Button className="cgi-button-primary flex-1 sm:flex-initial" onClick={exportCSV} disabled={csvExporting}>
+                <Button className="cgi-button-primary flex-1 sm:flex-initial" onClick={exportCSV} disabled={csvExporting || reorderMode}>
                   CSV export
                 </Button>
               </div>
@@ -352,13 +456,30 @@ export default function Venues() {
             </div>
           </Card>
 
+          {reorderMode && (
+            <div className="p-3 rounded-lg bg-cgi-primary/10 border border-cgi-primary/30 text-sm text-cgi-surface-foreground">
+              🔀 <strong>Sorrend szerkesztése aktív.</strong> Húzd a kártyákat a kívánt sorrendbe. A változások automatikusan mentődnek, és a felhasználói appban is ez a sorrend jelenik meg (a távolság alapú rendezés figyelmen kívül lesz hagyva).
+              {isSavingOrder && <span className="ml-2 text-cgi-muted-foreground">(mentés...)</span>}
+            </div>
+          )}
+
           {/* Venues Display */}
           {isMobile ? (
             // Mobile: Compact horizontal cards
             <div className="space-y-2">
-              {venues.map((venue) => (
-                <MobileVenueCard key={venue.id} venue={venue} />
-              ))}
+              {reorderMode ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={venues.map(v => v.id)} strategy={verticalListSortingStrategy}>
+                    {venues.map((venue) => (
+                      <SortableItem key={venue.id} id={venue.id} layout="row">
+                        <div className="pointer-events-none"><MobileVenueCard venue={venue} /></div>
+                      </SortableItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                venues.map((venue) => <MobileVenueCard key={venue.id} venue={venue} />)
+              )}
               {venues.length === 0 && (
                 <Card className="cgi-card">
                   <CardContent className="text-center py-8 text-cgi-muted-foreground">
@@ -370,11 +491,25 @@ export default function Venues() {
           ) : viewMode === 'grid' ? (
             // Desktop Grid View
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {venues.map((venue) => (
-                  <GridVenueCard key={venue.id} venue={venue} />
-                ))}
-              </div>
+              {reorderMode ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={venues.map(v => v.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {venues.map((venue) => (
+                        <SortableItem key={venue.id} id={venue.id} layout="grid">
+                          <div className="pointer-events-none"><GridVenueCard venue={venue} /></div>
+                        </SortableItem>
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {venues.map((venue) => (
+                    <GridVenueCard key={venue.id} venue={venue} />
+                  ))}
+                </div>
+              )}
               {venues.length === 0 && (
                 <Card className="cgi-card">
                   <CardContent className="text-center py-8 text-cgi-muted-foreground">
