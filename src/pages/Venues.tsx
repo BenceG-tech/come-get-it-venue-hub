@@ -4,15 +4,34 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building, Plus, Search, Eye, Phone, Globe, Clock, Grid, List } from 'lucide-react';
+import { Building, Plus, Search, Eye, Phone, Globe, Clock, Grid, List, GripVertical, ArrowUpDown, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RouteGuard } from '@/components/RouteGuard';
 import { PageLayout } from '@/components/PageLayout';
 import { VenueFormModal } from '@/components/VenueFormModal';
 import { useToast } from '@/hooks/use-toast';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
+import { supabase } from '@/integrations/supabase/client';
 import type { Venue } from '@/lib/types';
 import { PriceTierBadge } from '@/components/PriceTierBadge';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type VenueRow = {
   id: string;
