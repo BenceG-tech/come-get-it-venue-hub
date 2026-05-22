@@ -234,6 +234,32 @@ export default function Venues() {
 
   const getVenueImage = (venue: VenueRow) => venue.image_url || venue.hero_image_url;
 
+  // Sortable wrapper — renders drag handle when active, otherwise just children
+  const SortableItem = ({ id, children, layout }: { id: string; children: React.ReactNode; layout: 'grid' | 'row' }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+    return (
+      <div ref={setNodeRef} style={style} className={`relative ${isDragging ? 'z-50' : ''}`}>
+        <div
+          {...attributes}
+          {...listeners}
+          className={`absolute ${layout === 'grid' ? 'top-2 left-2' : 'left-1 top-1/2 -translate-y-1/2'} z-10 p-1.5 rounded-md bg-cgi-background/90 border border-cgi-muted cursor-grab active:cursor-grabbing hover:bg-cgi-primary/10 hover:border-cgi-primary touch-none`}
+          aria-label="Húzd a sorrend változtatásához"
+        >
+          <GripVertical className="h-4 w-4 text-cgi-muted-foreground" />
+        </div>
+        <div className={layout === 'row' ? 'pl-8' : ''}>
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+
   // Compact Mobile Card Component
   const MobileVenueCard = ({ venue }: { venue: VenueRow }) => {
     const image = getVenueImage(venue);
