@@ -2128,6 +2128,7 @@ export type Database = {
           csr_enabled: boolean | null
           default_charity_id: string | null
           description: string | null
+          display_order: number
           distance: number | null
           donation_per_redemption: number | null
           formatted_address: string | null
@@ -2164,6 +2165,7 @@ export type Database = {
           csr_enabled?: boolean | null
           default_charity_id?: string | null
           description?: string | null
+          display_order?: number
           distance?: number | null
           donation_per_redemption?: number | null
           formatted_address?: string | null
@@ -2200,6 +2202,7 @@ export type Database = {
           csr_enabled?: boolean | null
           default_charity_id?: string | null
           description?: string | null
+          display_order?: number
           distance?: number | null
           donation_per_redemption?: number | null
           formatted_address?: string | null
