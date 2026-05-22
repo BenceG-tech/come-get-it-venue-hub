@@ -402,10 +402,19 @@ export default function Venues() {
                 }
               />
               <div className="flex gap-2">
-                <Button variant="outline" className="cgi-button-secondary flex-1 sm:flex-initial" onClick={() => setPage(1)}>
+                <Button
+                  variant={reorderMode ? 'default' : 'outline'}
+                  className={reorderMode ? 'cgi-button-primary flex-1 sm:flex-initial' : 'cgi-button-secondary flex-1 sm:flex-initial'}
+                  onClick={() => setReorderMode(m => !m)}
+                  disabled={!!searchTerm || isSavingOrder}
+                  title={searchTerm ? 'Töröld a keresést a sorrend szerkesztéséhez' : ''}
+                >
+                  {reorderMode ? <><Check className="h-4 w-4 mr-2" />Kész</> : <><ArrowUpDown className="h-4 w-4 mr-2" />Sorrend</>}
+                </Button>
+                <Button variant="outline" className="cgi-button-secondary flex-1 sm:flex-initial" onClick={() => setPage(1)} disabled={reorderMode}>
                   Frissítés
                 </Button>
-                <Button className="cgi-button-primary flex-1 sm:flex-initial" onClick={exportCSV} disabled={csvExporting}>
+                <Button className="cgi-button-primary flex-1 sm:flex-initial" onClick={exportCSV} disabled={csvExporting || reorderMode}>
                   CSV export
                 </Button>
               </div>
