@@ -49,7 +49,7 @@ import {
   UserRevenueImpact,
   EnhancedRedemptionCard,
   SystemRulesPanel,
-  QuickOverviewCard,
+  // QuickOverviewCard removed — consolidated into UserOverviewSummary
   UserComparison,
   ChurnWarningPanel,
   UserPredictions
