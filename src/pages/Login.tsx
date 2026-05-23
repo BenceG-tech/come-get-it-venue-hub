@@ -11,6 +11,7 @@ import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
 import { seedData } from "@/lib/mock/seed";
 import { runtimeConfig } from "@/config/runtime";
 import { signInWithEmailPassword, signInWithGoogle } from "@/auth/supabaseAuth";
+import { toast } from "sonner";
 
 export default function Login() {
   const [email, setEmail] = useState("");
