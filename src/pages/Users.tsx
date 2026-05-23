@@ -556,165 +556,103 @@ export default function Users() {
 
                     {/* User List */}
                     <div className="space-y-2">
-                      {data?.users.map((user) => (
-                        <div
-                          key={user.id}
-                          className={`p-3 md:p-4 rounded-lg transition-colors group cursor-pointer ${
-                            selectedUserIds.has(user.id)
-                              ? "bg-cgi-primary/10 border border-cgi-primary/30"
-                              : "bg-cgi-muted/20 hover:bg-cgi-muted/40"
-                          }`}
-                        >
-                          {/* Top Row - Avatar, Info, Actions */}
-                          <div className="flex items-center gap-3">
-                            {/* Checkbox */}
-                            <Checkbox
-                              checked={selectedUserIds.has(user.id)}
-                              onCheckedChange={(checked) =>
-                                handleSelectUser(user.id, !!checked)
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="data-[state=checked]:bg-cgi-primary shrink-0"
-                              aria-label={`${user.name} kijelölése`}
-                            />
+                      {data?.users.map((user) => {
+                        const isSelected = selectedUserIds.has(user.id);
+                        const ringClass =
+                          user.status === "active"
+                            ? "ring-green-500/60"
+                            : user.status === "new"
+                            ? "ring-blue-500/60"
+                            : "ring-gray-500/40";
+                        return (
+                          <div
+                            key={user.id}
+                            onClick={() => setQuickViewUserId(user.id)}
+                            className={`p-3 md:p-4 rounded-lg transition-colors group cursor-pointer ${
+                              isSelected
+                                ? "bg-cgi-primary/10 border border-cgi-primary/30"
+                                : "bg-cgi-muted/20 hover:bg-cgi-muted/40 border border-transparent"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* Checkbox — visible on hover or when something is selected */}
+                              <div
+                                className={`shrink-0 transition-opacity ${
+                                  isSelected || selectedUserIds.size > 0
+                                    ? "opacity-100"
+                                    : "opacity-0 group-hover:opacity-100"
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => handleSelectUser(user.id, !!checked)}
+                                  className="data-[state=checked]:bg-cgi-primary"
+                                  aria-label={`${user.name} kijelölése`}
+                                />
+                              </div>
 
-                            {/* Avatar */}
-                            <Avatar 
-                              className="h-10 w-10 md:h-12 md:w-12 shrink-0"
-                              onClick={() => navigate(`/users/${user.id}`)}
-                            >
-                              <AvatarImage src={user.avatar_url || undefined} />
-                              <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary text-sm md:text-base">
-                                {getInitials(user.name)}
-                              </AvatarFallback>
-                            </Avatar>
+                              {/* Avatar with status ring */}
+                              <Avatar className={`h-10 w-10 md:h-12 md:w-12 shrink-0 ring-2 ${ringClass} ring-offset-2 ring-offset-cgi-surface`}>
+                                <AvatarImage src={user.avatar_url || undefined} />
+                                <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary text-sm md:text-base">
+                                  {getInitials(user.name)}
+                                </AvatarFallback>
+                              </Avatar>
 
-                            {/* User Info */}
-                            <div
-                              className="flex-1 min-w-0"
-                              onClick={() => navigate(`/users/${user.id}`)}
-                            >
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-cgi-surface-foreground truncate text-sm md:text-base">
-                                  {user.name}
-                                </p>
-                                {user.is_admin && (
-                                  <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
-                                    Admin
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs md:text-sm text-cgi-muted-foreground truncate">
-                                {user.email || "Nincs email"}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                {getStatusBadge(user.status)}
-                                {/* Last seen - Mobile only */}
-                                {user.last_seen_at && (
-                                  <span className="text-xs text-cgi-muted-foreground md:hidden flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {formatDistanceToNow(new Date(user.last_seen_at), {
-                                      addSuffix: true,
-                                      locale: hu,
-                                    })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Stats - Desktop */}
-                            <div className="hidden md:flex items-center gap-6 text-sm">
-                              <div className="text-center">
-                                <p className="font-medium text-cgi-secondary">
-                                  {user.points_balance.toLocaleString("hu-HU")}
-                                </p>
-                                <p className="text-xs text-cgi-muted-foreground">
-                                  pont
-                                </p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-cgi-surface-foreground">
-                                  {user.total_redemptions}
-                                </p>
-                                <p className="text-xs text-cgi-muted-foreground">
-                                  beváltás
-                                </p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-cgi-surface-foreground">
-                                  {user.total_sessions}
-                                </p>
-                                <p className="text-xs text-cgi-muted-foreground">
-                                  munkamenet
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Last Seen - Large Screens */}
-                            <div className="hidden lg:block text-right text-sm">
-                              {user.last_seen_at ? (
-                                <div className="flex items-center gap-1 text-cgi-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDistanceToNow(new Date(user.last_seen_at), {
-                                    addSuffix: true,
-                                    locale: hu,
-                                  })}
+                              {/* User Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium text-cgi-surface-foreground truncate text-sm md:text-base">
+                                    {user.name}
+                                  </p>
+                                  {user.is_admin && (
+                                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                                      Admin
+                                    </Badge>
+                                  )}
+                                  {getStatusBadge(user.status)}
                                 </div>
-                              ) : (
-                                <span className="text-cgi-muted-foreground">Soha</span>
-                              )}
-                            </div>
+                                <p className="text-xs md:text-sm text-cgi-muted-foreground truncate">
+                                  {user.email || "Nincs email"}
+                                </p>
+                                {/* Compact stats inline */}
+                                <p className="text-xs text-cgi-muted-foreground mt-0.5 truncate">
+                                  <span className="text-cgi-secondary font-medium">{user.points_balance.toLocaleString("hu-HU")}</span> pont
+                                  {" · "}
+                                  <span className="text-cgi-surface-foreground">{user.total_redemptions}</span> beváltás
+                                  {user.last_seen_at && (
+                                    <>
+                                      {" · "}
+                                      <span className="inline-flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {formatDistanceToNow(new Date(user.last_seen_at), { addSuffix: true, locale: hu })}
+                                      </span>
+                                    </>
+                                  )}
+                                </p>
+                              </div>
 
-                            {/* Quick View Button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setQuickViewUserId(user.id);
-                              }}
-                              title="Gyorsnézet"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-
-                            <ChevronRight
-                              className="h-5 w-5 text-cgi-muted-foreground group-hover:text-cgi-surface-foreground transition-colors shrink-0"
-                              onClick={() => navigate(`/users/${user.id}`)}
-                            />
-                          </div>
-
-                          {/* Bottom Row - Stats (Mobile only) */}
-                          <div className="flex items-center justify-around mt-3 pt-3 border-t border-cgi-muted/20 md:hidden">
-                            <div className="text-center">
-                              <p className="font-medium text-cgi-secondary text-sm">
-                                {user.points_balance.toLocaleString("hu-HU")}
-                              </p>
-                              <p className="text-xs text-cgi-muted-foreground">
-                                pont
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="font-medium text-cgi-surface-foreground text-sm">
-                                {user.total_redemptions}
-                              </p>
-                              <p className="text-xs text-cgi-muted-foreground">
-                                beváltás
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="font-medium text-cgi-surface-foreground text-sm">
-                                {user.total_sessions}
-                              </p>
-                              <p className="text-xs text-cgi-muted-foreground">
-                                munkamenet
-                              </p>
+                              {/* Open detail button */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="shrink-0 gap-1 text-cgi-muted-foreground hover:text-cgi-primary hover:bg-cgi-primary/10"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openUserDetail(user);
+                                }}
+                                title="Részletes profil megnyitása"
+                              >
+                                <span className="hidden sm:inline">Megnyitás</span>
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+
 
                     {/* Pagination */}
                     {totalPages > 1 && (
