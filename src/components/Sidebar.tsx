@@ -5,150 +5,95 @@ import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/mockSession";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTour } from "@/contexts/TourContext";
-const navigation = [{
-  name: 'Dashboard',
-  href: '/dashboard',
-  icon: LayoutDashboard,
-  roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'],
-  tourId: 'nav-dashboard'
-}, {
-  name: 'Beváltások',
-  href: '/redemptions',
-  icon: Receipt,
-  roles: ['cgi_admin', 'venue_owner', 'venue_staff'],
-  tourId: 'nav-redemptions'
-}, {
-  name: 'Tranzakciók',
-  href: '/transactions',
-  icon: CreditCard,
-  roles: ['cgi_admin', 'venue_owner'],
-  tourId: 'nav-transactions'
-}, {
-  name: 'Banki Tranzakciók',
-  href: '/saltedge-transactions',
-  icon: Landmark,
-  roles: ['cgi_admin'],
-  tourId: 'nav-saltedge'
-}, {
-  name: 'Jutalmak',
-  href: '/rewards',
-  icon: Gift,
-  roles: ['cgi_admin', 'venue_owner'],
-  tourId: 'nav-rewards'
-}, {
-  name: 'Promóciók',
-  href: '/promotions',
-  icon: TrendingUp,
-  roles: ['cgi_admin'],
-  tourId: 'nav-promotions'
-}, {
-  name: 'Analitika',
-  href: '/analytics',
-  icon: BarChart3,
-  roles: ['cgi_admin', 'venue_owner', 'brand_admin'],
-  tourId: 'nav-analytics'
-}, {
-  name: 'Adat Értékek',
-  href: '/data-insights',
-  icon: TrendingUp,
-  roles: ['cgi_admin'],
-  tourId: 'nav-data-insights'
-}, {
-  name: 'Jótékonysági Hatás',
-  href: '/charity-impact',
-  icon: Heart,
-  roles: ['cgi_admin'],
-  tourId: 'nav-charity'
-}, {
-  name: 'Felhasználók',
-  href: '/users',
-  icon: Users,
-  roles: ['cgi_admin'],
-  tourId: 'nav-users'
-}, {
-  name: 'Helyszínek',
-  href: '/venues',
-  icon: Building,
-  roles: ['cgi_admin'],
-  tourId: 'nav-venues'
-}, {
-  name: 'Márkák',
-  href: '/brands',
-  icon: Factory,
-  roles: ['cgi_admin'],
-  tourId: 'nav-brands'
-}, {
-  name: 'Értesítések',
-  href: '/notifications',
-  icon: Bell,
-  roles: ['cgi_admin'],
-  tourId: 'nav-notifications'
-}, {
-  name: 'Audit Napló',
-  href: '/audit-log',
-  icon: FileText,
-  roles: ['cgi_admin'],
-  tourId: 'nav-audit-log'
-}, {
-  name: 'Beállítások',
-  href: '/settings',
-  icon: Settings,
-  roles: ['cgi_admin', 'venue_owner'],
-  tourId: 'nav-settings'
-}];
+
+type NavGroup = 'core' | 'tx' | 'marketing' | 'analytics' | 'admin';
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  roles: string[];
+  tourId: string;
+  group: NavGroup;
+}
+
+const navigation: NavItem[] = [
+  // FŐ
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core' },
+  { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core' },
+  { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core' },
+  // TRANZAKCIÓK
+  { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions', group: 'tx' },
+  { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-transactions', group: 'tx' },
+  { name: 'Banki Tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'], tourId: 'nav-saltedge', group: 'tx' },
+  // MARKETING
+  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards', group: 'marketing' },
+  { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions', group: 'marketing' },
+  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing' },
+  // ANALITIKA
+  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'], tourId: 'nav-analytics', group: 'analytics' },
+  { name: 'Adat Értékek', href: '/data-insights', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-data-insights', group: 'analytics' },
+  { name: 'Jótékonysági Hatás', href: '/charity-impact', icon: Heart, roles: ['cgi_admin'], tourId: 'nav-charity', group: 'analytics' },
+  // ADMIN
+  { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'], tourId: 'nav-brands', group: 'admin' },
+  { name: 'Audit Napló', href: '/audit-log', icon: FileText, roles: ['cgi_admin'], tourId: 'nav-audit-log', group: 'admin' },
+  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-settings', group: 'admin' },
+];
+
+const groupConfig: Record<NavGroup, { label: string; color: string; bg: string; ring: string }> = {
+  core:      { label: 'Fő',          color: 'text-cgi-primary',  bg: 'bg-cgi-primary/15',  ring: 'border-cgi-primary' },
+  tx:        { label: 'Tranzakciók', color: 'text-amber-400',    bg: 'bg-amber-400/15',    ring: 'border-amber-400' },
+  marketing: { label: 'Marketing',   color: 'text-purple-400',   bg: 'bg-purple-400/15',   ring: 'border-purple-400' },
+  analytics: { label: 'Analitika',   color: 'text-emerald-400',  bg: 'bg-emerald-400/15',  ring: 'border-emerald-400' },
+  admin:     { label: 'Admin',       color: 'text-slate-300',    bg: 'bg-slate-400/15',    ring: 'border-slate-400' },
+};
+
+const groupOrder: NavGroup[] = ['core', 'tx', 'marketing', 'analytics', 'admin'];
+
 const roleLabels = {
   'cgi_admin': 'Admin Dashboard',
   'venue_owner': 'Venue Owner előnézet',
   'venue_staff': 'Staff előnézet',
   'brand_admin': 'Brand Admin előnézet'
 };
+
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [effectiveRole, setEffectiveRole] = useState(sessionManager.getEffectiveRole());
   const location = useLocation();
   const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
-  const {
-    startTour,
-    hasCompletedTour
-  } = useTour();
+  const { startTour } = useTour();
 
-  // Listen for role changes
   useEffect(() => {
     const unsubscribe = sessionManager.addListener(() => {
-      const newEffectiveRole = sessionManager.getEffectiveRole();
-      console.log('Sidebar: Role changed to:', newEffectiveRole);
-      setEffectiveRole(newEffectiveRole);
+      setEffectiveRole(sessionManager.getEffectiveRole());
     });
     return unsubscribe;
   }, []);
 
-  // Close mobile sidebar when route changes
   useEffect(() => {
     setIsOpen(false);
   }, [location.pathname]);
 
-  // Filter navigation based on effective role
   const filteredNavigation = navigation.filter(item => {
     if (!effectiveRole) return false;
     return item.roles.includes(effectiveRole);
   });
+
   const handleLogout = () => {
     sessionManager.clearSession();
     navigate('/');
   };
   const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin') => {
-    console.log('Sidebar: Changing role to:', role);
     sessionManager.setPreviewRole(role === 'cgi_admin' ? null : role);
   };
 
-  // Don't render sidebar if no session
-  if (!session || !effectiveRole) {
-    return null;
-  }
+  if (!session || !effectiveRole) return null;
   const isAdmin = session.user.role === 'cgi_admin';
-  return <>
-      {/* Mobile hamburger — only shown when sidebar is closed */}
+
+  return (
+    <>
       {!isOpen && (
         <Button
           variant="ghost"
@@ -161,12 +106,7 @@ export function Sidebar() {
         </Button>
       )}
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-40 w-[84vw] max-w-xs lg:w-64 bg-cgi-surface border-r border-cgi-muted transform transition-transform duration-300 ease-in-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:inset-0
-      `}>
+      <div className={`fixed inset-y-0 left-0 z-40 w-[84vw] max-w-xs lg:w-64 bg-cgi-surface border-r border-cgi-muted transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0`}>
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="relative flex h-16 items-center gap-2 px-4 lg:px-6 border-b border-cgi-muted" data-tour="sidebar-header">
@@ -177,7 +117,6 @@ export function Sidebar() {
               <h1 className="text-lg font-semibold text-cgi-surface-foreground truncate">Come Get It</h1>
               <p className="text-xs text-cgi-muted-foreground truncate">Partner Dashboard</p>
             </div>
-            {/* Close button inside sidebar — mobile only */}
             <Button
               variant="ghost"
               size="icon"
@@ -190,21 +129,53 @@ export function Sidebar() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
-            {filteredNavigation.map(item => {
-            const isActive = location.pathname === item.href || item.href === '/venues' && location.pathname.startsWith('/venues');
-            const Icon = item.icon;
-            return <Link key={item.name} to={item.href} data-tour={item.tourId} className={`cgi-nav-item ${isActive ? 'active' : ''} ${isActive && effectiveRole === 'cgi_admin' ? 'admin-active' : ''}`}>
-                  <Icon className="h-5 w-5" />
-                  {item.name}
-                </Link>;
-          })}
+          <nav className="flex-1 px-3 py-3 overflow-y-auto">
+            {groupOrder.map((groupKey, gi) => {
+              const items = filteredNavigation.filter(i => i.group === groupKey);
+              if (items.length === 0) return null;
+              const cfg = groupConfig[groupKey];
+              return (
+                <div key={groupKey} className={gi > 0 ? 'mt-3' : ''}>
+                  <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${cfg.color}/80`}>
+                    {cfg.label}
+                  </div>
+                  <div className="space-y-0.5">
+                    {items.map(item => {
+                      const isActive =
+                        location.pathname === item.href ||
+                        (item.href === '/venues' && location.pathname.startsWith('/venues')) ||
+                        (item.href === '/users' && location.pathname.startsWith('/users'));
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          data-tour={item.tourId}
+                          className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all border-l-[3px] ${
+                            isActive
+                              ? `${cfg.bg} ${cfg.color} ${cfg.ring} font-medium`
+                              : `border-transparent text-cgi-muted-foreground hover:text-cgi-surface-foreground hover:bg-cgi-muted/40`
+                          }`}
+                        >
+                          <span className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+                            isActive ? `${cfg.bg} ${cfg.color}` : `bg-cgi-muted/30 text-cgi-muted-foreground group-hover:${cfg.color}`
+                          }`}>
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="truncate">{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </nav>
 
           {/* Footer */}
           <div className="border-t border-cgi-muted p-3 sm:p-4 space-y-3">
-            {/* Role Preview Dropdown - Only for admins */}
-            {isAdmin && <div data-tour="role-switcher">
+            {isAdmin && (
+              <div data-tour="role-switcher">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full justify-between text-xs cgi-button-secondary">
@@ -213,21 +184,14 @@ export function Sidebar() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 bg-cgi-surface border-cgi-muted">
-                    <DropdownMenuItem onClick={() => handleRoleChange('cgi_admin')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">
-                      Admin Dashboard
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRoleChange('venue_owner')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">
-                      Venue Owner előnézet
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRoleChange('venue_staff')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">
-                      Staff előnézet
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleRoleChange('brand_admin')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">
-                      Brand Admin előnézet
-                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleRoleChange('cgi_admin')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">Admin Dashboard</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleRoleChange('venue_owner')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">Venue Owner előnézet</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleRoleChange('venue_staff')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">Staff előnézet</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleRoleChange('brand_admin')} className="text-cgi-surface-foreground hover:bg-cgi-muted/50">Brand Admin előnézet</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>}
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center shrink-0">
@@ -236,12 +200,8 @@ export function Sidebar() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-cgi-surface-foreground truncate">
-                  {session.user.name}
-                </p>
-                <p className="text-xs text-cgi-muted-foreground truncate">
-                  {session.user.email}
-                </p>
+                <p className="text-sm font-medium text-cgi-surface-foreground truncate">{session.user.name}</p>
+                <p className="text-xs text-cgi-muted-foreground truncate">{session.user.email}</p>
               </div>
             </div>
 
@@ -259,7 +219,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Overlay for mobile */}
       {isOpen && <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsOpen(false)} />}
-    </>;
+    </>
+  );
 }
