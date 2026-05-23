@@ -268,11 +268,11 @@ export default function UserDetail() {
 
   // Handler functions for ChurnWarningPanel and UserBehaviorStory
   const handleNavigateToAI = () => {
-    setActiveTab("ai");
+    setActiveTab("communication");
   };
 
   const handleNavigateToNotifications = () => {
-    setActiveTab("notifications");
+    setActiveTab("communication");
   };
 
   const handleOpenManualNotification = () => {
