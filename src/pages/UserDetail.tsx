@@ -312,41 +312,71 @@ export default function UserDetail() {
   return (
     <PageLayout>
       <div className="space-y-6">
-        {/* Back button and actions */}
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/users")} className="cgi-button-ghost">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Vissza a felhasználókhoz
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            <SystemRulesPanel />
-            <ExportDropdown
-              options={[
-                {
-                  label: "Teljes profil (CSV)",
-                  onClick: () => exportUserProfileToCSV({
-                    user: { name: user.name, email: user.email, phone: user.phone, created_at: user.created_at },
-                    points,
-                    scores,
-                    stats
-                  })
-                },
-                {
-                  label: "Csak beváltások",
-                  onClick: () => exportUserRedemptionsToCSV(user.name, free_drink_redemptions, reward_redemptions)
-                },
-                {
-                  label: "Csak pontok",
-                  onClick: () => exportUserPointsToCSV(user.name, points_flow.recent_transactions)
-                }
-              ]}
-              tooltipContent="Felhasználói adatok exportálása CSV formátumban"
-            />
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1 text-sm text-cgi-muted-foreground">
+          <button onClick={() => navigate("/users")} className="hover:text-cgi-surface-foreground transition-colors">
+            Felhasználók
+          </button>
+          <span>›</span>
+          <span className="text-cgi-surface-foreground truncate">{user.name}</span>
+        </div>
+
+        {/* Sticky header with actions */}
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-cgi-surface/95 backdrop-blur-sm border-b border-cgi-muted">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/users")} className="cgi-button-ghost shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Vissza</span>
+              </Button>
+              <Avatar className="h-9 w-9 shrink-0">
+                <AvatarImage src={user.avatar_url || undefined} />
+                <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary text-sm">
+                  {getInitials(user.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="font-semibold text-cgi-surface-foreground truncate">{user.name}</p>
+                <p className="text-xs text-cgi-muted-foreground truncate">{user.email || user.phone || "—"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                onClick={() => setShowNotificationModal(true)}
+                className="bg-cgi-primary hover:bg-cgi-primary/90 text-cgi-surface gap-2"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Push küldése</span>
+              </Button>
+              <SystemRulesPanel />
+              <ExportDropdown
+                options={[
+                  {
+                    label: "Teljes profil (CSV)",
+                    onClick: () => exportUserProfileToCSV({
+                      user: { name: user.name, email: user.email, phone: user.phone, created_at: user.created_at },
+                      points,
+                      scores,
+                      stats
+                    })
+                  },
+                  {
+                    label: "Csak beváltások",
+                    onClick: () => exportUserRedemptionsToCSV(user.name, free_drink_redemptions, reward_redemptions)
+                  },
+                  {
+                    label: "Csak pontok",
+                    onClick: () => exportUserPointsToCSV(user.name, points_flow.recent_transactions)
+                  }
+                ]}
+                tooltipContent="Felhasználói adatok exportálása CSV formátumban"
+              />
+            </div>
           </div>
         </div>
 
-        {/* User Header */}
+        {/* User profile card */}
         <Card className="cgi-card">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
@@ -380,26 +410,14 @@ export default function UserDetail() {
           </CardContent>
         </Card>
 
-        {/* Quick Overview Card */}
-        <QuickOverviewCard
-          daysSinceRegistration={stats.days_since_registration}
-          totalRedemptions={stats.total_free_drink_redemptions + stats.total_reward_redemptions}
-          totalSpend={points.total_spend || 0}
-          roi={points.total_spend && stats.total_free_drink_redemptions > 0 
-            ? points.total_spend / (stats.total_free_drink_redemptions * 1500) 
-            : 0}
-          favoriteVenue={stats.favorite_venue}
-          todayStats={{
-            redemptions: free_drink_redemptions.filter(r => 
-              new Date(r.redeemed_at).toDateString() === new Date().toDateString()
-            ).length,
-            venues: [...new Set(free_drink_redemptions
-              .filter(r => new Date(r.redeemed_at).toDateString() === new Date().toDateString())
-              .map(r => r.venue_name))]
-          }}
-          activeVenuesCount={venue_affinity.length}
-          weeklyVipVenue={venue_affinity.find(v => v.visit_count >= 5)?.venue_name || null}
+        {/* Scorecard — high level KPI strip */}
+        <UserScorecard
+          engagementScore={scores.engagement_score}
+          churnRisk={scores.churn_risk}
+          ltv={scores.ltv}
+          preferenceProfile={scores.preference_profile}
         />
+
 
         {/* Scorecard */}
         <UserScorecard
