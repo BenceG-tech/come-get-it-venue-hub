@@ -381,25 +381,45 @@ export default function Users() {
           </Card>
         </div>
 
+        {/* Sticky global search + status filter (always visible) */}
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-cgi-surface/95 backdrop-blur-sm border-b border-cgi-muted">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cgi-muted-foreground" />
+                <Input
+                  placeholder="Keresés név vagy email alapján..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10 cgi-input"
+                />
+              </div>
+              <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+                <TabsList className="bg-cgi-muted/30">
+                  <TabsTrigger value="all" className="data-[state=active]:bg-cgi-primary">Összes</TabsTrigger>
+                  <TabsTrigger value="active" className="data-[state=active]:bg-green-500">Aktív</TabsTrigger>
+                  <TabsTrigger value="inactive" className="data-[state=active]:bg-gray-500">Inaktív</TabsTrigger>
+                  <TabsTrigger value="new" className="data-[state=active]:bg-blue-500">Új</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <RecentlyViewedUsersStrip />
+          </div>
+        </div>
+
         {/* Main Tab Navigation */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as "analytics" | "users")}
         >
           <TabsList className="bg-cgi-muted/30">
-            <TabsTrigger
-              value="analytics"
-              className="data-[state=active]:bg-cgi-primary gap-2"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Analitika
-            </TabsTrigger>
-            <TabsTrigger
-              value="users"
-              className="data-[state=active]:bg-cgi-primary gap-2"
-            >
+            <TabsTrigger value="users" className="data-[state=active]:bg-cgi-primary gap-2">
               <ListFilter className="h-4 w-4" />
               Felhasználók
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-cgi-primary gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analitika
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -419,18 +439,14 @@ export default function Users() {
               </div>
             ) : analyticsData ? (
               <>
-                {/* DAU Chart - Full Width */}
                 <UserActivityChart
                   dailyData={analyticsData.daily_active_users}
                   weeklyData={analyticsData.weekly_active_users}
                 />
-
-                {/* 2-Column Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <UserRetentionChart cohorts={analyticsData.retention_cohorts} />
                   <RedemptionTrendsChart data={analyticsData.redemption_trends} />
                 </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <TopVenuesChart venues={analyticsData.top_venues} />
                   <UserAnalyticsHeatmap heatmapData={analyticsData.hourly_activity} />
@@ -451,7 +467,6 @@ export default function Users() {
         {/* Users Tab */}
         {activeTab === "users" && (
           <>
-            {/* Bulk Actions Toolbar */}
             <UserBulkActionsToolbar
               selectedUserIds={selectedUserIds}
               selectedUsers={selectedUsers}
@@ -462,51 +477,6 @@ export default function Users() {
               }}
             />
 
-            {/* Filters */}
-            <Card className="cgi-card">
-              <CardContent className="pt-6">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cgi-muted-foreground" />
-                    <Input
-                      placeholder="Keresés név vagy email alapján..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-10 cgi-input"
-                    />
-                  </div>
-
-                  <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-                    <TabsList className="bg-cgi-muted/30">
-                      <TabsTrigger
-                        value="all"
-                        className="data-[state=active]:bg-cgi-primary"
-                      >
-                        Összes
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="active"
-                        className="data-[state=active]:bg-green-500"
-                      >
-                        Aktív
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="inactive"
-                        className="data-[state=active]:bg-gray-500"
-                      >
-                        Inaktív
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="new"
-                        className="data-[state=active]:bg-blue-500"
-                      >
-                        Új
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Users List */}
             <Card className="cgi-card">
