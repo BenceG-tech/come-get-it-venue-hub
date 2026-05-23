@@ -1,72 +1,108 @@
-## Mit kell javítani
+## Cél
 
-A három probléma a feltöltött screenshotok és a kódbázis átnézése alapján:
+1. A bal oldali menüben a **Helyszínek** és **Felhasználók** kerüljön közvetlenül a Dashboard után, és a menüpontok kapjanak szín szerinti csoportosítást.
+2. A **Felhasználók** lista és a **felhasználó-részletes** oldal legyen gyorsabban használható, kevésbé túlzsúfolt, és átlátható.
 
-### 1. Helyszín szerkesztő — „Mentés" gomb elcsúszva
+---
 
-`src/components/VenueFormModal.tsx` (Dialog + Sheet közös `formContent`).
+## 1. Sidebar — sorrend + színkódolás
 
-Most:
-```
-<form class="flex flex-col h-full">
-  <Tabs class="flex-1 flex flex-col min-h-0">
-     ...sticky top tabs...
-     <div class="flex-1 overflow-y-auto">...TabsContent...</div>
-  </Tabs>
-  <div class="sticky bottom-0 ...">Mégse / Mentés</div>
-</form>
-```
+Fájl: `src/components/Sidebar.tsx`
 
-A „sticky bottom-0" sáv a `<Tabs>` után ül, de mivel a form maga nem scrollol (csak a belső div), a `sticky` nem ragad sehová. Mobilon (Sheet) és bizonyos magasságoknál a gombsor a Tabs alá rendereldik, és úgy néz ki, mintha a form közepén lebegne — pontosan ez látható a screenshoton.
+### Új sorrend (csoportokra bontva, vizuális elválasztással)
 
-Javítás: a gombsort tisztán flex-footernek kezelni (nincs sticky, hanem `flex-shrink-0` a `formContent` alján), és a `<Tabs>` legyen az egyetlen `flex-1 min-h-0` gyerek. Így a TabsContent scrollja a footer FÖLÖTT véget ér, a gombsor pedig mindig a modal alján marad — desktopon és mobilon egyaránt.
+| Csoport | Szín token | Menüpontok |
+|---|---|---|
+| **Fő** | `cgi-primary` (cián) | Dashboard, **Helyszínek**, **Felhasználók** |
+| **Tranzakciók** | amber-400 | Beváltások, Tranzakciók, Banki Tranzakciók |
+| **Marketing** | purple-400 | Jutalmak, Promóciók, Értesítések |
+| **Analitika** | cgi-success (zöld) | Analitika, Adat Értékek, Jótékonysági Hatás |
+| **Admin** | slate-400 | Márkák, Audit Napló, Beállítások |
 
-Konkrétan:
-- `<form className="flex flex-col h-full min-h-0">`
-- `<Tabs className="flex-1 min-h-0 flex flex-col">` változatlan
-- `<div className="flex-shrink-0 border-t border-cgi-muted bg-cgi-surface pt-3 mt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">` — eltávolítjuk a `sticky bottom-0`-t
-- Mobilon a Sheet `p-4` paddingjét lecsökkentjük `px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]`-re, hogy iOS Safari home indicator ne takarja a gombot.
+A `navigation` tömböt átrendezzük, és minden elem kap egy `group: 'core' \| 'tx' \| 'marketing' \| 'analytics' \| 'admin'` és `accent: string` mezőt (HSL token-alapú szín).
 
-### 2. Mobil sidebar / menü
+Render: a `filteredNavigation` szekcióban szekciónként rendereljük az elemeket egy kis halvány csoportcímkével (pl. „FŐ", „TRANZAKCIÓK"), a `cgi-nav-item` ikon háttere pedig az adott csoport színét kapja (`bg-{accent}/15 text-{accent}`). Aktív állapotban a teljes pill az accent színt használja.
 
-`src/components/Sidebar.tsx`.
+A `cgi-nav-item` osztály jelenleg a `text-cgi-primary` aktív színt használja — ezt felülírjuk inline style-lal vagy egy új CSS változóval (`--nav-accent`), hogy minden menüpont megkapja a saját accent színét anélkül, hogy 5 új Tailwind osztályt vennénk fel.
 
-Problémák a 2. screenshot alapján:
-- A hamburger/X gomb `fixed top-4 left-4 z-50` — amikor a sidebar nyitva van, az X gomb a Come Get It logó FÖLÉ úszik (lásd screenshot 2, bal felső sarok).
-- A toggle gomb ráül az oldalak címsorára (pl. Dashboard h1) szűk képernyőn.
-- A „Súgó" és „Kilépés" lent kicsi és kettéosztott — mobilon kényelmetlen.
+### Apró UX
 
-Javítás:
-- A nyitvatartás idejére az X gombot **a sidebar saját headerébe** rakjuk (jobb felső sarok a sidebar fejlécében), a külső hamburger gomb csak akkor látszik, ha a sidebar zárva.
-- A fixed hamburger gombot kisebbre, kompaktabbra (`h-9 w-9 rounded-full`) és helyezzük el úgy, hogy ne ütközzön a tartalommal: `top-3 left-3`. Hozzáadunk `lg:hidden` mellé `aria-label`-t.
-- A `PageLayout` mobilon kapjon `pt-14` / `pl-14` paddingot, hogy az oldalak címsora ne csússzon a hamburger alá. (Csak akkor módosítjuk, ha jelenleg nem így van — gyors ellenőrzés.)
-- A footer (`Súgó` / `Kilépés`) mobilon legyen full-width két sorban: `flex-col sm:flex-row` és `justify-center` ikonokkal, h-10 méretben.
-- Az overlay `bg-black/50` -> `bg-black/60 backdrop-blur-sm` egységes érzet miatt.
+- Sticky csoportcímkék (`sticky top-0 bg-cgi-surface`) elhagyva — egyszerű kis `<div class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-cgi-muted-foreground">Fő</div>` választó.
+- Hover ugyanaz az accent halvány formában.
 
-### 3. Belépés képernyő — „súgó / segítő ablakok"
+---
 
-`src/pages/Login.tsx`.
+## 2. Felhasználók lista (`src/pages/Users.tsx`)
 
-Itt valószínűleg a következőkre gondolsz (kérlek erősítsd meg ha mást):
-- A „Demo gyors-belépés (fejlesztői mód)" `<details>` szekció — mobilon a 2 oszlopos grid túlcsordul az `<Input>` alá.
-- A natív `alert(...)` hívások („Bejelentkezés sikertelen…", „Felhasználó nem található", „Az elfelejtett jelszó funkció hamarosan elérhető lesz") — natív alert-ablak mobilon csúnya és nem brand-konform.
-- A „Supabase hitelesítés aktív" pill túl kicsi tap-target.
+### Problémák
+- Az alapértelmezett tab az „Analitika" — a user először a táblázatokat látja, nem magát a listát.
+- A keresőmező csak akkor jelenik meg, ha az „Felhasználók" tabra vált.
+- A lista sorai sűrűek, sok klikkelhető célpont egymás mellett (checkbox, avatar, név, sztatok, Eye gomb, ChevronRight) — könnyű mellékattintani.
 
-Javítás:
-- A `alert(...)` hívásokat lecseréljük `useToast()` hívásokra (vagy a meglévő `<Alert>` komponens inline megjelenítésére a kártya tetején) — ezek már mobil-optimalizáltak és a meglévő design tokeneket használják.
-- A „Demo" details szekciót csak fejlesztői módban mutatjuk (már így van), és a gridet `grid-cols-2 gap-2` helyett `flex flex-wrap gap-2` szabássá tesszük, hogy 320px-en is elférjen.
-- A Card maximum szélességét és paddingot mobilra finomítjuk: `p-4 sm:p-6`, és a Card scrollolható legyen ha alacsony a viewport (pl. iPhone SE landscape): a wrapper `min-h-screen` mellé `overflow-y-auto`.
-- A „Elfelejtetted a jelszót?" gomb tap-target-je `py-2`-re növelve.
+### Javítások
 
-### Fájlok, amelyeket módosítok
+1. **Alapértelmezett tab = "users"**, az „Analitika" a második tab. (Aki adminol, először a felhasználót keresi, nem a kohorszot.)
+2. **Sticky keresősáv** a tab-bar fölött, mindig látható (debounced search + status pillek egy sorban). Az Analitika tabnál is mutatja, így onnan is lehet keresni — ha a user gépel, automatikusan átvált a „users" tabra.
+3. **Lista sor egyszerűsítése**:
+   - Eltávolítjuk a redundáns „Quick view" (`Eye`) gombot — a teljes sor kattintásra megnyitja a **QuickView modalt** (gyors info), a sor jobb szélén egy „Megnyitás →" gomb visz a részletes oldalra. Így a default = gyors info, opt-in = részletes oldal — pont fordítva, mint most.
+   - A checkbox csak akkor jelenik meg, ha az egér rajta van a soron, vagy ha már van kiválasztva (folyamatos `opacity-0 group-hover:opacity-100`), így a sor tisztább.
+   - Mobil bottom-row sztatok pillé tömörítve: `🎯 1 240 pont · 12 beváltás · 8 munkamenet` egy sorban, max-truncate.
+4. **Státusz pillek színesedjenek a sor avatar-keretén is** (zöld/szürke/kék ring) — egy pillantásra tudható ki aktív/inaktív/új.
+5. **„Top 10 gyakran nézett" gyors sáv** a kereső alatt: a localStorage-ban tárolt utolsó 5 megnyitott felhasználó avatar-csíkként, hogy a visszatérő user 1 kattintással visszakerüljön.
+6. **Üres állapot** ha `data.users.length === 0` és nincs filter: nagyobb illusztráció + CTA „Adjon hozzá tesztadatot".
 
-- `src/components/VenueFormModal.tsx` — footer sticky elhagyása, safe-area padding
-- `src/components/Sidebar.tsx` — X gomb a sidebar headerbe, fixed hamburger kompaktabb, footer mobil layout
-- `src/components/PageLayout.tsx` — mobil `pt-14` ha még nincs (gyors check)
-- `src/pages/Login.tsx` — `alert` → `toast`, details grid → flex-wrap, paddingok finomítása
+### Fájlok
+- `src/pages/Users.tsx` — fenti változások
+- (opcionálisan új) `src/components/user/RecentlyViewedUsersStrip.tsx` — localStorage alapú gyors sáv
 
-### Kérdés mielőtt nekiállok
+---
 
-A „belépésnél a súgó/segítő ablakok" alatt a fenti három dolgot érted (natív `alert`-ek, demo role picker, Supabase pill), vagy konkrétan az **onboarding tour** popoverekre gondolsz (`react-joyride`), amelyek belépés UTÁN jelennek meg a dashboardon? Utóbbi külön komponens (`src/components/tours/`), és más javítást igényel.
+## 3. Felhasználó részletes oldal (`src/pages/UserDetail.tsx`)
 
-Ha rákattintasz az „Implement plan"-re az első értelmezéssel megyek; ha az onboarding tourra gondolsz, írd vissza és a tervet azzal egészítem ki.
+### Problémák
+- **8 tab** (Áttekintés, Viselkedés, Aktivitás, Beváltások, Helyszínek, Pontok, AI Ajánlatok, Értesítések) — mobilon és desktopon is sok, mindenhol görgethető. Sok funkció duplikálódik az Áttekintés accordionjával.
+- **3 kvázi-ugyanaz** komponens egymás után: `QuickOverviewCard` → `UserScorecard` → `UserOverviewSummary` mind kulcs-KPI-okat mutat különböző formátumban. Vizuálisan zavaró, hosszú scroll.
+- A header (vissza gomb + Export + Szabályok) szétdobott.
+
+### Javítások
+
+1. **Tabok 8 → 4 csoportba**:
+   | Új tab | Mit tartalmaz |
+   |---|---|
+   | **Áttekintés** | UserOverviewSummary (KPI), ChurnWarning (ha kell), accordion: Bevétel hatás + Platform összehasonlítás + AI előrejelzések |
+   | **Aktivitás** | Viselkedés (BehaviorPatternBadges) + Aktivitás napló (recent_activity) + UserActivityHeatmap + WeeklyTrends |
+   | **Beváltások** | Ingyen italok + Jutalmak + Helyszín-affinitás + Pontok flow (sub-szekciókkal vagy mini-tabokkal a kártyán belül) |
+   | **Kommunikáció** | AI ajánlatok + Értesítések history + manuális push CTA |
+
+2. **Hero egyszerűsítés**: `QuickOverviewCard` törölve (vagy egy gomb mögé rejtve), csak a `UserScorecard` marad az Áttekintés tab tetején — a `UserOverviewSummary` adja a részletet. Eggyel kevesebb redundáns blokk.
+
+3. **Sticky user header**: a vissza gomb + avatar + név + gyors „Push küldése" / „Export" akciók egy `sticky top-0` sávban — mindig elérhető még görgetés közben is, így nem kell a tetejére visszamenni egy értesítés küldéséhez.
+
+4. **Műveleti CTA-k a headerben**: a jelenlegi „Export" dropdown mellé „📣 Push küldése" elsődleges gomb (megnyitja a `ManualNotificationModal`-t). A „Szabályok" gomb átkerül a Súgó (?) ikon mögé tooltipbe.
+
+5. **Mobilon a tab lista** vízszintesen scrollolható (már most is `flex-wrap` de h-auto + gap-1) — 4 tabbal már elfér egy sorban telefonon is.
+
+6. **Breadcrumb a tetején**: `Felhasználók › [Név]` — egyértelmű kontextus, klikkelhető vissza link.
+
+### Fájlok
+- `src/pages/UserDetail.tsx` — tab-konszolidáció, sticky header, KPI dedup, breadcrumb
+
+---
+
+## Összegzés — mi NEM változik
+
+- A backend (`get-users`, `get-user-stats-extended`) és a komponensek belső logikája érintetlen.
+- A Supabase auth/RLS érintetlen.
+- A QuickView modal, ManualNotificationModal, UserBulkActionsToolbar funkciók maradnak — csak hogyan érhetők el, az változik.
+
+---
+
+## Érintett fájlok összesítve
+
+- `src/components/Sidebar.tsx` — sorrend + csoport-színek
+- `src/index.css` — szükség szerint új `--nav-accent` változó támogatás a `cgi-nav-item`-hez
+- `src/pages/Users.tsx` — default tab, sticky kereső, lista-sor egyszerűsítés, „Recently viewed" sáv
+- `src/components/user/RecentlyViewedUsersStrip.tsx` — új, opcionális
+- `src/pages/UserDetail.tsx` — 4 tab-os struktúra, sticky header, breadcrumb, KPI dedup
+
+Ha jónak találod, megyek és lekódolom. Ha valamelyik részen mást szeretnél (pl. „a 8 tab maradjon, csak a sorrend változzon", vagy „más színpaletta kell a sidebarba"), írd meg és módosítom a tervet.
