@@ -123,6 +123,19 @@ export default function Users() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // If user starts searching from analytics tab, switch to users
+  useEffect(() => {
+    if (search.length > 0 && activeTab !== "users") {
+      setActiveTab("users");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const openUserDetail = (u: { id: string; name: string; avatar_url: string | null }) => {
+    pushRecentUser({ id: u.id, name: u.name, avatar_url: u.avatar_url });
+    navigate(`/users/${u.id}`);
+  };
+
   // Fetch users list
   const { data, isLoading, error, refetch } = useQuery<UsersResponse>({
     queryKey: ["users", debouncedSearch, statusFilter, page],
