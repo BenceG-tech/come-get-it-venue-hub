@@ -96,7 +96,7 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative"
+      className="min-h-screen flex items-center justify-center p-3 sm:p-4 relative overflow-y-auto"
       style={{
         backgroundImage: `url(${loginBackground})`,
         backgroundSize: "cover",
@@ -109,12 +109,12 @@ export default function Login() {
         style={{ background: "var(--cgi-bottom-accent)" }}
       />
 
-      <div className="w-full max-w-md space-y-3 relative z-10">
+      <div className="w-full max-w-md space-y-3 relative z-10 py-4">
         <div className="flex justify-center mb-2">
-          <img src={logoImage} alt="Come Get It Logo" className="h-20 sm:h-24 w-auto" />
+          <img src={logoImage} alt="Come Get It Logo" className="h-16 sm:h-24 w-auto" />
         </div>
 
-        <Card className="bg-cgi-surface/90 backdrop-blur border-cgi-secondary/30 p-6 shadow-xl">
+        <Card className="bg-cgi-surface/90 backdrop-blur border-cgi-secondary/30 p-4 sm:p-6 shadow-xl">
           <div className="space-y-5">
             <div className="text-center">
               <h1 className="text-xl font-bold text-cgi-surface-foreground">
