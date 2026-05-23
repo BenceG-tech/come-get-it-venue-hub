@@ -707,7 +707,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </div>
       </Tabs>
 
-      <div className="sticky bottom-0 z-10 bg-cgi-surface flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 pt-4 mt-2 border-t border-cgi-muted">
+      <div
+        className="flex-shrink-0 bg-cgi-surface flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 mt-2 border-t border-cgi-muted"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+      >
         <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto" disabled={saving || geocoding}>
           Mégse
         </Button>

@@ -148,31 +148,49 @@ export function Sidebar() {
   }
   const isAdmin = session.user.role === 'cgi_admin';
   return <>
-      {/* Mobile menu button */}
-      <Button variant="ghost" size="sm" className="lg:hidden fixed top-4 left-4 z-50 cgi-button-ghost bg-cgi-surface/95 backdrop-blur-sm shadow-lg border border-cgi-muted" onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
+      {/* Mobile hamburger — only shown when sidebar is closed */}
+      {!isOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Menü megnyitása"
+          className="lg:hidden fixed top-3 left-3 z-50 h-9 w-9 rounded-full cgi-button-ghost bg-cgi-surface/95 backdrop-blur-sm shadow-lg border border-cgi-muted"
+          onClick={() => setIsOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-cgi-surface border-r border-cgi-muted transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-40 w-[84vw] max-w-xs lg:w-64 bg-cgi-surface border-r border-cgi-muted transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:inset-0
       `}>
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center gap-2 px-6 border-b border-cgi-muted" data-tour="sidebar-header">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-900">
+          <div className="relative flex h-16 items-center gap-2 px-4 lg:px-6 border-b border-cgi-muted" data-tour="sidebar-header">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-900 shrink-0">
               <Users className="h-5 w-5 text-cgi-primary" />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-cgi-surface-foreground">Come Get It</h1>
-              <p className="text-xs text-cgi-muted-foreground">Partner Dashboard</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold text-cgi-surface-foreground truncate">Come Get It</h1>
+              <p className="text-xs text-cgi-muted-foreground truncate">Partner Dashboard</p>
             </div>
+            {/* Close button inside sidebar — mobile only */}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Menü bezárása"
+              className="lg:hidden h-9 w-9 shrink-0 text-cgi-surface-foreground hover:bg-cgi-muted/50"
+              onClick={() => setIsOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
+          <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
             {filteredNavigation.map(item => {
             const isActive = location.pathname === item.href || item.href === '/venues' && location.pathname.startsWith('/venues');
             const Icon = item.icon;
@@ -184,14 +202,14 @@ export function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-cgi-muted p-4 space-y-4">
+          <div className="border-t border-cgi-muted p-3 sm:p-4 space-y-3">
             {/* Role Preview Dropdown - Only for admins */}
-            {isAdmin && <div className="mb-4" data-tour="role-switcher">
+            {isAdmin && <div data-tour="role-switcher">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full justify-between text-xs cgi-button-secondary">
-                      <span>{roleLabels[effectiveRole]}</span>
-                      <ChevronDown className="h-3 w-3" />
+                      <span className="truncate">{roleLabels[effectiveRole]}</span>
+                      <ChevronDown className="h-3 w-3 shrink-0" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 bg-cgi-surface border-cgi-muted">
@@ -212,7 +230,7 @@ export function Sidebar() {
               </div>}
 
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full bg-cgi-secondary/20 flex items-center justify-center shrink-0">
                 <span className="text-xs font-medium text-cgi-secondary">
                   {session.user.name.split(' ').map(n => n[0]).join('')}
                 </span>
@@ -224,18 +242,15 @@ export function Sidebar() {
                 <p className="text-xs text-cgi-muted-foreground truncate">
                   {session.user.email}
                 </p>
-                <p className="text-xs text-cgi-muted-foreground capitalize">
-                  {session.user.role.replace('_', ' ')}
-                </p>
               </div>
             </div>
-            
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => startTour('main')} className="flex-1 justify-start cgi-button-ghost" data-tour="help-button">
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="ghost" size="sm" onClick={() => startTour('main')} className="h-10 justify-center cgi-button-ghost" data-tour="help-button">
                 <HelpCircle className="h-4 w-4 mr-2" />
                 Súgó
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="flex-1 justify-start cgi-button-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10">
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="h-10 justify-center cgi-button-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10">
                 <LogOut className="h-4 w-4 mr-2" />
                 Kilépés
               </Button>
@@ -245,6 +260,6 @@ export function Sidebar() {
       </div>
 
       {/* Overlay for mobile */}
-      {isOpen && <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setIsOpen(false)} />}
+      {isOpen && <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsOpen(false)} />}
     </>;
 }

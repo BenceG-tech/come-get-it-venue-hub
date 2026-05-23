@@ -11,6 +11,7 @@ import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
 import { seedData } from "@/lib/mock/seed";
 import { runtimeConfig } from "@/config/runtime";
 import { signInWithEmailPassword, signInWithGoogle } from "@/auth/supabaseAuth";
+import { toast } from "sonner";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -40,7 +41,9 @@ export default function Login() {
         return;
       } catch (err) {
         console.error("[Login] Supabase sign-in failed", err);
-        alert("Bejelentkezés sikertelen. Ellenőrizd az email/jelszó párost.");
+        toast.error("Bejelentkezés sikertelen", {
+          description: "Ellenőrizd az email/jelszó párost.",
+        });
         setIsLoading(false);
         return;
       }
@@ -58,7 +61,7 @@ export default function Login() {
       }, 600);
     } else {
       setIsLoading(false);
-      alert("Felhasználó nem található");
+      toast.error("Felhasználó nem található");
     }
   };
 
@@ -69,7 +72,9 @@ export default function Login() {
       // Browser redirects to Google; onAuthStateChange in App.tsx handles the rest.
     } catch (err) {
       console.error("[Login] Google sign-in failed", err);
-      alert("Google bejelentkezés sikertelen. Próbáld újra később.");
+      toast.error("Google bejelentkezés sikertelen", {
+        description: "Próbáld újra később.",
+      });
       setIsGoogleLoading(false);
     }
   };
@@ -91,7 +96,7 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative"
+      className="min-h-screen flex items-center justify-center p-3 sm:p-4 relative overflow-y-auto"
       style={{
         backgroundImage: `url(${loginBackground})`,
         backgroundSize: "cover",
@@ -104,12 +109,12 @@ export default function Login() {
         style={{ background: "var(--cgi-bottom-accent)" }}
       />
 
-      <div className="w-full max-w-md space-y-3 relative z-10">
+      <div className="w-full max-w-md space-y-3 relative z-10 py-4">
         <div className="flex justify-center mb-2">
-          <img src={logoImage} alt="Come Get It Logo" className="h-20 sm:h-24 w-auto" />
+          <img src={logoImage} alt="Come Get It Logo" className="h-16 sm:h-24 w-auto" />
         </div>
 
-        <Card className="bg-cgi-surface/90 backdrop-blur border-cgi-secondary/30 p-6 shadow-xl">
+        <Card className="bg-cgi-surface/90 backdrop-blur border-cgi-secondary/30 p-4 sm:p-6 shadow-xl">
           <div className="space-y-5">
             <div className="text-center">
               <h1 className="text-xl font-bold text-cgi-surface-foreground">
@@ -195,9 +200,11 @@ export default function Login() {
                   <div className="text-right pt-1">
                     <button
                       type="button"
-                      className="text-xs text-cgi-muted-foreground hover:text-cgi-primary"
+                      className="text-xs text-cgi-muted-foreground hover:text-cgi-primary py-2 px-1 -mr-1"
                       onClick={() =>
-                        alert("Az elfelejtett jelszó funkció hamarosan elérhető lesz.")
+                        toast.info("Elfelejtett jelszó", {
+                          description: "Ez a funkció hamarosan elérhető lesz.",
+                        })
                       }
                     >
                       Elfelejtetted a jelszót?
@@ -225,16 +232,16 @@ export default function Login() {
             {/* Demo role picker — collapsed by default, only useful for mock/demo */}
             {!isSupabaseMode && (
               <details className="group">
-                <summary className="cursor-pointer text-xs text-cgi-muted-foreground hover:text-cgi-surface-foreground select-none">
+                <summary className="cursor-pointer text-xs text-cgi-muted-foreground hover:text-cgi-surface-foreground select-none py-2">
                   Demo gyors-belépés (fejlesztői mód)
                 </summary>
-                <div className="grid grid-cols-2 gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {roleCards.map((card) => (
                     <button
                       key={card.role}
                       type="button"
                       onClick={() => handleRoleSelect(card.role)}
-                      className={`p-2 rounded-lg border transition-all text-left ${
+                      className={`flex-1 min-w-[130px] p-2 rounded-lg border transition-all text-left ${
                         selectedRole === card.role
                           ? `border-cgi-role-${card.color} bg-cgi-role-${card.color}/10`
                           : `border-cgi-secondary/30 bg-cgi-secondary/5 hover:border-cgi-primary/50`
