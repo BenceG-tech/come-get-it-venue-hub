@@ -419,45 +419,25 @@ export default function UserDetail() {
         />
 
 
-        {/* Scorecard */}
-        <UserScorecard
-          engagementScore={scores.engagement_score}
-          churnRisk={scores.churn_risk}
-          ltv={scores.ltv}
-          preferenceProfile={scores.preference_profile}
-        />
-
-        {/* Tabs with controlled state */}
+        {/* Tabs — 4 consolidated groups */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-cgi-muted/30 flex-wrap h-auto gap-1">
+          <TabsList className="bg-cgi-muted/30 flex-wrap h-auto gap-1 w-full md:w-auto overflow-x-auto">
             <TabsTrigger value="overview" className="data-[state=active]:bg-cgi-primary">
               <TrendingUp className="h-4 w-4 mr-2" />Áttekintés
             </TabsTrigger>
-            <TabsTrigger value="behavior" className="data-[state=active]:bg-cgi-primary">
-              <Activity className="h-4 w-4 mr-2" />Viselkedés
-            </TabsTrigger>
             <TabsTrigger value="activity" className="data-[state=active]:bg-cgi-primary">
-              <Clock className="h-4 w-4 mr-2" />Aktivitás
+              <Activity className="h-4 w-4 mr-2" />Aktivitás
             </TabsTrigger>
             <TabsTrigger value="redemptions" className="data-[state=active]:bg-cgi-primary">
               <Wine className="h-4 w-4 mr-2" />Beváltások
             </TabsTrigger>
-            <TabsTrigger value="venues" className="data-[state=active]:bg-cgi-primary">
-              <MapPin className="h-4 w-4 mr-2" />Helyszínek
-            </TabsTrigger>
-            <TabsTrigger value="points" className="data-[state=active]:bg-cgi-primary">
-              <Coins className="h-4 w-4 mr-2" />Pontok
-            </TabsTrigger>
-            <TabsTrigger value="ai" className="data-[state=active]:bg-cgi-primary">
-              <Sparkles className="h-4 w-4 mr-2" />AI Ajánlatok
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="data-[state=active]:bg-cgi-primary">
-              <Bell className="h-4 w-4 mr-2" />Értesítések
+            <TabsTrigger value="communication" className="data-[state=active]:bg-cgi-primary">
+              <Bell className="h-4 w-4 mr-2" />Kommunikáció
             </TabsTrigger>
           </TabsList>
 
+          {/* OVERVIEW */}
           <TabsContent value="overview" className="space-y-4">
-            {/* Churn Warning Panel - Show for medium/high risk */}
             {(scores.churn_risk === "medium" || scores.churn_risk === "high") && (
               <ChurnWarningPanel
                 churnRisk={scores.churn_risk}
@@ -469,13 +449,12 @@ export default function UserDetail() {
               />
             )}
 
-            {/* NEW: User Overview Summary - compact KPIs with key characteristics */}
             <UserOverviewSummary
               daysSinceRegistration={stats.days_since_registration}
               totalRedemptions={stats.total_free_drink_redemptions + stats.total_reward_redemptions}
               totalSpend={points.total_spend || 0}
-              roi={points.total_spend && stats.total_free_drink_redemptions > 0 
-                ? points.total_spend / (stats.total_free_drink_redemptions * 1500) 
+              roi={points.total_spend && stats.total_free_drink_redemptions > 0
+                ? points.total_spend / (stats.total_free_drink_redemptions * 1500)
                 : 0}
               favoriteVenue={stats.favorite_venue}
               favoriteDrink={stats.favorite_drink}
@@ -486,9 +465,7 @@ export default function UserDetail() {
               likelyHour={data.predictions?.likely_hour?.hour ?? null}
             />
 
-            {/* Accordion for detailed sections */}
             <Accordion type="multiple" defaultValue={["revenue"]} className="space-y-2">
-              {/* Revenue Impact - open by default */}
               <AccordionItem value="revenue" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
                 <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
                   <div className="flex items-center gap-2">
@@ -506,7 +483,6 @@ export default function UserDetail() {
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Platform Comparison */}
               {platform_comparison && (
                 <AccordionItem value="comparison" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
                   <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
@@ -527,30 +503,6 @@ export default function UserDetail() {
                 </AccordionItem>
               )}
 
-              {/* Behavior & Trends */}
-              <AccordionItem value="behavior" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-cgi-primary" />
-                    <span className="font-medium">Viselkedés & Trendek</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4 pt-2 space-y-4">
-                  <UserBehaviorStory 
-                    userId={userId!} 
-                    userName={user.name}
-                    onGenerateNotification={handleNavigateToAI}
-                    onManualNotification={handleOpenManualNotification}
-                  />
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <UserWeeklyTrends data={weekly_trends} />
-                    <UserDrinkPreferences preferences={drink_preferences} />
-                  </div>
-                  <UserActivityHeatmap heatmapData={hourly_heatmap} />
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Predictions */}
               <AccordionItem value="predictions" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
                 <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
                   <div className="flex items-center gap-2">
@@ -558,7 +510,7 @@ export default function UserDetail() {
                     <span className="font-medium">AI Előrejelzések</span>
                     {data.predictions?.confidence && (
                       <Badge className="ml-2 bg-cgi-muted text-cgi-muted-foreground text-xs">
-                        {data.predictions.confidence === "high" ? "Magas" : 
+                        {data.predictions.confidence === "high" ? "Magas" :
                          data.predictions.confidence === "medium" ? "Közepes" : "Alacsony"} bizalom
                       </Badge>
                     )}
@@ -571,12 +523,21 @@ export default function UserDetail() {
             </Accordion>
           </TabsContent>
 
-          <TabsContent value="behavior">
-            {/* Behavior Analysis with Patterns, Predictions, Micro-moments */}
+          {/* ACTIVITY (merged: behavior + activity + heatmap + trends + drinks) */}
+          <TabsContent value="activity" className="space-y-4">
+            <UserBehaviorStory
+              userId={userId!}
+              userName={user.name}
+              onGenerateNotification={handleNavigateToAI}
+              onManualNotification={handleOpenManualNotification}
+            />
             <BehaviorPatternBadges userId={userId!} />
-          </TabsContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <UserWeeklyTrends data={weekly_trends} />
+              <UserDrinkPreferences preferences={drink_preferences} />
+            </div>
+            <UserActivityHeatmap heatmapData={hourly_heatmap} />
 
-          <TabsContent value="activity">
             <Card className="cgi-card">
               <CardHeader><CardTitle className="text-cgi-surface-foreground">Legutóbbi aktivitás</CardTitle></CardHeader>
               <CardContent>
@@ -605,64 +566,83 @@ export default function UserDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="redemptions">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="cgi-card">
-                <CardHeader><CardTitle className="text-cgi-surface-foreground flex items-center gap-2"><Wine className="h-5 w-5 text-cgi-secondary" />Ingyen italok ({free_drink_redemptions.length})</CardTitle></CardHeader>
-                <CardContent>
-                  {free_drink_redemptions.length === 0 ? <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltás</p> : (
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {free_drink_redemptions.map((r) => (
-                        <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
-                          <div><p className="font-medium text-cgi-surface-foreground">{r.drink}</p><p className="text-sm text-cgi-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{r.venue_name}</p></div>
-                          <div className="text-right text-sm"><p className="text-cgi-secondary">{r.value} Ft</p><p className="text-cgi-muted-foreground">{format(new Date(r.redeemed_at), "MM.dd HH:mm")}</p></div>
+          {/* REDEMPTIONS (merged: free drinks + rewards + venues + points) */}
+          <TabsContent value="redemptions" className="space-y-4">
+            <Tabs defaultValue="drinks" className="space-y-4">
+              <TabsList className="bg-cgi-muted/30">
+                <TabsTrigger value="drinks" className="data-[state=active]:bg-cgi-primary"><Wine className="h-4 w-4 mr-2" />Italok & Jutalmak</TabsTrigger>
+                <TabsTrigger value="venues" className="data-[state=active]:bg-cgi-primary"><MapPin className="h-4 w-4 mr-2" />Helyszínek</TabsTrigger>
+                <TabsTrigger value="points" className="data-[state=active]:bg-cgi-primary"><Coins className="h-4 w-4 mr-2" />Pontok</TabsTrigger>
+              </TabsList>
+              <TabsContent value="drinks">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="cgi-card">
+                    <CardHeader><CardTitle className="text-cgi-surface-foreground flex items-center gap-2"><Wine className="h-5 w-5 text-cgi-secondary" />Ingyen italok ({free_drink_redemptions.length})</CardTitle></CardHeader>
+                    <CardContent>
+                      {free_drink_redemptions.length === 0 ? <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltás</p> : (
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {free_drink_redemptions.map((r) => (
+                            <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
+                              <div><p className="font-medium text-cgi-surface-foreground">{r.drink}</p><p className="text-sm text-cgi-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{r.venue_name}</p></div>
+                              <div className="text-right text-sm"><p className="text-cgi-secondary">{r.value} Ft</p><p className="text-cgi-muted-foreground">{format(new Date(r.redeemed_at), "MM.dd HH:mm")}</p></div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              <Card className="cgi-card">
-                <CardHeader><CardTitle className="text-cgi-surface-foreground flex items-center gap-2"><Gift className="h-5 w-5 text-cgi-primary" />Jutalmak ({reward_redemptions.length})</CardTitle></CardHeader>
-                <CardContent>
-                  {reward_redemptions.length === 0 ? <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltott jutalom</p> : (
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {reward_redemptions.map((r) => (
-                        <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
-                          <div><p className="font-medium text-cgi-surface-foreground">{r.reward_name}</p><p className="text-sm text-cgi-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{r.venue_name}</p></div>
-                          <div className="text-right text-sm"><p className="text-cgi-primary">-{r.points_spent} pont</p><p className="text-cgi-muted-foreground">{format(new Date(r.redeemed_at), "MM.dd HH:mm")}</p></div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card className="cgi-card">
+                    <CardHeader><CardTitle className="text-cgi-surface-foreground flex items-center gap-2"><Gift className="h-5 w-5 text-cgi-primary" />Jutalmak ({reward_redemptions.length})</CardTitle></CardHeader>
+                    <CardContent>
+                      {reward_redemptions.length === 0 ? <p className="text-center py-8 text-cgi-muted-foreground">Nincs beváltott jutalom</p> : (
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {reward_redemptions.map((r) => (
+                            <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-cgi-muted/20">
+                              <div><p className="font-medium text-cgi-surface-foreground">{r.reward_name}</p><p className="text-sm text-cgi-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{r.venue_name}</p></div>
+                              <div className="text-right text-sm"><p className="text-cgi-primary">-{r.points_spent} pont</p><p className="text-cgi-muted-foreground">{format(new Date(r.redeemed_at), "MM.dd HH:mm")}</p></div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+              <TabsContent value="venues">
+                <UserVenueAffinity venues={venue_affinity} />
+              </TabsContent>
+              <TabsContent value="points">
+                <UserPointsFlow
+                  earningsByType={points_flow.earnings_by_type}
+                  spendingByType={points_flow.spending_by_type}
+                  recentTransactions={points_flow.recent_transactions}
+                  currentBalance={points.balance}
+                  lifetimeEarned={points.lifetime_earned}
+                  lifetimeSpent={points.lifetime_spent}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
-          <TabsContent value="venues">
-            <UserVenueAffinity venues={venue_affinity} />
-          </TabsContent>
-
-          <TabsContent value="points">
-            <UserPointsFlow
-              earningsByType={points_flow.earnings_by_type}
-              spendingByType={points_flow.spending_by_type}
-              recentTransactions={points_flow.recent_transactions}
-              currentBalance={points.balance}
-              lifetimeEarned={points.lifetime_earned}
-              lifetimeSpent={points.lifetime_spent}
-            />
-          </TabsContent>
-
-          <TabsContent value="ai">
+          {/* COMMUNICATION (merged: AI + notifications) */}
+          <TabsContent value="communication" className="space-y-4">
+            <Card className="cgi-card">
+              <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium text-cgi-surface-foreground">Egyedi push küldése</p>
+                  <p className="text-sm text-cgi-muted-foreground">Küldj kézzel összeállított értesítést ennek a felhasználónak.</p>
+                </div>
+                <Button onClick={handleOpenManualNotification} className="bg-cgi-primary hover:bg-cgi-primary/90 text-cgi-surface gap-2">
+                  <Bell className="h-4 w-4" />
+                  Push küldése
+                </Button>
+              </CardContent>
+            </Card>
             <AINotificationSuggestions userId={userId!} userName={user.name} />
-          </TabsContent>
-
-          <TabsContent value="notifications">
             <UserNotificationHistory notifications={notification_history} />
           </TabsContent>
         </Tabs>
+
 
         {/* Manual Notification Modal */}
         <ManualNotificationModal
