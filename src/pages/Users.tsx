@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ExportDropdown } from "@/components/ExportDropdown";
 import { InfoTooltip } from "@/components/ui/mobile-tooltip";
-import { UserQuickView, UserBulkActionsToolbar } from "@/components/user";
+import { UserQuickView, UserBulkActionsToolbar, RecentlyViewedUsersStrip, pushRecentUser } from "@/components/user";
 import {
   Search,
   Users as UsersIcon,
@@ -102,7 +102,7 @@ export default function Users() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"analytics" | "users">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "users">("users");
   const [quickViewUserId, setQuickViewUserId] = useState<string | null>(null);
   
   // Selection state
