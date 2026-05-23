@@ -24,7 +24,7 @@ import {
   Clock,
   BarChart3,
   ListFilter,
-  Eye,
+  // Eye icon removed — entire row click opens QuickView
   RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
