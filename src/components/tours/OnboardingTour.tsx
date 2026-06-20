@@ -119,49 +119,67 @@ export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTou
     },
   };
 
+  // Determine whether a step targets an element inside the (mobile) sidebar drawer.
+  const isSidebarTarget = (target: unknown): boolean => {
+    if (typeof target !== 'string') return false;
+    return (
+      target.includes('data-tour="sidebar-header"') ||
+      target.includes('data-tour="nav-') ||
+      target.includes('data-tour="help-button"') ||
+      target.includes('data-tour="role-switcher"')
+    );
+  };
+
   // Get the appropriate steps based on tour name
   const getSteps = () => {
-    let steps;
     switch (tourName) {
       case 'main':
-        steps = getMainTourSteps(role);
-        break;
+        return getMainTourSteps(role);
       case 'venue':
-        steps = venueTourSteps;
-        break;
+        return venueTourSteps;
       case 'drinkEditor':
-        steps = drinkEditorTourSteps;
-        break;
+        return drinkEditorTourSteps;
       default:
         return [];
     }
-
-    // On mobile, force center placement so tooltips never overflow viewport.
-    if (isMobile) {
-      return steps.map((s) => ({ ...s, placement: 'center' as const }));
-    }
-    return steps;
   };
 
-  const handleCallback = (data: CallBackProps) => {
-    const { status, action, type } = data;
+  const steps = getSteps();
 
-    // Tour finished or skipped
-    if (status === STATUS.FINISHED) {
-      completeTour(tourName);
-    } else if (status === STATUS.SKIPPED) {
-      skipTour(tourName);
+  const handleCallback = (data: CallBackProps) => {
+    const { status, action, type, index, step } = data;
+
+    // Tour finished or skipped — close the mobile sidebar if it was opened by the tour.
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      if (isMobile) window.dispatchEvent(new CustomEvent('cgi:close-mobile-sidebar'));
+      if (status === STATUS.FINISHED) completeTour(tourName);
+      else skipTour(tourName);
+      return;
     }
 
     // Handle close button click
     if (action === ACTIONS.CLOSE && type === EVENTS.STEP_AFTER) {
+      if (isMobile) window.dispatchEvent(new CustomEvent('cgi:close-mobile-sidebar'));
       skipTour(tourName);
+      return;
+    }
+
+    // Before each step on mobile, open or close the sidebar depending on whether the
+    // upcoming target lives inside it. This makes the spotlight actually land on the
+    // correct element instead of an empty viewport edge.
+    if (isMobile && type === EVENTS.STEP_BEFORE) {
+      const currentStep = step ?? steps[index];
+      if (currentStep && isSidebarTarget(currentStep.target)) {
+        window.dispatchEvent(new CustomEvent('cgi:open-mobile-sidebar'));
+      } else {
+        window.dispatchEvent(new CustomEvent('cgi:close-mobile-sidebar'));
+      }
     }
   };
 
   return (
     <Joyride
-      steps={getSteps()}
+      steps={steps}
       run={run}
       continuous
       showProgress={!isMobile}
@@ -176,7 +194,7 @@ export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTou
       scrollOffset={100}
       floaterProps={{
         disableAnimation: false,
-        placement: isMobile ? 'center' : 'auto',
+        placement: 'auto',
         styles: isMobile
           ? {
               floater: { maxWidth: '100vw' },
