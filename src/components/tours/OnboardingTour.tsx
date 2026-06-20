@@ -69,35 +69,78 @@ const locale = {
 export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTourProps) {
   const { isRunning, completeTour, skipTour } = useTour();
   const isMobile = useIsMobile();
-  
+
   const run = isRunning(tourName);
+
+  // Compute a safe fixed pixel width for mobile (Joyride needs numeric width).
+  const mobileWidth =
+    typeof window !== 'undefined'
+      ? Math.min(window.innerWidth - 24, 360)
+      : 320;
 
   // Mobile-optimized styles
   const mobileStyles = {
     ...tourStyles,
     options: {
       ...tourStyles.options,
-      width: 'calc(100vw - 32px)',
+      width: mobileWidth,
     },
     tooltip: {
       ...tourStyles.tooltip,
-      maxWidth: 'calc(100vw - 32px)',
-      margin: '0 16px',
+      width: mobileWidth,
+      maxWidth: mobileWidth,
+      padding: '14px',
+      boxSizing: 'border-box' as const,
+    },
+    tooltipTitle: {
+      ...tourStyles.tooltipTitle,
+      fontSize: '15px',
+      marginBottom: '6px',
+    },
+    tooltipContent: {
+      ...tourStyles.tooltipContent,
+      fontSize: '13px',
+      lineHeight: '1.45',
+      padding: '4px 0',
+    },
+    buttonNext: {
+      ...tourStyles.buttonNext,
+      fontSize: '13px',
+      padding: '8px 12px',
+    },
+    buttonBack: {
+      ...tourStyles.buttonBack,
+      fontSize: '13px',
+    },
+    buttonSkip: {
+      ...tourStyles.buttonSkip,
+      fontSize: '13px',
+      padding: '8px 8px',
     },
   };
 
   // Get the appropriate steps based on tour name
   const getSteps = () => {
+    let steps;
     switch (tourName) {
       case 'main':
-        return getMainTourSteps(role);
+        steps = getMainTourSteps(role);
+        break;
       case 'venue':
-        return venueTourSteps;
+        steps = venueTourSteps;
+        break;
       case 'drinkEditor':
-        return drinkEditorTourSteps;
+        steps = drinkEditorTourSteps;
+        break;
       default:
         return [];
     }
+
+    // On mobile, force center placement so tooltips never overflow viewport.
+    if (isMobile) {
+      return steps.map((s) => ({ ...s, placement: 'center' as const }));
+    }
+    return steps;
   };
 
   const handleCallback = (data: CallBackProps) => {
@@ -109,7 +152,7 @@ export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTou
     } else if (status === STATUS.SKIPPED) {
       skipTour(tourName);
     }
-    
+
     // Handle close button click
     if (action === ACTIONS.CLOSE && type === EVENTS.STEP_AFTER) {
       skipTour(tourName);
@@ -121,11 +164,12 @@ export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTou
       steps={getSteps()}
       run={run}
       continuous
-      showProgress
+      showProgress={!isMobile}
       showSkipButton
       scrollToFirstStep
       spotlightClicks
       disableOverlayClose
+      disableScrollParentFix
       styles={isMobile ? mobileStyles : tourStyles}
       locale={locale}
       callback={handleCallback}
@@ -133,6 +177,12 @@ export function OnboardingTour({ tourName, role = 'venue_staff' }: OnboardingTou
       floaterProps={{
         disableAnimation: false,
         placement: isMobile ? 'center' : 'auto',
+        styles: isMobile
+          ? {
+              floater: { maxWidth: '100vw' },
+              floaterWithAnimation: { maxWidth: '100vw' },
+            }
+          : undefined,
       }}
     />
   );
