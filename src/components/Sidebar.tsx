@@ -76,6 +76,18 @@ export function Sidebar() {
     setIsOpen(false);
   }, [location.pathname]);
 
+  // Allow external triggers (e.g. onboarding tour) to open/close the mobile drawer.
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    const close = () => setIsOpen(false);
+    window.addEventListener('cgi:open-mobile-sidebar', open);
+    window.addEventListener('cgi:close-mobile-sidebar', close);
+    return () => {
+      window.removeEventListener('cgi:open-mobile-sidebar', open);
+      window.removeEventListener('cgi:close-mobile-sidebar', close);
+    };
+  }, []);
+
   const filteredNavigation = navigation.filter(item => {
     if (!effectiveRole) return false;
     return item.roles.includes(effectiveRole);
