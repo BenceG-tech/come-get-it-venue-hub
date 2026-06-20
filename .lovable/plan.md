@@ -1,29 +1,29 @@
 ## Probléma
 
-Mobil nézetben a Joyride bemutató tooltip kicsúszik a képernyő bal szélén — a cím, a "Kihagyás" gomb és a szöveg eleje is levágódik. A jelenlegi `width: calc(100vw - 32px)` + `margin: 0 16px` kombináció + `placement: 'center'` floater pozicionálás miatt a tooltip negatív `left` koordinátán renderelődik.
+Az előző javításnál minden mobil lépést `placement: 'center'`-re kényszerítettem, így a tooltip a képernyő közepén lebeg, és nem mutat rá a tényleges elemre (spotlight sem látszik a sidebar nav elemeknél, mert mobilon a sidebar alapból összecsukva van).
 
-## Megoldás (`src/components/tours/OnboardingTour.tsx`)
+## Megoldás
 
-1. **Mobil tooltip méretezés újraírása**
-   - `options.width` → fix érték (pl. `Math.min(window.innerWidth - 24, 360)`), nem `calc`, mert a Joyride numerikus értéket vár a pozícióhoz.
-   - `tooltip.maxWidth` ugyanaz, `margin` eltávolítva (a Joyride wrapper kezeli a pozíciót, margin eltolja).
-   - `tooltip.padding` mobilon `14px` a kompaktabb megjelenésért.
-   - `tooltipTitle` fontSize `15px`, `tooltipContent` `13px` mobilon.
+### 1. `src/components/tours/OnboardingTour.tsx`
+- **Vissza a step által megadott `placement`-re** (ne legyen globális center override).
+- A tooltip mérete maradjon fix `mobileWidth`, így nem csúszik ki.
+- `floaterProps.placement: 'auto'` mobilon is, hogy a Joyride a viewport-on belülre tegye a tooltipet a target köré.
+- **Sidebar lépéseknél a sidebart ki kell nyitni mobilon**, mielőtt a target spotlight-olódna. Ezt step-szintű `data-tour` cél köré írt egyszerű megoldással: ha `target` `[data-tour^="nav-"]` vagy `sidebar-header` és `isMobile`, akkor a `callback` `EVENTS.STEP_BEFORE` eseményénél a `<aside data-mobile-sidebar>` kinyitása (a `Sidebar.tsx` jelenlegi mobil drawer state-je trigger-elhető `window` esemény vagy egy `useTour` mellé tett kis kontextus-flag-en keresztül).
+  - Egyszerűbb és kevésbé invazív alternatíva: a Sidebar komponensbe egy `useEffect` ami figyel egy `window.dispatchEvent(new CustomEvent('cgi:open-mobile-sidebar'))` eseményt és kinyitja a drawert. A tour callback `STEP_BEFORE`-nál dispatch-eli ezt, ha a step targetje sidebar-on belüli.
+- **STEP_AFTER-nél** a sidebart bezárjuk hasonlóan (`cgi:close-mobile-sidebar`), hogy a következő nem-sidebar lépés ne legyen takarva.
 
-2. **Gombok mobilon**
-   - `buttonNext` és `buttonSkip` kapjon `fontSize: 13px`, `padding: 8px 12px`, hogy egy sorba férjenek.
-   - A "Next (Step X of Y)" felirat lokalizálva legyen magyarra (`next: 'Tovább'`) — a `(Step X of Y)` a `showProgress` natív felirata; rövidítjük: külön `locale` magyar progress nem támogatott, helyette `showProgress={!isMobile}` mobilon kikapcsolva, így csak "Tovább" gomb látszik (a lépésszám a tooltipben másképp jeleníthető meg, de mobilon a hely miatt elhagyható).
+### 2. `src/components/Sidebar.tsx`
+- Window event listener hozzáadása: `cgi:open-mobile-sidebar` → mobil drawer megnyitása, `cgi:close-mobile-sidebar` → bezárás. Csak akkor reagál, ha `isMobile`.
 
-3. **Pozicionálás**
-   - `floaterProps.placement` mobilon maradjon `'center'`, de adjunk hozzá `floaterProps.styles = { floater: { maxWidth: '100vw' } }`-t, és `disableScrolling: false`, hogy a viewport-on belül maradjon.
-   - `disableScrollParentFix: true` hozzáadása, hogy a fixed pozicionálás ne számoljon félre.
+### 3. `tourSteps.ts` (nincs változás)
+- Megtartjuk az eredeti `placement: 'right'` értékeket; mobilon az `auto` floater placement úgyis átteszi a tooltipet (pl. lent/fent), a spotlight viszont a tényleges nav elemre fog mutatni.
 
-4. **Welcome (első) lépés**
-   - A `disableBeacon: true` első lépésnél (a `tourSteps.ts`-ben már így van — ellenőrizzük), `placement: 'center'` explicit mobil esetén az első lépésnél, hogy középen ne csússzon ki.
+## Eredmény
+
+- A welcome lépés (target: sidebar-header) — sidebar kinyit → tooltip a header alatt jelenik meg.
+- A nav lépések — sidebar nyitva marad amíg nav step-ek mennek, a spotlight a megfelelő nav itemre kerül.
+- Az utolsó (role-switcher / help-button) lépéseknél a sidebart bezárjuk vagy nyitva hagyjuk, attól függően hogy a target hol van — egyszerűsített logika: amíg a target `[data-tour="nav-*"]` vagy `sidebar-header` vagy `help-button`, a sidebar nyitva van; egyébként zárjuk.
 
 ## Érintett fájlok
-
-- `src/components/tours/OnboardingTour.tsx` — mobil stílusok és floaterProps átírása
-- (opcionális) `src/components/tours/tourSteps.ts` — első lépés `placement: 'center'` megerősítése, ha hiányzik
-
-Nincs üzleti logika változás, csak a bemutató UI mobil optimalizálása.
+- `src/components/tours/OnboardingTour.tsx` (placement reset + sidebar nyitás eseménnyel)
+- `src/components/Sidebar.tsx` (window event listener a drawer-hez)
