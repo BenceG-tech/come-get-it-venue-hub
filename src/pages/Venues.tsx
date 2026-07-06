@@ -486,6 +486,15 @@ export default function Venues() {
                 <Button variant="outline" className="cgi-button-secondary flex-1 sm:flex-initial" onClick={() => setPage(1)} disabled={reorderMode}>
                   Frissítés
                 </Button>
+                <Button
+                  variant="outline"
+                  className="cgi-button-secondary flex-1 sm:flex-initial"
+                  onClick={fixBadCoordinates}
+                  disabled={fixingCoords || reorderMode}
+                  title="A rossz vagy hiányzó koordinátákat a cím alapján újra beállítja"
+                >
+                  {fixingCoords ? 'Javítás...' : 'Koordináták javítása'}
+                </Button>
                 <Button className="cgi-button-primary flex-1 sm:flex-initial" onClick={exportCSV} disabled={csvExporting || reorderMode}>
                   CSV export
                 </Button>
