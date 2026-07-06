@@ -233,6 +233,77 @@ export default function Venues() {
     }
   };
 
+  const fixBadCoordinates = async () => {
+    if (fixingCoords) return;
+    if (!confirm('Végigmegyünk az összes helyszínen, és a rossz vagy hiányzó koordinátákat a cím alapján újra beállítjuk. Folytatod?')) return;
+    setFixingCoords(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from('venues')
+        .select('id, name, address, coordinates')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+
+      const inBudapestBBox = (lat: number, lng: number) =>
+        lat >= 47.3 && lat <= 47.7 && lng >= 18.8 && lng <= 19.4;
+
+      const needsFix = (rows || []).filter((v: any) => {
+        const c = v.coordinates as { lat?: number; lng?: number } | null;
+        const lat = c?.lat;
+        const lng = c?.lng;
+        if (lat == null || lng == null) return true;
+        if (lat === 0 && lng === 0) return true;
+        const addr = (v.address || '').toLowerCase();
+        if (addr.includes('budapest') && !inBudapestBBox(lat, lng)) return true;
+        return false;
+      });
+
+      if (needsFix.length === 0) {
+        toast({ title: 'Nincs javítanivaló', description: 'Minden helyszín koordinátája rendben van.' });
+        setFixingCoords(false);
+        return;
+      }
+
+      toast({ title: 'Javítás folyamatban', description: `${needsFix.length} helyszín koordinátáit frissítjük...` });
+
+      let ok = 0;
+      let failed = 0;
+      for (const v of needsFix) {
+        if (!v.address) { failed++; continue; }
+        try {
+          const { data, error: geoErr } = await supabase.functions.invoke('geocode-address', {
+            body: { address: v.address },
+          });
+          if (geoErr || !data?.lat || !data?.lng) { failed++; continue; }
+          const { error: upErr } = await supabase
+            .from('venues')
+            .update({
+              coordinates: { lat: data.lat, lng: data.lng },
+              formatted_address: data.formatted_address ?? undefined,
+              google_maps_url: data.google_maps_url ?? undefined,
+            })
+            .eq('id', v.id);
+          if (upErr) { failed++; continue; }
+          ok++;
+        } catch (e) {
+          console.error('Geocode failed for venue', v.id, e);
+          failed++;
+        }
+      }
+
+      toast({
+        title: 'Kész',
+        description: `${ok} javítva, ${failed} sikertelen (összesen ${needsFix.length}).`,
+      });
+      loadVenues();
+    } catch (e: any) {
+      console.error('fixBadCoordinates error:', e);
+      toast({ title: 'Hiba', description: e.message || 'A javítás nem sikerült.', variant: 'destructive' });
+    } finally {
+      setFixingCoords(false);
+    }
+  };
+
   const getVenueImage = (venue: VenueRow) => venue.image_url || venue.hero_image_url;
 
   // Sortable wrapper — renders drag handle when active, otherwise just children
