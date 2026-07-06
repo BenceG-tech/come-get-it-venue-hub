@@ -58,6 +58,7 @@ export default function Venues() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [csvExporting, setCsvExporting] = useState(false);
+  const [fixingCoords, setFixingCoords] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [reorderMode, setReorderMode] = useState(false);
