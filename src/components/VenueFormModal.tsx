@@ -279,18 +279,23 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
     // Check if geocoding is needed
     const addressChanged = formData.address !== lastGeocodedAddress;
-    const coordinatesAreDefault = formData.coordinates?.lat === 0 && formData.coordinates?.lng === 0;
-    
-    if (formData.address && (addressChanged || coordinatesAreDefault)) {
-      console.log('Geocoding needed:', { addressChanged, coordinatesAreDefault });
+    const lat = formData.coordinates?.lat;
+    const lng = formData.coordinates?.lng;
+    const coordinatesAreDefault = !lat || !lng || (lat === 0 && lng === 0);
+    // Budapest bounding box sanity check — ha a cím Budapest de a koordináta kívül esik, újra geokódolunk
+    const addressLooksBudapest = (formData.address || '').toLowerCase().includes('budapest');
+    const outsideBudapestBBox = addressLooksBudapest && lat != null && lng != null &&
+      (lat < 47.3 || lat > 47.7 || lng < 18.8 || lng > 19.4);
+
+    if (formData.address && (addressChanged || coordinatesAreDefault || outsideBudapestBBox)) {
+      console.log('Geocoding needed:', { addressChanged, coordinatesAreDefault, outsideBudapestBBox });
       const geocodeSuccess = await geocodeAddress(formData.address);
       if (!geocodeSuccess) {
         toast({
-          title: 'Geocoding failed',
-          description: 'Could not find coordinates for this address. You can continue with manual coordinates or try again.',
+          title: 'Geokódolás sikertelen',
+          description: 'A cím alapján nem sikerült koordinátákat találni. Ellenőrizd a címet vagy add meg kézzel a Speciális szekcióban.',
           variant: 'destructive' as any,
         });
-        // Allow user to proceed with manual coordinates or fix address
         return;
       }
     }
@@ -491,17 +496,39 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
 
           <div className="space-y-2">
             <Label htmlFor="address" className="text-cgi-surface-foreground">Cím *</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, address: e.target.value }));
-                setGeocodeError(null);
-              }}
-              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
-              required
-              placeholder="1051 Budapest, Példa utca 1."
-            />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, address: e.target.value }));
+                  setGeocodeError(null);
+                }}
+                className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground flex-1"
+                required
+                placeholder="1051 Budapest, Példa utca 1."
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="cgi-button-secondary whitespace-nowrap"
+                disabled={geocoding || !formData.address}
+                onClick={async () => {
+                  const ok = await geocodeAddress(formData.address || '');
+                  if (ok) {
+                    toast({
+                      title: 'Koordináták frissítve',
+                      description: 'A térkép a cím alapján az új helyre került.',
+                    });
+                  }
+                }}
+              >
+                {geocoding ? 'Keresés...' : 'Frissítés címből'}
+              </Button>
+            </div>
+            <p className="text-xs text-cgi-muted-foreground">
+              A koordinátákat automatikusan a cím alapján határozzuk meg — nem kell kézzel beírnod.
+            </p>
             {geocodeError && (
               <Alert variant="destructive" className="mt-2">
                 <AlertCircle className="h-4 w-4" />
