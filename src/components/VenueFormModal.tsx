@@ -542,13 +542,15 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-md border border-cgi-muted bg-cgi-muted/10">
-            <div>
-              <Label className="text-cgi-surface-foreground">Szüneteltetve</Label>
-              <p className="text-xs text-cgi-muted-foreground mt-0.5">A helyszín ideiglenesen rejtve a vendégek elől.</p>
+            <div className="pr-3">
+              <Label className="text-cgi-surface-foreground">Megjelenik a mobilappban</Label>
+              <p className="text-xs text-cgi-muted-foreground mt-0.5">
+                Ha kikapcsolod, a helyszín eltűnik az applikációból, de az adatok és beállítások megmaradnak. Bármikor visszakapcsolható.
+              </p>
             </div>
             <Switch
-              checked={formData.is_paused}
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_paused: checked }))}
+              checked={!formData.is_paused}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_paused: !checked }))}
             />
           </div>
         </TabsContent>
