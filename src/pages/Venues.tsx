@@ -442,14 +442,27 @@ export default function Venues() {
               <PriceTierBadge tier={venue.price_tier} />
             </div>
             <p className="text-xs text-cgi-muted-foreground truncate mb-2">{venue.address}</p>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-xs`}>
-                {venue.is_paused ? 'Szünetel' : 'Aktív'}
+                {venue.is_paused ? 'Inaktív' : 'Aktív'}
               </Badge>
-              <div className="flex items-center gap-1.5 text-cgi-muted-foreground">
-                {venue.phone_number && <Phone className="h-3 w-3" />}
-                {venue.website_url && <Globe className="h-3 w-3" />}
+              <div
+                className="flex items-center gap-2"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              >
+                <span className="text-[10px] text-cgi-muted-foreground">
+                  {venue.is_paused ? 'Rejtett' : 'Látható az appban'}
+                </span>
+                <Switch
+                  checked={!venue.is_paused}
+                  onCheckedChange={() => toggleVenueActive(venue)}
+                  aria-label={venue.is_paused ? 'Aktiválás' : 'Inaktiválás'}
+                />
               </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-cgi-muted-foreground mt-2">
+              {venue.phone_number && <Phone className="h-3 w-3" />}
+              {venue.website_url && <Globe className="h-3 w-3" />}
             </div>
           </div>
         </Card>
