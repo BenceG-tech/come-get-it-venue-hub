@@ -1,29 +1,57 @@
-## Cél
-Egy egyszerű kapcsoló, amivel a helyszín aktív/inaktív állapotát tudod állítani az admin felületen. Inaktív állapotban a helyszín **nem jelenik meg a mobilapplikációban**, aktívra állítva újra láthatóvá válik.
+## Mit tudunk most
 
-## Jó hír: a háttér már készen van
-A `venues` táblában létezik az `is_paused` mező, és a publikus végpontok (`get-public-venues`, `get-public-venue`) valamint az RLS policyk már most is kiszűrik azokat a helyszíneket, ahol `is_paused = true`. **Nem kell backend módosítás, sem migráció** — csak az admin UI-t kell bővíteni a kapcsolóval.
+Ellenőriztem az adatbázist és az API-t:
 
-## Változtatások
+- **Adatbázis állapot** (a `venues` táblában `is_paused=true`, tehát rejtettként jelölt):
+  - Márkus Étterem — rejtett ✅
+  - Bartl Janos — rejtett ✅
+  - A KERT Bisztró — rejtett ✅
+  - BuBu — rejtett ✅
+- **Nem rejtett** (is_paused=false, tehát HELYESEN látszaniuk kell):
+  - Vinozza, Kiscsibe Reggeliző & Étterem, valamint az 5 Come Get It demo hely
 
-### 1. Helyszín lista (`src/pages/Venues.tsx`)
-- A jelenlegi "Aktív" / "Szünetel" badge mellé (mind a mobil lista, mind a desktop grid, mind a táblázat nézetben) kerül egy **Switch** kapcsoló, amivel egy kattintással állítható az állapot.
-- Kattintáskor `supabase.from('venues').update({ is_paused: !current })`, majd toast visszajelzés magyarul: „Helyszín aktiválva" / „Helyszín inaktiválva — nem jelenik meg az appban".
-- Optimista frissítés + hibakezelés visszaállítással.
+- **Az admin `get-public-venues` edge funkció helyesen szűr**: manuálisan lekérdezve csak 7 helyszínt ad vissza, a 4 rejtett közül **egyet sem**. Tehát a backend oldalról a rejtés működik.
 
-### 2. Helyszín szerkesztő modal (`src/components/VenueFormModal.tsx`)
-- Új mező a form tetején: **„Megjelenik a mobilappban"** címkéjű Switch (a `is_paused` invertáltja).
-- Rövid leírás alatta: „Ha kikapcsolod, a helyszín eltűnik az applikációból, de az adatok megmaradnak."
+- **RLS**: az `anon` szerep közvetlenül nem tudja olvasni a `venues` táblát (a korábbi biztonsági javítás óta), tehát csak edge funkción keresztül jöhet adat.
 
-### 3. Helyszín részletező oldal (`src/pages/VenueDetail.tsx` — ha van)
-- Prominens státusz kártya a tetején: nagy Switch + magyarázó szöveg, hogy egyértelmű legyen az állapot.
+## Mi a probléma valószínű oka
 
-## Fontos: mi a különbség a helyszín inaktiválás és az ital szüneteltetés között
-- **Helyszín inaktív** (`venues.is_paused = true`) → az egész helyszín eltűnik az appból (mostani módosítás).
-- **Ital ablak szüneteltetés** (`FreeDrinkManager`) → a helyszín látszik, de az adott ingyen ital nem elérhető (már működik).
-- Ezt az admin UI-ban is világosan jelezzük a segédszövegekkel, hogy ne keveredjen össze a két funkció.
+Mivel a szerver oldali API tisztán szűr, ha a Rork mobilappban mégis megjelennek a rejtett helyszínek, annak három oka lehet — mind a **Rork projekten belül** (nem itt a Lovable admin webappban):
 
-## Amit NEM érintünk
-- Adatbázis séma, migrációk, edge functions, RLS.
-- Rork mobilapp — automatikusan követi a változást a meglévő API-n keresztül.
-- Az italok és a `free_drink_windows` logikája.
+1. **Cache** — a Rork app lokálisan (AsyncStorage / React Query cache / SWR) elmentette a régi listát, és nem frissíti.
+2. **Rossz endpoint** — a Rork nem a `get-public-venues` edge funkciót hívja, hanem közvetlenül a `venues` táblát próbálja olvasni (ez most már 0 sort ad `anon`-nal, tehát ha valamit mégis mutat, akkor mock/seed adat).
+3. **Mock / seed adat a Rork projektben** — a Rork buildbe be van égetve egy statikus lista helyszínekről, ami felülírja vagy kiegészíti az API választ.
+
+## Terv (mit fogok tenni build módban)
+
+### 1. Diagnosztikai lépések (te végzed a Rork oldalon, én segítek)
+Kérlek nézd meg a Rork projektben:
+- Melyik URL-t hívja a helyszín-lista? Kell hogy legyen: `https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/get-public-venues`
+- Van-e valahol beégetett `venues` konstans / mock lista / seed fájl?
+- Van-e cache réteg (React Query `staleTime`, AsyncStorage)?
+
+### 2. Backend oldali megerősítés (itt a Lovable admin webappban)
+Ahhoz hogy a Rork biztosan ne tudjon rejtett helyet mutatni még akkor sem, ha rossz kódot futtat:
+
+- **`get-public-venue` (egy helyszín) endpoint** — már most szűr `is_paused=false`-ra, ellenőrzöm, hogy 404-et ad ha rejtett ID-t kérnek.
+- **Response cache-elés kizárása** — hozzáadok `Cache-Control: no-store` headert a `get-public-venues` és `get-public-venue` válaszokhoz, hogy semmilyen CDN/proxy ne őrizze meg a régi listát.
+- **Élő teszt**: a te 4 rejtett helyszíned ID-jával hívom az API-t és megmutatom neked a nyers választ bizonyítékként.
+
+### 3. Frissítési útmutató a Rork felé
+Elkészítek egy rövid magyar nyelvű dokumentumot (`docs/RORK_HIDDEN_VENUES_FIX.md`), ami leírja:
+- A `is_paused=true` szemantikát (helyszín rejtett → nem szabad megjeleníteni)
+- A helyes endpointot
+- Cache invalidálási példát (React Query / AsyncStorage törlés induláskor)
+- Debug curl parancsokat a Rork csapat számára
+
+## Amit NEM csinálok
+- Nem nyúlok a Rork mobilapp forráskódjához (nincs itt a Lovable projektben).
+- Nem módosítom a `venues` tábla sémáját vagy RLS-t — az helyes.
+- Nem törlöm és nem inaktiválom újra az érintett helyszíneket az adatbázisban — az állapotuk már helyes.
+
+## Technikai részletek
+
+Módosítandó fájlok:
+- `supabase/functions/get-public-venues/index.ts` — `Cache-Control: no-store` header
+- `supabase/functions/get-public-venue/index.ts` — `Cache-Control: no-store` header + biztos 404 rejtett helyszínre
+- `docs/RORK_HIDDEN_VENUES_FIX.md` — új fájl a Rork csapatnak
