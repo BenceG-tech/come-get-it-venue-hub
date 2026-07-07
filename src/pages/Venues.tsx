@@ -689,9 +689,16 @@ export default function Venues() {
                             <Badge className={`${planBadgeColor(venue.plan)} capitalize text-xs`}>{venue.plan}</Badge>
                           </td>
                           <td className="p-3">
-                            <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-xs`}>
-                              {venue.is_paused ? 'Szünetel' : 'Aktív'}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={!venue.is_paused}
+                                onCheckedChange={() => toggleVenueActive(venue)}
+                                aria-label={venue.is_paused ? 'Aktiválás' : 'Inaktiválás'}
+                              />
+                              <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-xs`}>
+                                {venue.is_paused ? 'Inaktív' : 'Aktív'}
+                              </Badge>
+                            </div>
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-2 text-cgi-muted-foreground">
