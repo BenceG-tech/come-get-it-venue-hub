@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { Building, Plus, Search, Eye, Phone, Globe, Clock, Grid, List, GripVertical, ArrowUpDown, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RouteGuard } from '@/components/RouteGuard';
