@@ -383,7 +383,7 @@ export default function Venues() {
                 <PriceTierBadge tier={venue.price_tier} />
                 <Badge className={`${planBadgeColor(venue.plan)} capitalize text-[10px] px-1.5 py-0`}>{venue.plan}</Badge>
                 <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-[10px] px-1.5 py-0`}>
-                  {venue.is_paused ? 'Szünetel' : 'Aktív'}
+                  {venue.is_paused ? 'Inaktív' : 'Aktív'}
                 </Badge>
               </div>
               <p className="text-xs text-cgi-muted-foreground truncate">{venue.address}</p>
@@ -395,8 +395,20 @@ export default function Venues() {
               </div>
             </div>
             
-            {/* Action */}
-            <Eye className="h-4 w-4 text-cgi-muted-foreground flex-shrink-0" />
+            {/* Active toggle */}
+            <div
+              className="flex flex-col items-center gap-1 flex-shrink-0"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            >
+              <Switch
+                checked={!venue.is_paused}
+                onCheckedChange={() => toggleVenueActive(venue)}
+                aria-label={venue.is_paused ? 'Aktiválás' : 'Inaktiválás'}
+              />
+              <span className="text-[9px] text-cgi-muted-foreground">
+                {venue.is_paused ? 'Rejtett' : 'Látható'}
+              </span>
+            </div>
           </div>
         </Card>
       </Link>
