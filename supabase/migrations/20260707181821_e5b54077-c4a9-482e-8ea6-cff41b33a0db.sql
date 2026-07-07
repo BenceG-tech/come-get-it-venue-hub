@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.is_venue_publicly_active(uuid) TO anon, authenticated;
