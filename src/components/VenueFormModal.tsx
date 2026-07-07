@@ -478,12 +478,67 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-cgi-surface-foreground">Kategória</Label>
+              <Select
+                value={formData.category || ''}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, category: v }))}
+              >
+                <SelectTrigger className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground">
+                  <SelectValue placeholder="Válassz kategóriát" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['Bisztró', 'Étterem', 'Koktélbár', 'Klub', 'Romkocsma', 'Kávézó', 'Bár', 'Pub', 'Egyéb'].map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-cgi-surface-foreground">Értékelés (0–5)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={5}
+                step={0.1}
+                value={formData.rating ?? ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value === '' ? null : Number(e.target.value) }))}
+                className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground"
+                placeholder="pl. 4.7"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label className="text-cgi-surface-foreground">Tag-ek</Label>
             <TagInput
               tags={formData.tags || []}
               onChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center p-3 rounded-md border border-cgi-muted bg-cgi-muted/10">
+            <div>
+              <Label className="text-cgi-surface-foreground">Pontgyűjtés aktív</Label>
+              <p className="text-xs text-cgi-muted-foreground mt-0.5">A vendégek pontokat kapnak a látogatásért.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={formData.points_per_visit ?? ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, points_per_visit: e.target.value === '' ? null : Number(e.target.value) }))}
+                className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground w-24"
+                placeholder="10"
+                disabled={!formData.participates_in_points}
+              />
+              <Switch
+                checked={!!formData.participates_in_points}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, participates_in_points: checked }))}
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-md border border-cgi-muted bg-cgi-muted/10">
