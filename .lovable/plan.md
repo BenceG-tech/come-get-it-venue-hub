@@ -1,91 +1,67 @@
+
 # Cél
 
-Egy (vagy két) részletes PDF, ami minden admin felület oldalt, funkciót és működést leír + screenshotokkal illusztrál. Alkalmas arra, hogy egy AI-nak feed-eld és megértse a rendszert.
+Az admin webappban (come-get-it-venue-hub) legyen minden mező, ami a 5 fiktív Come Get It hely és 5 ital rendes felviteléhez kell, majd ezeket seedeljük is fel — ugyanazon a Supabase adatstruktúrán keresztül, amit a mobilapp is olvas (`get-public-venues`, `get-venue-free-drink-stats`). Semmi hardcode a mobilappban.
 
-# Mit csinálunk
+# Mit találtam a jelenlegi kódban
 
-## 1) Screenshot gyűjtés (Playwright, headless Chromium)
+- `venues` táblában már megvan: `category`, `price_tier`, `rating`, `tags`, `opening_hours` (jsonb), `coordinates` (jsonb), `participates_in_points`, `points_per_visit`, `is_paused`, `image_url`, `hero_image_url`.
+- `VenueFormModal.tsx` már kezeli: tags, business_hours, price_tier, koordináták, képek, pontgyűjtés.
+- **Hiányzik a form-ból:** `category` és `rating` mező — jelenleg nem lehet UI-ból beállítani. Ezt pótolni kell.
+- `venue_drinks` táblában `venue_id` kötelező → egy ital = egy sor egy venue-höz. Több helyszínhez rendelt ital = több sor (ugyanaz a név/kép/leírás). Ez a projektben már használt minta, ezt követjük.
+- `free_drink_windows` (venue_id, drink_id, days[], start_time, end_time, timezone) vezérli, hogy egy ital ingyen elérhető-e — a `get-venue-free-drink-stats` ezt olvassa és ez alapján jelenik meg a mobilban az „Ingyen ital elérhető”.
 
-Bejelentkezés `cgi_admin` szerepkörrel a preview app-ba, majd minden fő admin oldal screenshot-olása 1280x1800 viewport-tal. Ahol modal / almenü / tab van, azt is külön képen.
+# Lépések
 
-**Oldalak (route → funkció):**
+### 1. Admin form kiegészítése
 
-- `/dashboard` — Admin dashboard (KPI-k, trendek, top venue-k)
-- `/command-center` — Live platform status
-- `/venues` — Helyszín lista + szűrők + `Új helyszín` modal + `Koordináták javítása` gomb
-- `/venues/:id` — Venue részletek (tabok: alapadatok, italok, promóciók, integráció, free drink manager, image gallery, business hours)
-- `/venues/comparison` — Venue összehasonlítás
-- `/brands` — Márkák
-- `/promotions` — Promóciók + form modal
-- `/rewards` — Jutalmak + form modal
-- `/redemptions` — Beváltások + szűrők + detail modal + void dialog + context badges
-- `/transactions` — POS tranzakciók + matching
-- `/salt-edge-transactions` — Salt Edge Open Banking flow
-- `/users` — Felhasználó lista + bulk toolbar + QuickView + bulk notification/bonus modalok
-- `/users/:id` — User detail tabok (Áttekintés, Aktivitás, Beváltások, Analytics, Predictions, Comparison, Timeline, Notifications, Tags, GDPR export)
-- `/analytics` — Analytics dashboards (heatmap, retention, activity, trends)
-- `/data-insights` — Data value insights
-- `/notifications` — Notification kezelés + AI suggestion + form modal + analytics dashboard
-- `/charity-impact` — CSR / Drink for a Cause
-- `/audit-log` — Audit trail
-- `/settings` — Beállítások
-- `/pos/redeem` — Staff scanner
-- `/pos/history` — POS history
+`src/components/VenueFormModal.tsx`:
+- Új **Kategória** select (Bisztró, Romkocsma, Étterem, Koktélbár, Klub, Kávézó, Egyéb) → `formData.category`.
+- Új **Értékelés (rating)** number input 0–5, 0.1 lépésköz → `formData.rating`.
+- Mentéskor mindkettőt átadjuk az `upsert`-nek.
 
-**Cél: kb. 40–60 screenshot.**
+Nem nyúlunk máshoz, a többi funkció (képek, tag, nyitvatartás, koordináta, pontgyűjtés, ingyen ital manager) már működik.
 
-## 2) Tartalom generálás (markdown → PDF)
+### 2. Képek feltöltése a `venue-images` bucketbe
 
-Minden oldalhoz egy szekció, ami tartalmazza:
+A user által feltöltött 9 hangulatkép (`/mnt/user-uploads/…`) közül minden helyhez 1–2 hero + 1–2 galéria kép, italokhoz szintén 1-1:
 
-- **Route** és **szerepkör követelmény** (cgi_admin / venue_owner / venue_staff / brand_admin)
-- **Cél / mire való** — 2–4 mondatos üzleti magyarázat
-- **UI komponensek** — mit lát a felhasználó (lista, form, chart, modal)
-- **Interakciók** — mit tud csinálni (create/edit/delete, szűrés, export, bulk action, stb.)
-- **Backend kapcsolat** — érintett Supabase táblák és edge function-ök
-- **Business rule-ok** — pl. 1 free drink/nap/user globálisan (Europe/Budapest), token hash SHA-256, 120s TTL
-- **Screenshot(ok)** beágyazva
+- Bistro → `441A0468…` (kerthelyiség)
+- Romkocsma → `183BC467…` (belső udvar) + `4450A50F…`
+- Restaurant → `4450A50F…` + `77E0C0A4…`
+- Bar → `901F52BB…` + `AF5F0F97…`
+- Club → `BE0F23BD…` + `9FA577EA…`
+- Italokhoz: `7A65F5EA…`, `AF5F0F97…`, `9FA577EA…`, `77E0C0A4…`, `183BC467…`
 
-A szekciókat a `mem://index.md` memóriák tartalmával is dúsítjuk (Free Drink Windows, Loyalty System, Redemption Security, POS Module, stb. — már megvan az architektúra tudás).
+Feltöltés a `venue-images` public bucketbe (already exists) egyszer, script-tel, majd a public URL-eket használjuk a DB rekordokban.
 
-## 3) PDF építés (reportlab)
+### 3. Adatbázis seed (SQL migráción keresztül)
 
-Két PDF-re bontva, hogy ne legyen egy 100MB-os monstrum:
+Egyetlen migrációban:
 
-**PDF 1 — `admin_documentation_part1_core.pdf`**
-Alap admin flow: Dashboard, Command Center, Venues, Brands, Promotions, Rewards, Redemptions, Transactions, POS, Settings.
+- 5× `INSERT INTO public.venues` — `is_paused=false`, `participates_in_points=true`, `points_per_visit=10`, `category`, `rating`, `price_tier`, `tags[]`, `coordinates` jsonb, `opening_hours` jsonb (minden nap 00:00–23:59), `image_url`, `hero_image_url`, `formatted_address`, `google_maps_url`.
+- `venue_images` bejegyzések (hero + 1–2 galéria) minden helyszínhez.
+- 5× ital `venue_drinks` — de mivel több helyhez tartoznak, összesen kb. 12 sor (Azure Garden Spritz×2, Duna Blue Lemonade×3, Craft Beer×3, Midnight Tonic×2, Electric Blue Shot×2). Mindegyik `is_free_drink=true`.
+- 12× `free_drink_windows` — minden (venue, drink) párra `days={1,2,3,4,5,6,7}`, `00:00–23:59`, `timezone='Europe/Budapest'`.
+- **Nem** hozunk létre `caps`, `merchant_match_rules`, geofence rekordot → nincs korlátozás.
+- Owner/membership: `owner_profile_id=null` (partnerhez nem kötjük, admin által kezelt „platform” hely).
 
-**PDF 2 — `admin_documentation_part2_users_analytics.pdf`**
-User & analytics: Users, User Detail, Analytics, Data Insights, Notifications, Charity Impact, Audit Log.
+A globális napi 1 ingyen ital/user szabály (`issue-redemption-token` edge function) megmarad — ez userre vonatkozik, nem venue-ra, tehát a bemutatás során nem akaszt.
 
-Mindkét PDF eleje: bevezető rész — tech stack, szerepkörök, központi business rule-ok, adatbázis architektúra vázlat.
+### 4. Ellenőrzés
 
-Screenshot-ok max ~800px szélesre skálázva, JPEG q=85, hogy a PDF ~10–20 MB legyen.
+- Admin `/venues` listában megjelenik mind az 5, státusz „Aktív”.
+- Admin `/venues/:id` detail-en látszik a `FreeDrinkManager` az aktív itallal, 00–24 ablakkal.
+- `get-public-venues` és `get-public-venue` edge function visszaadja őket (nincs rajta változtatás — már mindent olvas).
+- Mobilapp Rork oldalon a lista + detail + „Ingyen ital elérhető” badge megjelenik. (Mobilappot nem módosítjuk.)
 
-## 4) QA
+# Nem érintjük
 
-- Minden PDF-et `pdftoppm`-mel képekké alakítunk
-- Végignézzük az összes oldalt: nincs vágott szöveg, nem hiányzik screenshot, olvasható a betűméret
-- Fixálunk, újra generálunk
+- Rork mobilapp kódját.
+- A landing page projektet.
+- Meglévő RLS-t, edge function-öket, auth-ot.
+- Bármely valós partner adatot.
 
-## 5) Kiszállítás
+# Utólag
 
-A két PDF-et `/mnt/documents/`-be tesszük és `<presentation-artifact>` tag-ekkel közzétesszük letöltésre.
-
-# Nem változik
-
-- Nincs kód változtatás az app-ban
-- Nincs DB / edge function módosítás
-- Csak dokumentum generálás
-
-# Technikai részletek
-
-- **Screenshot:** Playwright, headless Chromium, `http://localhost:8080`, injected Supabase session (cgi_admin), viewport 1280x1800, element screenshot ahol pontos részlet kell (modal, gomb)
-- **PDF:** Python `reportlab` (Platypus flow), Arial, US Letter, 1" margin, H1/H2/H3 hierarchia, szekcionális page break
-- **Skálázás:** Pillow-val JPEG konverzió + resize width=800px
-
-# Kérdés mielőtt implementálom
-
-1. **Nyelv:** magyar legyen a doksi (mint az app UI), vagy angol (AI feed-eléshez néha jobb)? Alapból **magyart** feltételezem.
-2. **Kell-e** a **mobil app** (Rork consumer app) dokumentálása is, vagy **csak az admin webes felület**? Alapból csak az admin.
-3. **Belefoglaljuk-e** a `docs/` mappa meglévő technikai API doksijait (REST endpoints, Rork integráció) függelékként a 2. PDF végére? Ajánlom: **igen**, mert az AI így teljes képet kap.
+A helyek/italok az admin `/venues` felületen bármikor törölhetők vagy szerkeszthetők (delete gomb, edit modal). Ha később valódi partner jön, ugyanezen a form-on kerül be — csak a `owner_profile_id`-t érdemes majd hozzárendelni.
