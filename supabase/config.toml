@@ -171,3 +171,6 @@ verify_jwt = false
 
 [functions.get-user-csr-impact]
 verify_jwt = false
+
+[functions.seed-demo-upload]
+verify_jwt = false
