@@ -181,6 +181,31 @@ export default function Venues() {
     }
   };
 
+  const toggleVenueActive = async (venue: VenueRow) => {
+    const newPaused = !venue.is_paused;
+    // Optimistic update
+    setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, is_paused: newPaused } : v));
+    try {
+      const { error } = await supabase.from('venues').update({ is_paused: newPaused }).eq('id', venue.id);
+      if (error) throw error;
+      toast({
+        title: newPaused ? 'Helyszín inaktiválva' : 'Helyszín aktiválva',
+        description: newPaused
+          ? 'A helyszín mostantól nem jelenik meg a mobilappban.'
+          : 'A helyszín ismét látható a mobilappban.',
+      });
+    } catch (err: any) {
+      console.error('Toggle active failed:', err);
+      // Revert
+      setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, is_paused: !newPaused } : v));
+      toast({
+        title: 'Hiba',
+        description: 'Nem sikerült módosítani a helyszín állapotát.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const planBadgeColor = (plan: VenueRow['plan']) => {
     switch (plan) {
       case 'premium':
