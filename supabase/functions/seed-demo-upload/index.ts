@@ -7,13 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SHARED_SECRET = Deno.env.get("DOCS_ADMIN_SECRET") || "";
+// One-time hardcoded secret; function will be deleted immediately after seed run.
+const SHARED_SECRET = "cgi-demo-seed-2026-one-shot-7f3a91";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const auth = req.headers.get("x-admin-secret");
-  if (!SHARED_SECRET || auth !== SHARED_SECRET) {
+  if (auth !== SHARED_SECRET) {
     return new Response("Unauthorized", { status: 401, headers: corsHeaders });
   }
 
