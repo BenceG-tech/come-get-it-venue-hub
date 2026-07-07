@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { Building, Plus, Search, Eye, Phone, Globe, Clock, Grid, List, GripVertical, ArrowUpDown, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RouteGuard } from '@/components/RouteGuard';
@@ -177,6 +178,31 @@ export default function Venues() {
       await loadVenues(); // revert
     } finally {
       setIsSavingOrder(false);
+    }
+  };
+
+  const toggleVenueActive = async (venue: VenueRow) => {
+    const newPaused = !venue.is_paused;
+    // Optimistic update
+    setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, is_paused: newPaused } : v));
+    try {
+      const { error } = await supabase.from('venues').update({ is_paused: newPaused }).eq('id', venue.id);
+      if (error) throw error;
+      toast({
+        title: newPaused ? 'Helyszín inaktiválva' : 'Helyszín aktiválva',
+        description: newPaused
+          ? 'A helyszín mostantól nem jelenik meg a mobilappban.'
+          : 'A helyszín ismét látható a mobilappban.',
+      });
+    } catch (err: any) {
+      console.error('Toggle active failed:', err);
+      // Revert
+      setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, is_paused: !newPaused } : v));
+      toast({
+        title: 'Hiba',
+        description: 'Nem sikerült módosítani a helyszín állapotát.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -357,7 +383,7 @@ export default function Venues() {
                 <PriceTierBadge tier={venue.price_tier} />
                 <Badge className={`${planBadgeColor(venue.plan)} capitalize text-[10px] px-1.5 py-0`}>{venue.plan}</Badge>
                 <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-[10px] px-1.5 py-0`}>
-                  {venue.is_paused ? 'Szünetel' : 'Aktív'}
+                  {venue.is_paused ? 'Inaktív' : 'Aktív'}
                 </Badge>
               </div>
               <p className="text-xs text-cgi-muted-foreground truncate">{venue.address}</p>
@@ -369,8 +395,20 @@ export default function Venues() {
               </div>
             </div>
             
-            {/* Action */}
-            <Eye className="h-4 w-4 text-cgi-muted-foreground flex-shrink-0" />
+            {/* Active toggle */}
+            <div
+              className="flex flex-col items-center gap-1 flex-shrink-0"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            >
+              <Switch
+                checked={!venue.is_paused}
+                onCheckedChange={() => toggleVenueActive(venue)}
+                aria-label={venue.is_paused ? 'Aktiválás' : 'Inaktiválás'}
+              />
+              <span className="text-[9px] text-cgi-muted-foreground">
+                {venue.is_paused ? 'Rejtett' : 'Látható'}
+              </span>
+            </div>
           </div>
         </Card>
       </Link>
@@ -404,14 +442,27 @@ export default function Venues() {
               <PriceTierBadge tier={venue.price_tier} />
             </div>
             <p className="text-xs text-cgi-muted-foreground truncate mb-2">{venue.address}</p>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-xs`}>
-                {venue.is_paused ? 'Szünetel' : 'Aktív'}
+                {venue.is_paused ? 'Inaktív' : 'Aktív'}
               </Badge>
-              <div className="flex items-center gap-1.5 text-cgi-muted-foreground">
-                {venue.phone_number && <Phone className="h-3 w-3" />}
-                {venue.website_url && <Globe className="h-3 w-3" />}
+              <div
+                className="flex items-center gap-2"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              >
+                <span className="text-[10px] text-cgi-muted-foreground">
+                  {venue.is_paused ? 'Rejtett' : 'Látható az appban'}
+                </span>
+                <Switch
+                  checked={!venue.is_paused}
+                  onCheckedChange={() => toggleVenueActive(venue)}
+                  aria-label={venue.is_paused ? 'Aktiválás' : 'Inaktiválás'}
+                />
               </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-cgi-muted-foreground mt-2">
+              {venue.phone_number && <Phone className="h-3 w-3" />}
+              {venue.website_url && <Globe className="h-3 w-3" />}
             </div>
           </div>
         </Card>
@@ -638,9 +689,16 @@ export default function Venues() {
                             <Badge className={`${planBadgeColor(venue.plan)} capitalize text-xs`}>{venue.plan}</Badge>
                           </td>
                           <td className="p-3">
-                            <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-xs`}>
-                              {venue.is_paused ? 'Szünetel' : 'Aktív'}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={!venue.is_paused}
+                                onCheckedChange={() => toggleVenueActive(venue)}
+                                aria-label={venue.is_paused ? 'Aktiválás' : 'Inaktiválás'}
+                              />
+                              <Badge className={`${venue.is_paused ? 'bg-cgi-error text-cgi-error-foreground' : 'bg-cgi-success text-cgi-success-foreground'} text-xs`}>
+                                {venue.is_paused ? 'Inaktív' : 'Aktív'}
+                              </Badge>
+                            </div>
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-2 text-cgi-muted-foreground">
