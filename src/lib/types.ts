@@ -108,6 +108,10 @@ export interface Venue {
   images?: VenueImage[];
   coordinates?: Coordinates;            // for maps
   price_tier?: number | null;           // 1–4: $, $$, $$$, $$$$
+  category?: string;                    // Bisztró, Étterem, Koktélbár, Klub, Romkocsma, Kávézó, Egyéb
+  rating?: number | null;               // 0.0 – 5.0
+  participates_in_points?: boolean;     // Loyalty pontgyűjtés aktív
+  points_per_visit?: number | null;     // Alap pontszám látogatásonként
 
   // Added for mobile/consumer compatibility
   image_url?: string;       // card/list image

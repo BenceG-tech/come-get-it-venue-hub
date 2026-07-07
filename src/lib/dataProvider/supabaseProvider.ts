@@ -54,6 +54,10 @@ const VENUE_COLUMNS = new Set([
   "saltedge_connection_id",
   "price_tier",
   "display_order",
+  "category",
+  "rating",
+  "participates_in_points",
+  "points_per_visit",
 ]);
 
 function pickVenueColumns(payload: any) {
