@@ -37,22 +37,15 @@ export function ImageUploadInput({
     if (!isUploading) inputRef.current?.click();
   };
 
-  const handleChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    // Sanitize filename: remove accented characters, special chars, and spaces
+  const uploadOne = async (file: File): Promise<string | null> => {
     const safeName = file.name
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // Remove accent marks
-      .replace(/[^a-zA-Z0-9.\-_]/g, "-") // Replace non-alphanumeric with dash
-      .replace(/-+/g, "-") // Collapse multiple dashes
-      .replace(/^-|-$/g, "") // Trim leading/trailing dashes
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9.\-_]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
       .toLowerCase();
-    const path = `${folder}/${Date.now()}-${safeName}`;
-
-    console.log("[ImageUploadInput] uploading to path:", path);
+    const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("venue-images")
@@ -63,39 +56,49 @@ export function ImageUploadInput({
       });
 
     if (uploadError) {
-      console.error("[ImageUploadInput] upload error", uploadError);
+      console.error("[ImageUploadInput] upload error", uploadError, "for", file.name);
       toast({
-        title: "Feltöltési hiba",
+        title: `Feltöltési hiba: ${file.name}`,
         description: uploadError.message || "A fájl feltöltése nem sikerült.",
         variant: "destructive" as any,
       });
-      setIsUploading(false);
-      return;
+      return null;
     }
 
     const { data: publicData } = supabase.storage
       .from("venue-images")
       .getPublicUrl(path);
+    return publicData?.publicUrl ?? null;
+  };
 
-    const publicUrl = publicData?.publicUrl;
-    if (!publicUrl) {
-      toast({
-        title: "URL hiba",
-        description: "Nem sikerült lekérni a feltöltött kép URL-jét.",
-        variant: "destructive" as any,
-      });
-      setIsUploading(false);
-      return;
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+    setProgress({ done: 0, total: files.length });
+
+    let successCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const url = await uploadOne(files[i]);
+      if (url) {
+        onUploaded(url);
+        successCount++;
+      }
+      setProgress({ done: i + 1, total: files.length });
     }
 
-    toast({
-      title: "Sikeres feltöltés",
-      description: "A kép feltöltése sikerült.",
-    });
+    if (successCount > 0) {
+      toast({
+        title: "Sikeres feltöltés",
+        description: files.length > 1
+          ? `${successCount}/${files.length} kép feltöltve.`
+          : "A kép feltöltése sikerült.",
+      });
+    }
 
-    onUploaded(publicUrl);
     setIsUploading(false);
-    // reset input so the same file can be reselected if needed
+    setProgress(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
