@@ -97,6 +97,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     goorderz_external_id: venue?.goorderz_external_id || '',
     saltedge_connection_id: venue?.saltedge_connection_id || '',
     price_tier: venue?.price_tier ?? null,
+    category: venue?.category || '',
+    rating: venue?.rating ?? null,
+    participates_in_points: venue?.participates_in_points ?? true,
+    points_per_visit: venue?.points_per_visit ?? 10,
   });
 
 
