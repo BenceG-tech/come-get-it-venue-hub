@@ -26,9 +26,11 @@ export function ImageUploadInput({
   className,
   size = "sm",
   variant = "outline",
+  multiple = false,
 }: ImageUploadInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const { toast } = useToast();
 
   const handleClick = () => {
