@@ -1,42 +1,91 @@
 # Cél
 
-Ne kelljen kézzel koordinátát beírni. A cím alapján a rendszer töltse ki automatikusan.
+Egy (vagy két) részletes PDF, ami minden admin felület oldalt, funkciót és működést leír + screenshotokkal illusztrál. Alkalmas arra, hogy egy AI-nak feed-eld és megértse a rendszert.
 
 # Mit csinálunk
 
-## 1) Új gomb a helyszín szerkesztő űrlapban
-- **"Koordináták frissítése a címből"** gomb a Cím mező mellett
-- Kattintásra meghívja a meglévő `geocode-address` edge function-t (Mapbox)
-- A visszakapott lat/lng bekerül a `coordinates` JSONB-be
-- Sikeres frissítés után zöld visszajelzés + a térkép azonnal ráugrik az új pontra
+## 1) Screenshot gyűjtés (Playwright, headless Chromium)
 
-## 2) Automatikus javítás mentéskor
-- A meglévő logika már megcsinálja, ha `lat=0, lng=0` → most kiterjesztjük:
-  - ha a koordináta **Budapest bounding boxon kívül esik** (lat < 47.3 vagy > 47.7, lng < 18.8 vagy > 19.4) **ÉS** a cím Budapestet tartalmaz → auto re-geocode mentéskor
-  - ha a koordináta 0/0 vagy null → auto re-geocode (már van)
+Bejelentkezés `cgi_admin` szerepkörrel a preview app-ba, majd minden fő admin oldal screenshot-olása 1280x1800 viewport-tal. Ahol modal / almenü / tab van, azt is külön képen.
 
-## 3) Kézi lat/lng mezők háttérbe tolása
-- A két számmező (Szélesség / Hosszúság) egy összecsukható **"Haladó: kézi koordináta felülírás"** szekcióba kerül
-- Alapból csukva — normál használatnál láthatatlan
-- Így a felület azt sugallja: elég a címet megadni
+**Oldalak (route → funkció):**
 
-## 4) Egyszeri "javítsd meg a rossz koordinátákat" akció (opcionális)
-- A Helyszínek lista tetején egy **"Rossz koordináták javítása"** gomb (csak cgi_admin)
-- Végigmegy az összes venue-n, ahol `coordinates` = 0/0 vagy null vagy Budapesten kívüli, és a cím alapján újra geokódolja
-- Progress toast: "12/45 helyszín javítva"
-- Nem kell manuális szerkesztés helyszínenként
+- `/dashboard` — Admin dashboard (KPI-k, trendek, top venue-k)
+- `/command-center` — Live platform status
+- `/venues` — Helyszín lista + szűrők + `Új helyszín` modal + `Koordináták javítása` gomb
+- `/venues/:id` — Venue részletek (tabok: alapadatok, italok, promóciók, integráció, free drink manager, image gallery, business hours)
+- `/venues/comparison` — Venue összehasonlítás
+- `/brands` — Márkák
+- `/promotions` — Promóciók + form modal
+- `/rewards` — Jutalmak + form modal
+- `/redemptions` — Beváltások + szűrők + detail modal + void dialog + context badges
+- `/transactions` — POS tranzakciók + matching
+- `/salt-edge-transactions` — Salt Edge Open Banking flow
+- `/users` — Felhasználó lista + bulk toolbar + QuickView + bulk notification/bonus modalok
+- `/users/:id` — User detail tabok (Áttekintés, Aktivitás, Beváltások, Analytics, Predictions, Comparison, Timeline, Notifications, Tags, GDPR export)
+- `/analytics` — Analytics dashboards (heatmap, retention, activity, trends)
+- `/data-insights` — Data value insights
+- `/notifications` — Notification kezelés + AI suggestion + form modal + analytics dashboard
+- `/charity-impact` — CSR / Drink for a Cause
+- `/audit-log` — Audit trail
+- `/settings` — Beállítások
+- `/pos/redeem` — Staff scanner
+- `/pos/history` — POS history
+
+**Cél: kb. 40–60 screenshot.**
+
+## 2) Tartalom generálás (markdown → PDF)
+
+Minden oldalhoz egy szekció, ami tartalmazza:
+
+- **Route** és **szerepkör követelmény** (cgi_admin / venue_owner / venue_staff / brand_admin)
+- **Cél / mire való** — 2–4 mondatos üzleti magyarázat
+- **UI komponensek** — mit lát a felhasználó (lista, form, chart, modal)
+- **Interakciók** — mit tud csinálni (create/edit/delete, szűrés, export, bulk action, stb.)
+- **Backend kapcsolat** — érintett Supabase táblák és edge function-ök
+- **Business rule-ok** — pl. 1 free drink/nap/user globálisan (Europe/Budapest), token hash SHA-256, 120s TTL
+- **Screenshot(ok)** beágyazva
+
+A szekciókat a `mem://index.md` memóriák tartalmával is dúsítjuk (Free Drink Windows, Loyalty System, Redemption Security, POS Module, stb. — már megvan az architektúra tudás).
+
+## 3) PDF építés (reportlab)
+
+Két PDF-re bontva, hogy ne legyen egy 100MB-os monstrum:
+
+**PDF 1 — `admin_documentation_part1_core.pdf`**
+Alap admin flow: Dashboard, Command Center, Venues, Brands, Promotions, Rewards, Redemptions, Transactions, POS, Settings.
+
+**PDF 2 — `admin_documentation_part2_users_analytics.pdf`**
+User & analytics: Users, User Detail, Analytics, Data Insights, Notifications, Charity Impact, Audit Log.
+
+Mindkét PDF eleje: bevezető rész — tech stack, szerepkörök, központi business rule-ok, adatbázis architektúra vázlat.
+
+Screenshot-ok max ~800px szélesre skálázva, JPEG q=85, hogy a PDF ~10–20 MB legyen.
+
+## 4) QA
+
+- Minden PDF-et `pdftoppm`-mel képekké alakítunk
+- Végignézzük az összes oldalt: nincs vágott szöveg, nem hiányzik screenshot, olvasható a betűméret
+- Fixálunk, újra generálunk
+
+## 5) Kiszállítás
+
+A két PDF-et `/mnt/documents/`-be tesszük és `<presentation-artifact>` tag-ekkel közzétesszük letöltésre.
 
 # Nem változik
 
-- Mobil app: továbbra is a `coordinates` JSONB-t olvassa, semmi kliens oldali változás
-- DB séma: nincs új oszlop, nincs migráció
-- `geocode-address` edge function: már létezik, változatlan
+- Nincs kód változtatás az app-ban
+- Nincs DB / edge function módosítás
+- Csak dokumentum generálás
 
-# Érintett fájlok
+# Technikai részletek
 
-- `src/components/VenueFormModal.tsx` — új gomb, összecsukható haladó szekció, kiterjesztett auto-geocode feltétel
-- `src/pages/Venues.tsx` (vagy a helyszín lista oldal) — "Rossz koordináták javítása" tömeges gomb
+- **Screenshot:** Playwright, headless Chromium, `http://localhost:8080`, injected Supabase session (cgi_admin), viewport 1280x1800, element screenshot ahol pontos részlet kell (modal, gomb)
+- **PDF:** Python `reportlab` (Platypus flow), Arial, US Letter, 1" margin, H1/H2/H3 hierarchia, szekcionális page break
+- **Skálázás:** Pillow-val JPEG konverzió + resize width=800px
 
 # Kérdés mielőtt implementálom
 
-Kell a **4. pont** (tömeges javítás gomb az összes rossz koordinátára egyszerre), vagy elég most csak a szerkesztő űrlapba tenni a "Frissítés címből" gombot, és venue-nként egyesével megnyitod/mented?
+1. **Nyelv:** magyar legyen a doksi (mint az app UI), vagy angol (AI feed-eléshez néha jobb)? Alapból **magyart** feltételezem.
+2. **Kell-e** a **mobil app** (Rork consumer app) dokumentálása is, vagy **csak az admin webes felület**? Alapból csak az admin.
+3. **Belefoglaljuk-e** a `docs/` mappa meglévő technikai API doksijait (REST endpoints, Rork integráció) függelékként a 2. PDF végére? Ajánlom: **igen**, mert az AI így teljes képet kap.
