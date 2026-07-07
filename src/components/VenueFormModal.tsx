@@ -734,7 +734,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             <div>
               <Label className="text-cgi-surface-foreground">Képek</Label>
               <p className="text-xs text-cgi-muted-foreground mt-0.5">
-                Húzd a képeket a sorrend változtatásához. Az első kép a főkép, ha nincs külön kijelölve.
+                Több képet is kijelölhetsz egyszerre. Húzd a képeket a sorrend változtatásához. Az első kép a főkép, ha nincs külön kijelölve.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -743,6 +743,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 onUploaded={(url) => addImageWithUrl(url)}
                 variant="outline"
                 size="sm"
+                multiple
               />
               <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
                 <Plus className="h-4 w-4 mr-1" />

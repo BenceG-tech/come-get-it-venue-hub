@@ -24,6 +24,12 @@ serve(async (req) => {
     const url = new URL(req.url)
     const searchTerm = url.searchParams.get('search') || ''
     const limitCount = parseInt(url.searchParams.get('limit') || '50')
+    const sortMode = (url.searchParams.get('sort') || 'default').toLowerCase()
+    const userLatRaw = url.searchParams.get('lat')
+    const userLngRaw = url.searchParams.get('lng')
+    const userLat = userLatRaw != null ? parseFloat(userLatRaw) : null
+    const userLng = userLngRaw != null ? parseFloat(userLngRaw) : null
+    const useDistance = sortMode === 'distance' && userLat != null && userLng != null && !isNaN(userLat) && !isNaN(userLng)
 
     console.log('[get-public-venues] Fetching venues', { searchTerm, limitCount })
 
@@ -172,12 +178,42 @@ serve(async (req) => {
       };
     });
 
-    console.log(`[get-public-venues] Returning ${venuesWithStatus.length} venues with computed status`)
+    // Optional distance sorting (Haversine)
+    let finalVenues: any[] = venuesWithStatus;
+    if (useDistance) {
+      const toRad = (d: number) => (d * Math.PI) / 180;
+      const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371;
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(a));
+      };
+
+      finalVenues = venuesWithStatus.map((v: any) => {
+        const c = v.coordinates as { lat?: number; lng?: number } | null;
+        const lat = c?.lat;
+        const lng = c?.lng;
+        const distance_km = (lat != null && lng != null && !(lat === 0 && lng === 0))
+          ? Math.round(haversineKm(userLat!, userLng!, lat, lng) * 100) / 100
+          : null;
+        return { ...v, distance_km };
+      }).sort((a: any, b: any) => {
+        if (a.distance_km == null && b.distance_km == null) return 0;
+        if (a.distance_km == null) return 1;
+        if (b.distance_km == null) return -1;
+        return a.distance_km - b.distance_km;
+      });
+      console.log(`[get-public-venues] Sorted by distance from (${userLat}, ${userLng})`);
+    }
+
+    console.log(`[get-public-venues] Returning ${finalVenues.length} venues (sort=${useDistance ? 'distance' : 'default'})`)
 
     return new Response(
-      JSON.stringify(venuesWithStatus),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      JSON.stringify(finalVenues),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
 

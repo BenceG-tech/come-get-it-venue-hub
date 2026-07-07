@@ -281,3 +281,42 @@ For debugging assistance:
 ## Related Documentation
 - [Single Venue Detail API](./REST_ENDPOINTS.md#get-public-venue)
 - [Mobile App Integration Guide](./MOBILE_APP_INTEGRATION.md)
+
+---
+
+## Sorting Options (added 2026-07-07)
+
+The `get-public-venues` endpoint supports two sort modes:
+
+### 1. Default sort (admin-defined order)
+```
+GET /functions/v1/get-public-venues
+GET /functions/v1/get-public-venues?sort=default
+```
+Returns venues in the order set by the admin on `/venues` (drag & drop → `display_order` column). This is the default when no `sort` param is provided.
+
+### 2. Distance sort (nearest first)
+```
+GET /functions/v1/get-public-venues?sort=distance&lat=47.4979&lng=19.0402
+```
+Required params when `sort=distance`:
+- `lat` — user's current latitude (float)
+- `lng` — user's current longitude (float)
+
+Each venue response includes a computed `distance_km` field (rounded to 2 decimals). Venues without valid coordinates are placed at the end with `distance_km = null`.
+
+### Rork implementation sketch
+```ts
+// User toggles "Sort by distance" in the app
+const [sortByDistance, setSortByDistance] = useState(false);
+const location = await Location.getCurrentPositionAsync(); // expo-location
+
+const url = sortByDistance && location
+  ? `${SUPABASE_URL}/functions/v1/get-public-venues?sort=distance&lat=${location.coords.latitude}&lng=${location.coords.longitude}`
+  : `${SUPABASE_URL}/functions/v1/get-public-venues`;
+
+const venues = await fetch(url).then(r => r.json());
+// venues are already sorted; render as-is
+```
+
+When the toggle is OFF the admin's manual order (via drag & drop in `/venues`) is respected.
