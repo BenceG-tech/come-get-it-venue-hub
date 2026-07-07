@@ -24,6 +24,12 @@ serve(async (req) => {
     const url = new URL(req.url)
     const searchTerm = url.searchParams.get('search') || ''
     const limitCount = parseInt(url.searchParams.get('limit') || '50')
+    const sortMode = (url.searchParams.get('sort') || 'default').toLowerCase()
+    const userLatRaw = url.searchParams.get('lat')
+    const userLngRaw = url.searchParams.get('lng')
+    const userLat = userLatRaw != null ? parseFloat(userLatRaw) : null
+    const userLng = userLngRaw != null ? parseFloat(userLngRaw) : null
+    const useDistance = sortMode === 'distance' && userLat != null && userLng != null && !isNaN(userLat) && !isNaN(userLng)
 
     console.log('[get-public-venues] Fetching venues', { searchTerm, limitCount })
 
