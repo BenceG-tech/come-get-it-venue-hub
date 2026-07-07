@@ -1,34 +1,61 @@
-## Probléma
 
-A mobilappban (és bármely nem-admin nézetben) a helyszín megnyitásakor ez a hiba jelenik meg:
+## Áttekintés
 
-> permission denied for function is_venue_publicly_active
+Három funkció:
+1. **Több kép egyszerre feltöltése** a helyszín szerkesztőben (Képek tab).
+2. **Sorrend állítása** — már létezik a `/venues` adminban (drag-and-drop, `display_order`), de a mobilappnak biztos oda kell adnia a beállított sorrendet.
+3. **Távolság szerinti rendezés** — kapcsolható opció, ami a felhasználó GPS pozíciója alapján a legközelebbi helyszíneket dobja először.
 
-Ok: a `free_drink_windows` táblán van egy RLS policy (`Public can view windows of active venues`), ami a `public.is_venue_publicly_active(uuid)` függvényt hívja. A legutóbbi biztonsági migráció során az `anon` és `authenticated` szerepektől elvettük az EXECUTE jogot erre a függvényre, így a policy kiértékelése hibára fut → a helyszín részletei nem tölthetők be, nem szerkeszthetők, nem lehet képet módosítani stb.
+---
 
-Az újonnan felvitt helyszínek nem "hibásak", csak ez a jogosultsági hiba blokkolja őket (a régiek ugyanígy érintettek lennének, csak eddig cache-ből jöttek).
+## 1. Több kép egyszerre feltöltése
 
-## Terv
+**Fájlok:**
+- `src/components/ImageUploadInput.tsx` — hozzáadok `multiple` prop-ot, párhuzamos feltöltéssel és `onUploaded` callback-et minden sikeres képre hívja.
+- `src/components/VenueFormModal.tsx` — a Képek tabon lévő "Kép feltöltése" gombot `multiple`-re állítom, hogy egyszerre több fájl kijelölhető legyen; minden feltöltött kép `addImageWithUrl(url)`-lal automatikusan bekerül a galériába. Progress toast: "3/5 kép feltöltve...".
 
-Egyetlen migráció, ami visszaadja a szükséges EXECUTE jogot a security definer függvényre — semmi más adat/szerkezet nem változik.
+Meglévő drag-and-drop sorrend, cover kép választás és törlés változatlan.
 
-```sql
-GRANT EXECUTE ON FUNCTION public.is_venue_publicly_active(uuid) TO anon, authenticated;
+## 2. Sorrend a mobilappban
+
+Az admin oldali `display_order` alapú rendezés már működik (`/venues` drag-and-drop). Ellenőrzés:
+- `get-public-venues` edge function **már** `.order('display_order', asc)`-t használ → mobilapp automatikusan a beállított sorrendet kapja.
+- `get_public_venues` DB függvény szintén `display_order` szerint rendez.
+
+Nincs itt teendő azon kívül, hogy a mobilapp fejlesztőinek jelezzük: ha a `?sort=custom` (alapértelmezett), a Rork app a `display_order`-t tiszteletben tartja.
+
+## 3. Távolság szerinti rendezés (opcionális)
+
+**Backend — `supabase/functions/get-public-venues/index.ts`:**
+Új query paraméterek:
+- `sort=distance|default` (default: `default`)
+- `lat`, `lng` (felhasználó pozíciója, ha `sort=distance`)
+
+Ha `sort=distance` és van `lat`/`lng`:
+- Kiszámoljuk minden helyszínre a Haversine távolságot a `coordinates` alapján.
+- Rendezés: `distance` növekvő; koordináta nélküli helyszínek a végére.
+- A visszaadott `distance_km` mezőt minden helyszínre elhelyezzük.
+
+Nincs adatbázis migráció — a `coordinates` JSONB már megvan.
+
+**Rork mobilapp integráció (dokumentum frissítés):**
+`docs/RORK_VENUE_LIST_API.md` — hozzáadok egy szekciót:
 ```
+GET /get-public-venues?sort=distance&lat=47.5&lng=19.05
+```
+A Rork oldalon egy kapcsoló ("Rendezés távolság szerint") a `useCurrentLocation` hookkal kikéri a GPS-t és így hívja az endpointot. Ha a kapcsoló ki van, a `display_order` (admin által beállított sorrend) érvényesül.
 
-Ez biztonságos:
-- A függvény `SECURITY DEFINER`, `STABLE`, egyetlen boolean-t ad vissza arról, hogy egy adott venue publikusan aktív-e (`is_paused = false`).
-- Nem szivárogtat érzékeny adatot, csak azt támogatja, amit a policy amúgy is engedélyez.
-- A `venues` tábla RLS-ét nem módosítjuk, a rejtett (`is_paused=true`) helyszínek továbbra sem lesznek elérhetők publikusan.
+Ezt a kapcsolót **nem** ebben a projektben (admin) valósítom meg — a mobilapp UI a Rork repóban van; a backend viszont készen áll rá.
 
-## Ellenőrzés a migráció után
+---
 
-1. Admin (`/venues/:id`) — új helyszín megnyitása, szerkesztése, képek cseréje működik.
-2. Mobilapp — látható helyszín részletei betöltődnek, hibaüzenet eltűnik.
-3. Rejtett helyszín továbbra is 404-et ad a `get-public-venue` végponton.
+## Összefoglaló változtatások
 
-## Mit nem csinálunk
+| Fájl | Változás |
+|---|---|
+| `src/components/ImageUploadInput.tsx` | `multiple` prop + több fájl párhuzamos feltöltés |
+| `src/components/VenueFormModal.tsx` | Képek tab: multi-upload engedélyezése |
+| `supabase/functions/get-public-venues/index.ts` | `sort=distance&lat=&lng=` támogatás Haversine távolsággal |
+| `docs/RORK_VENUE_LIST_API.md` | Új `sort=distance` szekció + Rork oldali példakód |
 
-- Nem módosítjuk a `venues` / `free_drink_windows` RLS policy-kat.
-- Nem nyúlunk a `get-public-venues` / `get-public-venue` edge függvényekhez.
-- Nem érintjük a legutóbbi biztonsági javításokat egyéb függvényeken.
+Migráció nincs. RLS változás nincs.

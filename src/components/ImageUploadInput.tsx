@@ -12,6 +12,7 @@ interface ImageUploadInputProps {
   className?: string;
   size?: "sm" | "default" | "lg";
   variant?: "default" | "outline" | "secondary" | "ghost" | "destructive";
+  multiple?: boolean;
 }
 
 /**
