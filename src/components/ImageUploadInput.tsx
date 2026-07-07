@@ -108,6 +108,7 @@ export function ImageUploadInput({
         ref={inputRef}
         type="file"
         accept="image/*"
+        multiple={multiple}
         onChange={handleChange}
         className="hidden"
       />
@@ -119,7 +120,11 @@ export function ImageUploadInput({
         onClick={handleClick}
         disabled={isUploading}
       >
-        {isUploading ? "Feltöltés..." : buttonLabel}
+        {isUploading
+          ? progress
+            ? `Feltöltés... ${progress.done}/${progress.total}`
+            : "Feltöltés..."
+          : buttonLabel}
       </Button>
     </div>
   );
