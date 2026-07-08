@@ -1,106 +1,108 @@
+
 ## Cél
 
-A helyszín szerkesztésén belül az **Italok & Limitek** és **Képek** részeket teljesen átrendezem mobilra, és a beváltási folyamatnál elkülönítem a valódi üzleti korlátokat a teszteléstől, hogy végig lehessen nézni a sikeres beváltási élményt.
+1. A beváltás azonnal működjön demo/videó rögzítéshez — a Rork szimulátorban a "túl messze vagy" hiba ne akadályozzon.
+2. Hosszabb távon konfigurálható legyen: helyszínenkénti radius + admin bypass + globális kapcsoló.
+3. Ezután: Felhasználók lista és QuickView modal mobil használhatóság javítása.
 
-## 1. Italok kezelése: új mobilbarát szerkezet
+---
 
-- A jelenlegi hosszú, zsúfolt kártyalistát lecserélem egy kompaktabb, áttekinthetőbb italkezelőre.
-- Minden ital egy rövid sor/kártya lesz:
-  - ital neve
-  - kategória
-  - „Ingyenes” státusz
-  - időablak állapot: például „Ma aktív”, „Nincs időablak”, „H-P 10:00–14:00”
-  - kis műveletgombok: szerkesztés, törlés
-- A részletek nem nyílnak ki óriási blokkban a listán belül, hanem egy külön, fókuszált mobil szerkesztőnézetben / alsó sheetben:
-  - alap adatok
-  - kép
-  - ingyenes ital kapcsoló
-  - időablakok
-  - mentés
-- Az „Új ital hozzáadása” részt egyszerűsítem egy jól látható „+ Ital” gombra, ami ugyanazt a kompakt szerkesztőt nyitja.
-- Az időablakoknál adok gyors preseteket:
-  - „Mindennap”
-  - „Hétköznap”
-  - „Ma egész nap”
-  - „Mostantól zárásig”
-- Az ingyenes italnál alapból automatikusan létrejön egy használható időablak, hogy ne emiatt akadjon el a beváltás.
+## 1. rész — Beváltás azonnali demózhatósága
 
-## 2. Ital képfeltöltés újragondolása
+### 1.1 Globális "distance check" kapcsoló (feature flag)
+- Új rekord `platform_settings` táblában (ha nincs, létrehozzuk): `enforce_redemption_radius` (boolean, default `false` amíg demózol, később `true`).
+- Admin felületen új kapcsoló a **Beállítások** oldalon: „Beváltásnál távolság-ellenőrzés kényszerítése" — egy kattintással ki/be.
+- A Rork app és az edge functionok innen olvassák a beállítást.
 
-- Az ital képét nem URL inputként mutatom elsődlegesen mobilon, hanem képes feltöltő felületként:
-  - ha nincs kép: nagy, érthető „Kép feltöltése” zóna
-  - ha van kép: előnézet, csere, törlés
-- Az URL mező másodlagos, összecsukható „haladó” opció lesz.
-- Feltöltés után azonnal látható lesz az előnézet, nem kell keresgélni, hogy sikerült-e.
+### 1.2 Helyszínenkénti radius mező
+- Új oszlop: `venues.redemption_radius_m` (integer, default 100, nullable).
+- `VenueFormModal`-ban új mező „Beváltási sugár (m)" — üresen hagyva a globális default (100 m) érvényes.
+- Rork app ezt olvassa a helyszín rekordból távolság-check során.
 
-## 3. Helyszín képek újragondolása
+### 1.3 Admin JWT bypass a Rork appban
+- `issue-redemption-token` már tud `test_mode`-ot (előző körben megcsináltuk). Kiegészítjük egy `skip_distance` flaggel, amit csak `cgi_admin` állíthat.
+- Rork oldalra rövid dokumentáció (`docs/RORK_FREE_DRINKS_INTEGRATION.md` frissítés): ha admin user van bejelentkezve, a kliens automatikusan `skip_distance: true`-t küld.
 
-- A helyszín képeknél mobilon galéria jellegű, kompakt képkezelőt készítek:
-  - első kép / főkép egyértelmű jelölése
-  - több kép feltöltése egyszerre
-  - képcsere / törlés / főkép beállítás egyértelmű ikonokkal
-  - sorrendállítás mobilon drag helyett alternatív fel/le gombokkal is, mert a drag mobilon nehézkes
-- A magyarázó szövegeket rövidebbre veszem, hogy több hasznos tartalom férjen ki.
+### 1.4 Demo-mód (a videózáshoz — azonnal használható)
+- A globális kapcsoló `enforce_redemption_radius = false`-ra állítása → a Rork app kihagyja a távolság-checket az összes usernél, amíg vissza nem kapcsoljuk.
+- Így most **egyszerűen kikapcsolod, videózol, majd visszakapcsolod**.
+- Rork felé rövid instrukció, hogy a kliens az `enforce_redemption_radius` értékét figyelje induláskor és beváltás előtt.
 
-## 4. Beváltási folyamat: mi akadályoz most
+### 1.5 Nap-migráció most kihagyva
+- A Rork logja szerint az élő free_drink_windows sorok mind `[1..7]` napra érvényesek, tehát a nap-check átmegy.
+- A migrációt (régi vasárnap=0 → ISO hétfő=1) most kihagyjuk, később nyugodtan lefuttatjuk.
 
-A backend alapján jelenleg **nincs lokációellenőrzés** az `issue-redemption-token` vagy `consume-redemption-token` funkcióban. Ha lokáció miatt akad el, az valószínűleg a Rork mobilapp kliensoldali logikájában van.
+---
 
-A backend viszont most ezek miatt megállíthatja a folyamatot:
+## 2. rész — Felhasználók lista + QuickView mobil optimalizálás
 
-- nincs aktív ingyenes ital időablak (`NO_ACTIVE_WINDOW`)
-- 5 perces tokenkérés limit (`RATE_LIMITED`)
-- napi 1 ingyen ital globális limit (`USER_GLOBAL_DAILY_LIMIT`)
-- helyszín napi/órás limit (`DAILY_CAP_REACHED`, `HOURLY_CAP_REACHED`)
-- token lejár 2 perc után (`EXPIRED`)
-- POS oldalon staff jogosultság hiányzik (`VENUE_UNAUTHORIZED`)
+### 2.1 Felhasználók lista (mobil)
+- Már van kártya-alapú mobil layout — átnézzük és tömörítjük:
+  - Kisebb avatar (40 → 32 px), egysoros név + tag chip.
+  - Másodlagos sor: pontok · beváltások · utolsó aktivitás — kompakt ikonokkal.
+  - Bulk action bar mobilon lefelé úszó (sticky bottom) — nem takarja el a listát.
+- Szűrők/tabok: horizontálisan scrollolható chip-sor a jelenlegi dropdown helyett.
+- Server-side pagination gomb kompaktabb (jelenleg túl sok helyet foglal).
 
-## 5. Beváltás tesztelhetővé tétele anélkül, hogy a produkciós szabályokat tönkretennénk
+### 2.2 QuickView modal (mobil Sheet)
+- Jelenlegi modal → alulról felhúzható `Sheet` mobilon (asztali gépen marad Dialog).
+- Fejléc: avatar + név + státusz chip egy sorban, közvetlenül alatta a fő KPI-ok (pontok, beváltások, utolsó aktivitás) egyetlen kompakt gridben.
+- Akciógombok (`ManualNotificationModal`, `SingleBonusPointsModal`, „Részletek megnyitása") a Sheet aljára fixen — nem kell görgetni értük.
+- Behavioral tag chip-ek 2 sorba tömörítve, felesleges térközök nélkül.
 
-A meglévő üzleti szabály szerint a produkciós rendszerben napi 1 ingyen ital/user limit van. Emiatt nem törölném vakon a védelmeket, hanem hozzáadok egy kontrollált **teszt / preview módot**.
+### 2.3 Konzisztencia
+- Ugyanaz a mobil sűrítés kerül a Users detail lap tab-fejlécére is (chip-scroll, kompakt padding).
 
-- `issue-redemption-token` kap egy biztonságosan korlátozott teszt módot, amivel admin/teszt környezetben átugorható:
-  - aktív időablak ellenőrzés
-  - rate limit
-  - napi user limit
-  - venue cap
-- A válaszban részletesebben visszaadom, ha valami blokkol:
-  - pontos `code`
-  - emberi üzenet
-  - mit kell módosítani az adminban vagy Rorkban
-- A POS `consume-redemption-token` hibáit is érthetőbbé teszem, főleg staff jogosultság és lejárt token esetén.
+---
 
-## 6. Rork app teendők dokumentálása
+## Technikai részletek
 
-Frissítem a Rork integrációs dokumentációt úgy, hogy egyértelmű legyen:
+**Migráció (új):**
+```sql
+alter table public.venues
+  add column if not exists redemption_radius_m integer default 100;
 
-- a beváltás ne legyen lokációhoz kötve, ha nem akarjuk
-- a lokáció csak sorrendezésre / közeli helyek mutatására legyen használva
-- a `Beváltás` gomb ne tiltsa le magát csak azért, mert nincs GPS engedély
-- ha a távolság szerinti rendezés aktív, GPS hiba esetén fallback legyen normál sorrendre
-- a sikeres folyamat képernyői:
-  1. helyszín kiválasztása
-  2. ital kiválasztása / ingyen ital megjelenítése
-  3. QR/token generálása
-  4. POS scan
-  5. sikeres beváltás visszajelzés
+create table if not exists public.platform_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz default now(),
+  updated_by uuid references auth.users(id)
+);
+grant select on public.platform_settings to anon, authenticated;
+grant all on public.platform_settings to service_role;
+alter table public.platform_settings enable row level security;
+create policy "anyone can read" on public.platform_settings for select using (true);
+create policy "admins can write" on public.platform_settings
+  for all to authenticated
+  using (public.has_role(auth.uid(), 'admin'))
+  with check (public.has_role(auth.uid(), 'admin'));
 
-## 7. Ellenőrzés
+insert into public.platform_settings(key, value)
+  values ('enforce_redemption_radius', 'false'::jsonb)
+  on conflict (key) do nothing;
+```
 
-- Ellenőrzöm mobil nézetben, hogy az ital- és képkezelés kisebb helyet foglal, jobban görgethető, és nem nyomja össze az alsó mentősáv.
-- Ellenőrzöm, hogy az ingyenes italhoz alapértelmezett időablak létrejön, így nem akad el az admin konfiguráció miatt.
-- Ellenőrzöm a beváltási backend útvonalat egy teszt tokennel:
-  - token kiadás
-  - token beváltás
-  - sikeres response szerkezete
+**Edge function változás:**
+- `issue-redemption-token`: `skip_distance` paraméter elfogadása admin JWT-nél; egyébként a `platform_settings.enforce_redemption_radius` alapján dönt.
 
-## Érintett részek
+**Admin UI:**
+- `src/pages/Settings.tsx` (vagy megfelelő) → új Switch komponens.
+- `VenueFormModal.tsx` → új numerikus input a beváltási sugárhoz.
+- `src/pages/Users.tsx` + `UserQuickViewModal.tsx` → mobil layout tömörítés, Sheet konverzió.
 
-- `src/components/EnhancedDrinkSelector.tsx`
-- `src/components/SimpleImageInput.tsx`
-- `src/components/ImageUploadInput.tsx`
-- `src/components/VenueFormModal.tsx`
-- `supabase/functions/issue-redemption-token/index.ts`
-- `supabase/functions/consume-redemption-token/index.ts`
-- `docs/RORK_FREE_DRINKS_INTEGRATION.md`
-- szükség esetén egy új rövid Rork troubleshooting dokumentum
+**Rork felé dokumentáció:**
+- `docs/RORK_FREE_DRINKS_INTEGRATION.md` kiegészül:
+  - Olvasd az `enforce_redemption_radius` platform_setting-et — ha `false`, ne végezz távolság-checket.
+  - Olvasd a `venues.redemption_radius_m`-t — ha van, ezt használd a 100 m helyett.
+  - Ha admin user van bejelentkezve (`is_admin=true`), küldj `skip_distance: true`-t.
+
+---
+
+## Sorrend
+
+1. Migráció + platform_settings + venues.redemption_radius_m.
+2. Admin UI: globális kapcsoló + helyszínenkénti radius mező.
+3. Edge function frissítés + Rork dokumentáció.
+4. Users lista + QuickView mobil tömörítés.
+
+Az 1–3 lépés után **azonnal ki tudod kapcsolni a radius-t és felveheted a demo videót**, mielőtt a 4. lépés elkészül.
