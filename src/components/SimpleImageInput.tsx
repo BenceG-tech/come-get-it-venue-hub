@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ImageUploadInput } from './ImageUploadInput';
-import { ImageIcon, Link2, Trash2, Upload } from 'lucide-react';
+import { ImageIcon, Link2, Trash2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface SimpleImageInputProps {
