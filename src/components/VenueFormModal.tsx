@@ -874,20 +874,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         <SheetTrigger asChild>
           {trigger}
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted p-4 flex flex-col">
-          <SheetHeader className="mb-2 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2 pr-8">
-              <SheetTitle className="text-cgi-surface-foreground text-base truncate">
+        <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted px-3 pt-3 pb-2 flex flex-col">
+          <SheetHeader className="mb-1 flex-shrink-0">
+            <div className="flex items-center justify-between gap-2 pr-7">
+              <SheetTitle className="text-cgi-surface-foreground text-sm truncate">
                 {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
               </SheetTitle>
               <Button
                 type="button"
                 size="sm"
-                className="cgi-button-primary h-9 px-3 text-xs flex-shrink-0"
+                className="cgi-button-primary h-8 px-3 text-xs flex-shrink-0"
                 disabled={saving || geocoding}
                 onClick={() => {
                   closeAfterSaveRef.current = false;
-                  // Submit the form programmatically
                   const form = document.querySelector<HTMLFormElement>('form[data-venue-form]');
                   form?.requestSubmit();
                 }}
