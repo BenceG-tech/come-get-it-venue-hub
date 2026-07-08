@@ -208,12 +208,19 @@ serve(async (req) => {
       console.log(`[get-public-venues] Sorted by distance from (${userLat}, ${userLng})`);
     }
 
-    console.log(`[get-public-venues] Returning ${finalVenues.length} venues (sort=${useDistance ? 'distance' : 'default'})`)
+    const sortModeLabel = useDistance ? 'distance' : 'default'
+    console.log(`[get-public-venues] Returning ${finalVenues.length} venues (sort=${sortModeLabel}) — first 5:`,
+      finalVenues.slice(0, 5).map((v: any) => `${v.display_order ?? '?'}:${v.name}`).join(' | '))
 
     return new Response(
       JSON.stringify(finalVenues),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'X-Sort-Mode': sortModeLabel,
+          'X-Venue-Count': String(finalVenues.length),
+        }
       }
     )
 

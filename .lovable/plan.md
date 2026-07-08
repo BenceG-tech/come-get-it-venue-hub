@@ -1,108 +1,44 @@
+## Diagnózis
 
-## Cél
+A backend rendben van:
 
-A Rork mobil app már tartalék („teszt") módban működik, mert két konkrét nevű edge function hiányzik. Ezeket telepítjük pontosan a Rork spec szerint, hogy a sárga „Teszt mód" címke eltűnjön és a beváltás élesben, szerveroldali rögzítéssel menjen.
+- Az adminban beállított sorrend a `venues.display_order` oszlopban helyesen mentődik (10, 20, 30, 40, 50 …).
+- A `get-public-venues` edge function `ORDER BY display_order ASC, created_at DESC` sorrendben adja vissza az adatokat, `Cache-Control: no-store` fejlécekkel.
+- Élő tesztkérés az endpointra megerősíti: a Rork által kapott JSON már a helyes sorrendben érkezik (Romkocsma → Bar → Restaurant → Club → Bistro).
 
-## Új edge functionök
+Tehát a probléma **nem** a mi oldalunkon van — a Rork app vagy:
 
-### 1. `supabase/functions/create-redemption-window/index.ts`
+1. **Kliens oldalon átrendezi** a listát (pl. ábécé szerint, távolság szerint, vagy saját "featured" logika alapján), **vagy**
+2. **Cache-eli** a régi választ (React Query staleTime, AsyncStorage, stb.), **vagy**
+3. **A `sort=distance` módot használja** default helyett — abban az esetben nem a `display_order`, hanem a felhasználó GPS-pozíciójától mért távolság határozza meg a sorrendet.
 
-**Auth:** JWT kötelező (`Authorization: Bearer <user_jwt>`), 401 ha hiányzik/érvénytelen.
+## Terv
 
-**Body:** `{ venue_id: UUID (required), drink_id?: UUID, user_latitude?: number, user_longitude?: number }`
+Két apró változtatás a Lovable oldalon, hogy a Rork csapat egyértelműen tudja mit kell javítania, és hogy a szerver válasza öndokumentáló legyen.
 
-**Folyamat:**
-1. Venue lekérés → 404 ha nincs, 403 `VENUE_PAUSED` ha `is_paused`.
-2. **Távolság-ellenőrzés (globális kapcsolóval):**
-   - Beolvassa `platform_settings.enforce_redemption_radius` (default `true` ha nincs).
-   - Ha `false` → kihagyja.
-   - Ha `true` ÉS mindkét koordináta megvan (venue_locations elsődleges, fallback `venues.lat/lng`) → Haversine távolság; ha > `venues.redemption_radius_m` (default 100) → 403 `TOO_FAR` `{ distance_m, allowed_m }`.
-   - Ha koordináta hiányzik → átengedi.
-   - **Admin bypass:** ha a felhasználó `profiles.is_admin = true`, a távolság-ellenőrzés kimarad.
-3. **Ital kiválasztás:** ha `drink_id` megadva, azt használja; különben `venue_drinks` első `is_free_drink = true` sora. 400 `NO_FREE_DRINK` ha nincs.
-4. **Időablak-ellenőrzés:** `free_drink_windows` ahol `drink_id` egyezik.
-   - Ha nincs egyetlen sor sem → bármikor beváltható.
-   - Ha van → Europe/Budapest szerint mai ISO nap (1=hétfő..7=vasárnap) benne a `days` tömbben ÉS `start_time <= now <= end_time` valamelyik sornál. Ha nem → 400 `NO_ACTIVE_WINDOW` `{ windows: [...] }`.
-5. **Napi globális limit:** meglévő szabály (1/nap/user Europe/Budapest a `redemptions` táblán) — ha admin, kihagyja.
-6. **Token gyártás:** `CGI-{6char}-{32char}`; SHA-256 hash; insert `redemption_tokens` (token_hash, token_prefix, user_id, venue_id, drink_id, device_fingerprint (opcionális, ha jön), issued_at=now, expires_at=now+120s, status='issued').
-7. **Response 200:**
-   ```json
-   {
-     "success": true,
-     "token": "CGI-ABC123-...",
-     "token_id": "...",
-     "token_prefix": "ABC123",
-     "expires_at": "...",
-     "expires_in_seconds": 120,
-     "qr_payload": "CGI-ABC123-...",
-     "venue": { "id", "name" },
-     "drink": { "id", "name", "image_url", "category" }
-   }
-   ```
+### 1. `get-public-venues` — `display_order` mező explicit visszaadása + `sort_mode` visszajelzés
+- A response objektumokban jelenleg `display_order` már benne van, de a Rork dev nyilván nem használja. Adjunk hozzá egy top-szintű logot és response header-t: `X-Sort-Mode: default|distance`, hogy a Rork oldalon Network fülben azonnal látszódjon melyik mód aktív.
+- A JSON tömb minden elemében garantáljuk a `display_order` mezőt (már ott van, csak dokumentáljuk).
 
-### 2. `supabase/functions/confirm-redemption/index.ts`
+### 2. Dokumentáció frissítés — `docs/RORK_VENUE_LIST_API.md`
+Új szekció **„Miért nem változik a sorrend a mobilban?"** címmel, ami tételesen felsorolja:
+- A szerver a helyes sorrendben adja vissza az adatokat — **ne rendezze át kliens oldalon** (`.sort()`, `orderBy`, stb. tiltva a default módban).
+- Ha `sort=distance` van használatban, természetesen a távolság dominál — az admin drag & drop **csak** default módban érvényesül.
+- React Query / SWR használat esetén `staleTime: 0` vagy invalidálás javasolt a venues query-nél, hogy az admin változás azonnal látsszon.
+- Curl példa: hogyan lehet a telefonról tesztelni, hogy a szerver mit ad vissza.
 
-**Auth:** JWT kötelező (a beváltó felhasználó, nem staff — a Rork „guest button" flow-hoz).
+### 3. (Opcionális) Cache-busting query paraméter támogatás
+A `get-public-venues` már küld `no-store` fejlécet, de a Rork oldali fetch layer (pl. Expo `fetch` + CDN) néha ignorálja. Adjunk hozzá egy `?v=<timestamp>` támogatást (nem kell semmit tennünk — a query param automatikusan bust-olja a cache-t), és dokumentáljuk mint javasolt gyakorlat.
 
-**Body:** `{ token: string }`
+## Amit a Rork csapatnak kell tennie (a dokumentációban leírva)
 
-**Folyamat:**
-1. Token formátum validáció (`CGI-[A-Z0-9]{6}-[A-Za-z0-9]{32}`) → 400 `INVALID_FORMAT`.
-2. SHA-256 hash, keresés `redemption_tokens`-ben → 404 `NOT_FOUND`.
-3. Ellenőrzés: `user_id === auth.uid()` (kivéve admin) → 403 `NOT_OWNER`.
-4. Státusz: `consumed` → 409 `ALREADY_CONSUMED`; `expired`/`revoked` → 410 `INVALID_STATUS`; lejárt (`expires_at < now`) → státusz frissítés + 410 `EXPIRED`.
-5. Token frissítés: `status='consumed'`, `consumed_at=now`, `consumed_by_staff_id=user_id` (guest flow-ban a user maga).
-6. Drink + venue adatok lekérése.
-7. Insert `redemptions`: `venue_id, user_id, drink (név), drink_id, value: 0, token_id, redeemed_at, status: 'redeemed', metadata: { flow: 'guest_button' }`.
-8. **CSR bónusz:** ha `venues.csr_enabled = true` ÉS `default_charity_id` van → insert `csr_donations` `amount_huf = venues.donation_per_redemption || 250`, `charity_id`, `user_id`, `venue_id`, `redemption_id`.
-9. **Impact üzenet:** összes `csr_donations` a `default_charity_id`-nál (vagy `charities.impact_per_unit` szerint) → `total_impact_units` számolás; `impact_delta = 1`; `impact_message` a `charities.impact_unit_label`-ből vagy fix `'+1 ember kap ma tiszta vizet'`.
-10. Async trigger `match-redemption-transaction` (meglévő).
-11. **Response 200:**
-    ```json
-    {
-      "success": true,
-      "redemption_id": "...",
-      "impact_delta": 1,
-      "impact_message": "+1 ember kap ma tiszta vizet",
-      "total_impact_units": 42
-    }
-    ```
+- Ellenőrizze, hogy a venue lista fetch URL-je **nem** tartalmaz `sort=distance` paramétert (vagy csak akkor, ha a user explicit "közeliek először" gombot nyom).
+- Törölje a kliens oldali sort logikát a default listánál.
+- Invalidálja / töltse újra a venues cache-t a képernyő minden fókuszba kerülésénél (`useFocusEffect` + `refetch`).
 
-### 3. `supabase/config.toml`
+## Változtatandó fájlok
 
-Két új blokk:
-```toml
-[functions.create-redemption-window]
-verify_jwt = true
+- `supabase/functions/get-public-venues/index.ts` — response header + log
+- `docs/RORK_VENUE_LIST_API.md` — troubleshooting szekció
 
-[functions.confirm-redemption]
-verify_jwt = true
-```
-(Rork spec kifejezetten kéri a `verify_jwt = true`-t.)
-
-### 4. CORS
-
-Mindkét function: OPTIONS preflight, `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: authorization, x-client-info, apikey, content-type`, minden válaszban (hibában is).
-
-### 5. Dokumentáció
-
-`docs/RORK_FREE_DRINKS_INTEGRATION.md` frissítése: az új két endpoint leírása, mikor melyiket hívja a Rork app (create → QR kijelzés; confirm → „BEVÁLTOM" gomb megnyomásakor), példa payloadok és hibakódok.
-
-## Amit NEM változtatunk
-
-- Meglévő `issue-redemption-token` és `consume-redemption-token` marad (staff-scanner flow).
-- Nincs adatbázis-migráció — minden szükséges oszlop és tábla létezik (`redemption_tokens`, `redemptions`, `csr_donations`, `platform_settings.enforce_redemption_radius`, `venues.redemption_radius_m`).
-
-## Ellenőrzés
-
-Deploy után:
-1. Supabase dashboard → Edge Functions → mindkettő megjelenik és `active`.
-2. Rork app-ban a beváltás sárga „Teszt mód" címkéje eltűnik.
-3. Log ellenőrzés: `create-redemption-window` és `confirm-redemption` hívások sikeresek.
-
-## Érintett fájlok
-
-- `supabase/functions/create-redemption-window/index.ts` (új)
-- `supabase/functions/confirm-redemption/index.ts` (új)
-- `supabase/config.toml` (2 blokk)
-- `docs/RORK_FREE_DRINKS_INTEGRATION.md` (kiegészítés)
+Migrációra, adatbázis-változtatásra nincs szükség.
