@@ -331,7 +331,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
 
     // Extract cover image URL and set it to both image_url and hero_image_url
-    const coverImage = formData.images?.find(img => img.isCover);
+    const coverImage = formData.images?.find(img => img.isCover) || formData.images?.find(img => img.url?.trim());
     const finalFormData: any = {
       ...formData,
       drinks: finalDrinks,
