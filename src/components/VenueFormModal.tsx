@@ -863,9 +863,25 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </SheetTrigger>
         <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted p-4 flex flex-col">
           <SheetHeader className="mb-2 flex-shrink-0">
-            <SheetTitle className="text-cgi-surface-foreground">
-              {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
-            </SheetTitle>
+            <div className="flex items-center justify-between gap-2 pr-8">
+              <SheetTitle className="text-cgi-surface-foreground text-base truncate">
+                {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
+              </SheetTitle>
+              <Button
+                type="button"
+                size="sm"
+                className="cgi-button-primary h-9 px-3 text-xs flex-shrink-0"
+                disabled={saving || geocoding}
+                onClick={() => {
+                  closeAfterSaveRef.current = false;
+                  // Submit the form programmatically
+                  const form = document.querySelector<HTMLFormElement>('form[data-venue-form]');
+                  form?.requestSubmit();
+                }}
+              >
+                {saving ? 'Mentés...' : 'Mentés'}
+              </Button>
+            </div>
           </SheetHeader>
           <div className="flex-1 min-h-0 flex flex-col">
             {formContent}
