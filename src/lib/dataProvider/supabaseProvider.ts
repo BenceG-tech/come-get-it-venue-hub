@@ -58,6 +58,7 @@ const VENUE_COLUMNS = new Set([
   "rating",
   "participates_in_points",
   "points_per_visit",
+  "redemption_radius_m",
 ]);
 
 function pickVenueColumns(payload: any) {
