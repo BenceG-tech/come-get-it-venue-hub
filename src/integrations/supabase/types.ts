@@ -827,6 +827,27 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       platform_snapshots: {
         Row: {
           active_users: number | null
@@ -2340,6 +2361,7 @@ export type Database = {
           points_rules: Json | null
           price_tier: number | null
           rating: number | null
+          redemption_radius_m: number | null
           saltedge_connection_id: string | null
           tags: string[] | null
           updated_at: string
@@ -2377,6 +2399,7 @@ export type Database = {
           points_rules?: Json | null
           price_tier?: number | null
           rating?: number | null
+          redemption_radius_m?: number | null
           saltedge_connection_id?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -2414,6 +2437,7 @@ export type Database = {
           points_rules?: Json | null
           price_tier?: number | null
           rating?: number | null
+          redemption_radius_m?: number | null
           saltedge_connection_id?: string | null
           tags?: string[] | null
           updated_at?: string
