@@ -112,6 +112,7 @@ export interface Venue {
   rating?: number | null;               // 0.0 – 5.0
   participates_in_points?: boolean;     // Loyalty pontgyűjtés aktív
   points_per_visit?: number | null;     // Alap pontszám látogatásonként
+  redemption_radius_m?: number | null;  // Beváltási sugár méterben (üres = platform alapérték)
 
   // Added for mobile/consumer compatibility
   image_url?: string;       // card/list image
