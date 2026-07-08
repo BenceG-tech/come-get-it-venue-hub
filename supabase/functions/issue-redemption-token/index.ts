@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: "Venue not found", code: "VENUE_NOT_FOUND" }, 404);
     }
 
-    if (venue.is_paused) {
+    if (venue.is_paused && !testMode) {
       return jsonResponse({ success: false, error: "Venue is currently paused", code: "VENUE_PAUSED", action: "Kapcsold vissza a helyszínt az adminban." }, 403);
     }
 
