@@ -403,7 +403,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-4">
+        <div className="flex-1 overflow-y-auto pt-3">
 
         {/* ÁLTALÁNOS */}
         <TabsContent value="basic" className="space-y-4 mt-0">
