@@ -166,8 +166,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: "venue_id and device_fingerprint are required", code: "MISSING_REQUIRED_FIELDS" }, 400);
     }
 
-    // Validate device_fingerprint format (16-256 chars, alphanumeric + hyphens)
-    const fingerprintRegex = /^[a-zA-Z0-9\-]{16,256}$/;
+    // Validate device_fingerprint format. Rork examples often use fp_... so underscore is allowed.
+    const fingerprintRegex = /^[a-zA-Z0-9\-_]{8,256}$/;
     if (!fingerprintRegex.test(device_fingerprint)) {
       return jsonResponse({ success: false, error: "Invalid device fingerprint format", code: "INVALID_DEVICE_FINGERPRINT" }, 400);
     }
