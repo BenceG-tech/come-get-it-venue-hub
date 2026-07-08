@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,58 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Copy, Crown, Star, Shield } from "lucide-react";
+import { Copy, Crown, Star, Shield, MapPin, Loader2 } from "lucide-react";
 import { mockVenue } from "@/lib/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const [venue, setVenue] = useState(mockVenue);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Platform settings (admin-only)
+  const [enforceRadius, setEnforceRadius] = useState<boolean>(true);
+  const [defaultRadius, setDefaultRadius] = useState<number>(100);
+  const [platformLoading, setPlatformLoading] = useState<boolean>(true);
+  const [platformSaving, setPlatformSaving] = useState<boolean>(false);
+
+  useEffect(() => {
+    (async () => {
+      setPlatformLoading(true);
+      const { data, error } = await supabase
+        .from("platform_settings" as any)
+        .select("key, value")
+        .in("key", ["enforce_redemption_radius", "default_redemption_radius_m"]);
+      if (!error && Array.isArray(data)) {
+        const map = new Map<string, any>(data.map((r: any) => [r.key, r.value]));
+        setEnforceRadius(map.get("enforce_redemption_radius") !== false);
+        const dr = Number(map.get("default_redemption_radius_m") ?? 100);
+        setDefaultRadius(Number.isFinite(dr) && dr > 0 ? dr : 100);
+      }
+      setPlatformLoading(false);
+    })();
+  }, []);
+
+  const savePlatformSettings = async () => {
+    setPlatformSaving(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const uid = sess.session?.user.id;
+      const rows = [
+        { key: "enforce_redemption_radius", value: enforceRadius as any, updated_by: uid, updated_at: new Date().toISOString() },
+        { key: "default_redemption_radius_m", value: Math.max(10, Math.min(5000, defaultRadius)) as any, updated_by: uid, updated_at: new Date().toISOString() },
+      ];
+      const { error } = await supabase.from("platform_settings" as any).upsert(rows, { onConflict: "key" });
+      if (error) throw error;
+      toast({ title: "Elmentve", description: "Platform beállítások frissítve." });
+    } catch (e: any) {
+      toast({ title: "Hiba", description: String(e?.message || e), variant: "destructive" });
+    } finally {
+      setPlatformSaving(false);
+    }
+  };
+
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -58,6 +104,66 @@ export default function Settings() {
       </div>
 
       <div className="space-y-6">
+        {/* Platform Settings — Redemption */}
+        <Card className="cgi-card">
+          <div className="cgi-card-header">
+            <h3 className="cgi-card-title flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-cgi-primary" />
+              Beváltás — helymeghatározás
+            </h3>
+            <Badge className="cgi-badge-info">Platform</Badge>
+          </div>
+
+          {platformLoading ? (
+            <div className="flex items-center gap-2 text-cgi-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Betöltés…
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <Label className="text-cgi-surface-foreground">
+                    Távolság-ellenőrzés kényszerítése
+                  </Label>
+                  <p className="text-sm text-cgi-muted-foreground mt-1">
+                    Ha be van kapcsolva, a Rork app csak akkor engedi a beváltást, ha a vendég a helyszín sugarán belül van.
+                    Kapcsold ki demo/videó rögzítéshez — utána ne felejtsd visszakapcsolni.
+                  </p>
+                </div>
+                <Switch checked={enforceRadius} onCheckedChange={setEnforceRadius} />
+              </div>
+
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="default-radius" className="text-cgi-surface-foreground">
+                  Alapértelmezett sugár (méter)
+                </Label>
+                <Input
+                  id="default-radius"
+                  type="number"
+                  min={10}
+                  max={5000}
+                  value={defaultRadius}
+                  onChange={(e) => setDefaultRadius(parseInt(e.target.value, 10) || 0)}
+                  className="cgi-input"
+                />
+                <p className="text-xs text-cgi-muted-foreground">
+                  Ez érvényes minden helyszínre, amelynek nincs saját sugara beállítva.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={savePlatformSettings}
+                  disabled={platformSaving}
+                  className="cgi-button-primary"
+                >
+                  {platformSaving ? "Mentés…" : "Platform beállítások mentése"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+
         {/* Venue Profile */}
         <Card className="cgi-card">
           <div className="cgi-card-header">

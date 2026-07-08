@@ -7,32 +7,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  Gift, 
-  MapPin, 
-  TrendingUp,
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
   Clock,
   Bell,
   Award,
   ChevronRight,
   CheckCircle2,
   AlertCircle,
-  Beer
+  Beer,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDistanceToNow, format } from "date-fns";
-import { hu } from "date-fns/locale";
+import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ManualNotificationModal } from "./ManualNotificationModal";
 import { SingleBonusPointsModal } from "./SingleBonusPointsModal";
+
 
 interface UserQuickViewProps {
   userId: string | null;
@@ -139,6 +144,232 @@ export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps
     navigate(`/users/${userId}`);
   };
 
+  const isMobile = useIsMobile();
+
+  const body = (
+    <>
+      {isLoading ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+          </div>
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-400">
+          <AlertCircle className="h-12 w-12 mx-auto mb-2" />
+          <p>Hiba történt az adatok betöltése közben</p>
+        </div>
+      ) : data ? (
+        <div className="space-y-4">
+          {/* Profile Header — compact */}
+          <div className="flex items-start gap-3">
+            <Avatar className="h-12 w-12 shrink-0">
+              <AvatarImage src={data.user.avatar_url || undefined} />
+              <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary">
+                {getInitials(data.user.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base sm:text-lg font-semibold text-cgi-surface-foreground truncate">
+                  {data.user.name}
+                </h3>
+                {getChurnBadge(data.scores.churn_risk)}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-cgi-muted-foreground">
+                {data.user.email && (
+                  <span className="flex items-center gap-1 truncate max-w-[180px]">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{data.user.email}</span>
+                  </span>
+                )}
+                {data.user.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {data.user.phone}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {data.stats.days_since_registration} napja
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI Grid — compact 2x3 on mobile, 3x2 on desktop */}
+          <div className="grid grid-cols-3 gap-2">
+            <KpiTile label="Beváltás" value={data.stats.total_free_drink_redemptions} />
+            <KpiTile label="Pont" value={data.points.balance} />
+            <KpiTile label="Helyszín" value={data.venue_affinity.length} />
+            <KpiTile label="Költés" value={`${data.points.total_spend.toLocaleString("hu-HU")} Ft`} small />
+            <KpiTile label="ROI" value={`${data.scores.roi.toFixed(1)}x`} />
+            <KpiTile
+              label="Engagement"
+              value={`${data.scores.engagement_score}%`}
+              tone={
+                data.scores.engagement_score >= 50
+                  ? "green"
+                  : data.scores.engagement_score >= 25
+                    ? "yellow"
+                    : "red"
+              }
+            />
+          </div>
+
+          {/* Today's Status */}
+          <div>
+            <p className="text-xs font-medium text-cgi-muted-foreground mb-2 flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              Mai állapot
+            </p>
+            <div className="space-y-1.5">
+              {data.venue_affinity.slice(0, 3).map((venue) => (
+                <div
+                  key={venue.venue_id}
+                  className="flex items-center justify-between p-2 rounded-md bg-cgi-muted/20"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <MapPin className="h-3.5 w-3.5 text-cgi-muted-foreground shrink-0" />
+                    <span className="text-xs text-cgi-surface-foreground truncate">
+                      {venue.venue_name}
+                    </span>
+                  </div>
+                  {venue.today_redemption?.redeemed ? (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                      <span className="text-[11px] text-green-400">
+                        {venue.today_redemption.redeemed_at &&
+                          format(new Date(venue.today_redemption.redeemed_at), "HH:mm")}
+                      </span>
+                    </div>
+                  ) : venue.next_window ? (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Clock className="h-3.5 w-3.5 text-yellow-400" />
+                      <span className="text-[11px] text-yellow-400">
+                        {venue.next_window.start}–{venue.next_window.end}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-cgi-muted-foreground shrink-0">
+                      Nincs ma
+                    </span>
+                  )}
+                </div>
+              ))}
+              {data.venue_affinity.length === 0 && (
+                <p className="text-xs text-cgi-muted-foreground text-center py-2">
+                  Nincs helyszín adat
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Top Drinks */}
+          {data.drink_preferences.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-cgi-muted-foreground mb-2 flex items-center gap-1.5">
+                <Beer className="h-3.5 w-3.5" />
+                Top italok
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {data.drink_preferences.slice(0, 5).map((drink, index) => (
+                  <Badge
+                    key={drink.drink_name}
+                    variant="outline"
+                    className="bg-cgi-muted/20 text-[11px] py-0.5 px-2"
+                  >
+                    {index + 1}. {drink.drink_name} ({drink.count}×)
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+
+  const actions = data ? (
+    <div className="flex gap-2 pt-2">
+      <Button
+        onClick={handleViewProfile}
+        size="sm"
+        className="flex-1 bg-cgi-primary hover:bg-cgi-primary/90 h-9"
+      >
+        <User className="h-3.5 w-3.5 mr-1" />
+        Profil
+        <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="flex-1 h-9"
+        onClick={() => setShowNotificationModal(true)}
+      >
+        <Bell className="h-3.5 w-3.5 mr-1" />
+        Push
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="flex-1 h-9"
+        onClick={() => setShowBonusModal(true)}
+      >
+        <Award className="h-3.5 w-3.5 mr-1" />
+        Jutalom
+      </Button>
+    </div>
+  ) : null;
+
+  const subModals = data ? (
+    <>
+      <ManualNotificationModal
+        userId={data.user.id}
+        userName={data.user.name}
+        open={showNotificationModal}
+        onOpenChange={setShowNotificationModal}
+      />
+      <SingleBonusPointsModal
+        userId={data.user.id}
+        userName={data.user.name}
+        open={showBonusModal}
+        onOpenChange={setShowBonusModal}
+      />
+    </>
+  ) : null;
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[92vh] flex flex-col p-0 rounded-t-xl"
+        >
+          <SheetHeader className="px-4 pt-4 pb-2 border-b border-cgi-muted/30">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <User className="h-4 w-4 text-cgi-primary" />
+              Felhasználó gyorsnézet
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-4 py-3">{body}</div>
+          {actions && (
+            <div className="px-4 pb-4 pt-2 border-t border-cgi-muted/30 bg-cgi-background">
+              {actions}
+            </div>
+          )}
+        </SheetContent>
+        {subModals}
+      </Sheet>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -148,232 +379,42 @@ export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps
             Felhasználó gyorsnézet
           </DialogTitle>
         </DialogHeader>
-
-        {isLoading ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-32" />
-              </div>
-            </div>
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-8 text-red-400">
-            <AlertCircle className="h-12 w-12 mx-auto mb-2" />
-            <p>Hiba történt az adatok betöltése közben</p>
-          </div>
-        ) : data ? (
-          <div className="space-y-6">
-            {/* Profile Header */}
-            <div className="flex items-start gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={data.user.avatar_url || undefined} />
-                <AvatarFallback className="bg-cgi-secondary/20 text-cgi-secondary text-xl">
-                  {getInitials(data.user.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-cgi-surface-foreground">{data.user.name}</h3>
-                <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-cgi-muted-foreground">
-                  {data.user.email && (
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {data.user.email}
-                    </span>
-                  )}
-                  {data.user.phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      {data.user.phone}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 mt-1 text-sm text-cgi-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  Tag: {data.stats.days_since_registration} napja
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-4">
-              {/* Basic Stats */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-cgi-muted-foreground uppercase tracking-wider">📊 Alap</p>
-                <div className="space-y-1">
-                  <p className="text-sm text-cgi-surface-foreground">
-                    <span className="font-medium">{data.stats.total_free_drink_redemptions}</span> beváltás
-                  </p>
-                  <p className="text-sm text-cgi-surface-foreground">
-                    <span className="font-medium">{data.venue_affinity.length}</span> helyszín
-                  </p>
-                  <p className="text-sm text-cgi-surface-foreground">
-                    <span className="font-medium">{data.points.balance}</span> pont
-                  </p>
-                </div>
-              </div>
-
-              {/* Financial Stats */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-cgi-muted-foreground uppercase tracking-wider">💰 Pénzügyi</p>
-                <div className="space-y-1">
-                  <p className="text-sm text-cgi-surface-foreground">
-                    <span className="font-medium">{data.points.total_spend.toLocaleString("hu-HU")}</span> Ft költés
-                  </p>
-                  <p className="text-sm text-cgi-surface-foreground">
-                    <span className="font-medium">{data.scores.roi.toFixed(1)}x</span> ROI
-                  </p>
-                  <p className="text-sm text-cgi-surface-foreground">
-                    <span className="font-medium">{data.scores.ltv.toLocaleString("hu-HU")}</span> Ft LTV
-                  </p>
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-cgi-muted-foreground uppercase tracking-wider">🎯 Státusz</p>
-                <div className="space-y-1">
-                  <p className="text-sm text-cgi-surface-foreground flex items-center gap-1">
-                    {data.scores.engagement_score >= 50 ? (
-                      <span className="text-green-400">🟢</span>
-                    ) : data.scores.engagement_score >= 25 ? (
-                      <span className="text-yellow-400">🟡</span>
-                    ) : (
-                      <span className="text-red-400">🔴</span>
-                    )}
-                    {data.scores.engagement_score}% engagement
-                  </p>
-                  {getChurnBadge(data.scores.churn_risk)}
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Today's Status */}
-            <div>
-              <p className="text-sm font-medium text-cgi-muted-foreground mb-3 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Mai állapot
-              </p>
-              <div className="space-y-2">
-                {data.venue_affinity.slice(0, 3).map((venue) => (
-                  <div
-                    key={venue.venue_id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-cgi-muted/20"
-                  >
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-cgi-muted-foreground" />
-                      <span className="text-sm text-cgi-surface-foreground">{venue.venue_name}</span>
-                    </div>
-                    {venue.today_redemption?.redeemed ? (
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-400" />
-                        <span className="text-xs text-green-400">
-                          {venue.today_redemption.redeemed_at && format(new Date(venue.today_redemption.redeemed_at), "HH:mm")}
-                          {venue.today_redemption.drink_name && ` (${venue.today_redemption.drink_name})`}
-                        </span>
-                      </div>
-                    ) : venue.next_window ? (
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-yellow-400" />
-                        <span className="text-xs text-yellow-400">
-                          {venue.next_window.start}-{venue.next_window.end}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-cgi-muted-foreground">Nincs ablak ma</span>
-                    )}
-                  </div>
-                ))}
-                {data.venue_affinity.length === 0 && (
-                  <p className="text-sm text-cgi-muted-foreground text-center py-2">
-                    Nincs helyszín adat
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Top Drinks */}
-            {data.drink_preferences.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium text-cgi-muted-foreground mb-3 flex items-center gap-2">
-                    <Beer className="h-4 w-4" />
-                    Top italok
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.drink_preferences.slice(0, 5).map((drink, index) => (
-                      <Badge
-                        key={drink.drink_name}
-                        variant="outline"
-                        className="bg-cgi-muted/20"
-                      >
-                        {index + 1}. {drink.drink_name} ({drink.count}×)
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Separator />
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={handleViewProfile}
-                className="flex-1 bg-cgi-primary hover:bg-cgi-primary/90"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Teljes profil
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowNotificationModal(true)}
-              >
-                <Bell className="h-4 w-4 mr-2" />
-                Push küldése
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowBonusModal(true)}
-              >
-                <Award className="h-4 w-4 mr-2" />
-                Jutalom
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        {body}
+        {actions}
       </DialogContent>
-
-      {/* Sub-modals */}
-      {data && (
-        <>
-          <ManualNotificationModal
-            userId={data.user.id}
-            userName={data.user.name}
-            open={showNotificationModal}
-            onOpenChange={setShowNotificationModal}
-          />
-          <SingleBonusPointsModal
-            userId={data.user.id}
-            userName={data.user.name}
-            open={showBonusModal}
-            onOpenChange={setShowBonusModal}
-          />
-        </>
-      )}
+      {subModals}
     </Dialog>
   );
 }
+
+function KpiTile({
+  label,
+  value,
+  small,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  small?: boolean;
+  tone?: "green" | "yellow" | "red";
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-green-400"
+      : tone === "yellow"
+        ? "text-yellow-400"
+        : tone === "red"
+          ? "text-red-400"
+          : "text-cgi-surface-foreground";
+  return (
+    <div className="rounded-md bg-cgi-muted/15 border border-cgi-muted/20 px-2 py-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-cgi-muted-foreground truncate">
+        {label}
+      </p>
+      <p className={`font-semibold leading-tight ${small ? "text-xs" : "text-sm"} ${toneClass}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+

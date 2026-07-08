@@ -6,6 +6,69 @@ Ez a dokumentáció a Come Get It ingyenes ital rendszerének integrációját i
 
 ---
 
+## 0. Helymeghatározás — Beváltási sugár (ÚJ, 2026-07)
+
+A távolság-ellenőrzést a **kliens (Rork app)** végzi, kétféle konfigurációval:
+
+### 0.1 Globális kapcsoló — `platform_settings`
+
+Új tábla: `platform_settings (key text, value jsonb)`. Bárki olvashatja.
+
+Két releváns kulcs:
+
+| Kulcs | Típus | Alapérték | Jelentés |
+|-------|-------|-----------|----------|
+| `enforce_redemption_radius` | boolean | `false` | Ha `false` → **hagyj ki minden távolság-ellenőrzést**, akárhol van a felhasználó. Ha `true` → csak a sugáron belül engedj beváltást. |
+| `default_redemption_radius_m` | number | `100` | A használandó sugár (m), ha a helyszínre nincs saját beállítva. |
+
+Betöltés app indulásakor és beváltás előtt (cache 60 mp):
+
+```typescript
+const { data } = await supabase
+  .from('platform_settings')
+  .select('key,value')
+  .in('key', ['enforce_redemption_radius', 'default_redemption_radius_m']);
+
+const map = new Map(data?.map(r => [r.key, r.value]) ?? []);
+const enforceRadius = map.get('enforce_redemption_radius') !== false;
+const defaultRadiusM = Number(map.get('default_redemption_radius_m') ?? 100);
+```
+
+### 0.2 Helyszínenkénti sugár — `venues.redemption_radius_m`
+
+Új oszlop: `venues.redemption_radius_m integer` (nullable). Ha ki van töltve → ezt használd. Ha `NULL` → a `default_redemption_radius_m` érvényes.
+
+### 0.3 Admin bypass
+
+Ha a bejelentkezett user admin (`profiles.is_admin = true`), a Rork automatikusan hagyja ki a távolság-ellenőrzést, és a szerver felé is küldheti a `test_mode: true` flaget az `issue-redemption-token` hívásban.
+
+### 0.4 Rork kliens pszeudo-kód
+
+```typescript
+async function canRedeemHere(user, venue) {
+  const cfg = await getPlatformSettings(); // cached
+  if (user.is_admin) return { ok: true };
+  if (!cfg.enforceRadius) return { ok: true };
+
+  const radiusM = venue.redemption_radius_m ?? cfg.defaultRadiusM;
+  const pos = await getCurrentPosition();
+  const distM = haversine(pos, venue.coordinates);
+
+  if (distM <= radiusM) return { ok: true };
+  return {
+    ok: false,
+    reason: `Túl messze vagy: ${Math.round(distM)} m (max ${radiusM} m).`
+  };
+}
+```
+
+### 0.5 Demo mód videó rögzítéshez
+
+Az admin `Beállítások` oldalon egyetlen kapcsolóval kikapcsolható a `enforce_redemption_radius`. Ilyenkor **minden** user bárhonnan beválthat — csak demózás idejére hagyd ki, aztán kapcsold vissza.
+
+---
+
+
 ## 1. Napok Mező Formátum (KRITIKUS!)
 
 ### Adatbázis Formátum
