@@ -380,10 +380,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const formContent = (
     <form onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
-        <div className="sticky top-0 z-10 bg-cgi-surface pb-2 -mx-1 px-1">
+        <div className="sticky top-0 z-10 bg-cgi-surface pb-1.5 -mx-1 px-1">
           {isMobile ? (
             <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="cgi-input h-11 bg-cgi-surface border-cgi-muted text-cgi-surface-foreground font-medium">
+              <SelectTrigger className="cgi-input h-9 bg-cgi-surface border-cgi-muted text-cgi-surface-foreground font-medium text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-cgi-surface border-cgi-muted">
