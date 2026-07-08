@@ -146,6 +146,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       rating: venue?.rating ?? null,
       participates_in_points: venue?.participates_in_points ?? true,
       points_per_visit: venue?.points_per_visit ?? 10,
+      redemption_radius_m: venue?.redemption_radius_m ?? null,
     });
   }, [open, venue?.id]);
 
