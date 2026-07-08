@@ -104,6 +104,66 @@ export default function Settings() {
       </div>
 
       <div className="space-y-6">
+        {/* Platform Settings — Redemption */}
+        <Card className="cgi-card">
+          <div className="cgi-card-header">
+            <h3 className="cgi-card-title flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-cgi-primary" />
+              Beváltás — helymeghatározás
+            </h3>
+            <Badge className="cgi-badge-info">Platform</Badge>
+          </div>
+
+          {platformLoading ? (
+            <div className="flex items-center gap-2 text-cgi-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Betöltés…
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <Label className="text-cgi-surface-foreground">
+                    Távolság-ellenőrzés kényszerítése
+                  </Label>
+                  <p className="text-sm text-cgi-muted-foreground mt-1">
+                    Ha be van kapcsolva, a Rork app csak akkor engedi a beváltást, ha a vendég a helyszín sugarán belül van.
+                    Kapcsold ki demo/videó rögzítéshez — utána ne felejtsd visszakapcsolni.
+                  </p>
+                </div>
+                <Switch checked={enforceRadius} onCheckedChange={setEnforceRadius} />
+              </div>
+
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="default-radius" className="text-cgi-surface-foreground">
+                  Alapértelmezett sugár (méter)
+                </Label>
+                <Input
+                  id="default-radius"
+                  type="number"
+                  min={10}
+                  max={5000}
+                  value={defaultRadius}
+                  onChange={(e) => setDefaultRadius(parseInt(e.target.value, 10) || 0)}
+                  className="cgi-input"
+                />
+                <p className="text-xs text-cgi-muted-foreground">
+                  Ez érvényes minden helyszínre, amelynek nincs saját sugara beállítva.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={savePlatformSettings}
+                  disabled={platformSaving}
+                  className="cgi-button-primary"
+                >
+                  {platformSaving ? "Mentés…" : "Platform beállítások mentése"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+
         {/* Venue Profile */}
         <Card className="cgi-card">
           <div className="cgi-card-header">
