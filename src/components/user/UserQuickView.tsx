@@ -7,32 +7,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  Gift, 
-  MapPin, 
-  TrendingUp,
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
   Clock,
   Bell,
   Award,
   ChevronRight,
   CheckCircle2,
   AlertCircle,
-  Beer
+  Beer,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDistanceToNow, format } from "date-fns";
-import { hu } from "date-fns/locale";
+import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ManualNotificationModal } from "./ManualNotificationModal";
 import { SingleBonusPointsModal } from "./SingleBonusPointsModal";
+
 
 interface UserQuickViewProps {
   userId: string | null;
