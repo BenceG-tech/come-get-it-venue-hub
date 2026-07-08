@@ -55,6 +55,8 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('basic');
+  const closeAfterSaveRef = useRef<boolean>(false);
   const { toast } = useToast();
   const drinkSelectorRef = useRef<EnhancedDrinkSelectorRef>(null);
   const isMobile = useIsMobile();
