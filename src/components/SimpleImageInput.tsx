@@ -69,7 +69,7 @@ export function SimpleImageInput({ value, onChange, placeholder = 'Kép URL' }: 
             />
             <ImageUploadInput
               onUploaded={onChange}
-              buttonLabel=""
+              buttonLabel="↑"
               size="sm"
               variant="outline"
               className="[&_button]:h-10 [&_button]:w-10 [&_button]:px-0"
