@@ -10,6 +10,15 @@ interface IssueTokenRequest {
   drink_id?: string;
   device_fingerprint: string;
   user_id?: string; // Optional: for authenticated users
+  test_mode?: boolean; // Admin/preview only: bypass redeem blockers for end-to-end testing
+  bypass_checks?: boolean; // Alias for Rork/dev tooling
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 // Generate random string
@@ -55,6 +64,62 @@ function getTodayStartBudapest(now: Date): Date {
   return new Date(budapestMidnight.getTime() - budapestOffset);
 }
 
+function getZonedParts(now: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone || "Europe/Budapest",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || "";
+  const weekdayMap: Record<string, number> = {
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+    Sun: 7,
+  };
+
+  return {
+    isoDay: weekdayMap[get("weekday")] || 1,
+    hour: Number(get("hour")),
+    minute: Number(get("minute")),
+  };
+}
+
+async function requestHasAdminBypass(req: Request, supabaseUrl: string, supabaseAnonKey: string, supabaseServiceKey: string) {
+  if (Deno.env.get("ALLOW_REDEMPTION_TEST_MODE") === "true") return true;
+
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  try {
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(jwt);
+    const userId = claimsData?.claims?.sub as string | undefined;
+    if (claimsError || !userId) return false;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", userId)
+      .single();
+
+    return profile?.is_admin === true;
+  } catch (error) {
+    console.error("Admin bypass check failed:", error);
+    return false;
+  }
+}
+
 // Check if current time is within a free drink window
 function isWindowActive(
   days: number[],
@@ -63,9 +128,7 @@ function isWindowActive(
   timezone: string,
   now: Date
 ): boolean {
-  // Convert JavaScript day (0=Sunday, 1-6=Monday-Saturday) to ISO day (1=Monday, 7=Sunday)
-  const jsDay = now.getDay(); // 0-6 where 0=Sunday
-  const isoDay = jsDay === 0 ? 7 : jsDay; // Convert to 1-7 where 1=Monday, 7=Sunday
+  const { isoDay, hour, minute } = getZonedParts(now, timezone);
   
   if (!days.includes(isoDay)) {
     return false;
@@ -75,10 +138,7 @@ function isWindowActive(
   const [startHour, startMin] = startTime.split(":").map(Number);
   const [endHour, endMin] = endTime.split(":").map(Number);
   
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
-  
-  const currentMinutes = currentHour * 60 + currentMin;
+  const currentMinutes = hour * 60 + minute;
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
 
@@ -94,25 +154,22 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: IssueTokenRequest = await req.json();
     const { venue_id, drink_id, device_fingerprint, user_id } = body;
+    const requestedTestMode = body.test_mode === true || body.bypass_checks === true || req.headers.get("x-redemption-test-mode") === "true";
+    const testMode = requestedTestMode && await requestHasAdminBypass(req, supabaseUrl, supabaseAnonKey, supabaseServiceKey);
 
     if (!venue_id || !device_fingerprint) {
-      return new Response(
-        JSON.stringify({ success: false, error: "venue_id and device_fingerprint are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "venue_id and device_fingerprint are required", code: "MISSING_REQUIRED_FIELDS" }, 400);
     }
 
     // Validate device_fingerprint format (16-256 chars, alphanumeric + hyphens)
     const fingerprintRegex = /^[a-zA-Z0-9\-]{16,256}$/;
     if (!fingerprintRegex.test(device_fingerprint)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid device fingerprint format" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Invalid device fingerprint format", code: "INVALID_DEVICE_FINGERPRINT" }, 400);
     }
 
     const now = new Date();
@@ -127,17 +184,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (venueError || !venue) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Venue not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Venue not found", code: "VENUE_NOT_FOUND" }, 404);
     }
 
     if (venue.is_paused) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Venue is currently paused" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Venue is currently paused", code: "VENUE_PAUSED", action: "Kapcsold vissza a helyszínt az adminban." }, 403);
     }
 
     // 2. Check for active free drink window
@@ -148,10 +199,7 @@ Deno.serve(async (req) => {
 
     if (windowsError) {
       console.error("Error fetching windows:", windowsError);
-      return new Response(
-        JSON.stringify({ success: false, error: "Error checking free drink windows" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Error checking free drink windows", code: "WINDOW_CHECK_FAILED" }, 500);
     }
 
     // Find active window
@@ -159,15 +207,18 @@ Deno.serve(async (req) => {
       isWindowActive(w.days, w.start_time, w.end_time, w.timezone, now)
     );
 
-    if (!activeWindow) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No active free drink window", code: "NO_ACTIVE_WINDOW" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!activeWindow && !testMode) {
+      return jsonResponse({
+        success: false,
+        error: "No active free drink window",
+        code: "NO_ACTIVE_WINDOW",
+        action: "Az adminban állíts be aktív időablakot az ingyenes italhoz, vagy teszteléshez küldj admin JWT-t és test_mode=true értéket.",
+        now_timezone: "Europe/Budapest",
+      }, 400);
     }
 
     // Use drink from window or provided drink_id
-    const selectedDrinkId = drink_id || activeWindow.drink_id;
+    const selectedDrinkId = drink_id || activeWindow?.drink_id;
 
     // 3. Get drink details
     let drinkData = null;
@@ -193,10 +244,7 @@ Deno.serve(async (req) => {
     }
 
     if (!drinkData) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No free drink configured for this venue" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "No free drink configured for this venue", code: "NO_FREE_DRINK", action: "Adj hozzá legalább egy ingyenes italt a helyszínhez." }, 400);
     }
 
     // 4. Rate limiting - check if device already has a token in last 5 minutes
@@ -214,16 +262,14 @@ Deno.serve(async (req) => {
       console.error("Rate limit check error:", rateLimitError);
     }
 
-    if (recentTokens && recentTokens.length > 0) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Rate limit exceeded. Please wait 5 minutes between token requests.",
-          code: "RATE_LIMITED",
-          retry_after_seconds: 300
-        }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!testMode && recentTokens && recentTokens.length > 0) {
+      return jsonResponse({ 
+        success: false, 
+        error: "Rate limit exceeded. Please wait 5 minutes between token requests.",
+        code: "RATE_LIMITED",
+        retry_after_seconds: 300,
+        action: "Tesztelésnél használj eltérő device_fingerprint értéket, vagy admin test_mode=true módot."
+      }, 429);
     }
 
     // 5. GLOBAL USER DAILY LIMIT CHECK - 1 free drink per day per user (GLOBALLY, not per venue!)
@@ -249,16 +295,14 @@ Deno.serve(async (req) => {
       
       console.log(`User ${user_id} has ${globalTodayCount || 0} redemptions today (globally)`);
       
-      if (globalTodayCount && globalTodayCount >= 1) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
-            code: "USER_GLOBAL_DAILY_LIMIT",
-            next_available: tomorrowStart.toISOString()
-          }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (!testMode && globalTodayCount && globalTodayCount >= 1) {
+        return jsonResponse({ 
+          success: false, 
+          error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
+          code: "USER_GLOBAL_DAILY_LIMIT",
+          next_available: tomorrowStart.toISOString(),
+          action: "Teszteléshez használj admin test_mode=true módot; élesben ez a napi 1 ital szabály."
+        }, 403);
       }
     } else {
       // For device fingerprint (anonymous users), check consumed tokens GLOBALLY
@@ -271,16 +315,14 @@ Deno.serve(async (req) => {
       
       console.log(`Device ${device_fingerprint} has ${tokenRedemptions || 0} consumed tokens today (globally)`);
       
-      if (tokenRedemptions && tokenRedemptions >= 1) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
-            code: "USER_GLOBAL_DAILY_LIMIT",
-            next_available: tomorrowStart.toISOString()
-          }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (!testMode && tokenRedemptions && tokenRedemptions >= 1) {
+        return jsonResponse({ 
+          success: false, 
+          error: "Ma már beváltottál ingyen italt. Próbáld újra holnap!",
+          code: "USER_GLOBAL_DAILY_LIMIT",
+          next_available: tomorrowStart.toISOString(),
+          action: "Teszteléshez használj új device_fingerprint értéket vagy admin test_mode=true módot."
+        }, 403);
       }
     }
 
@@ -291,7 +333,7 @@ Deno.serve(async (req) => {
       .eq("venue_id", venue_id)
       .single();
 
-    if (caps) {
+    if (caps && !testMode) {
       // Count today's redemptions for venue cap
       const { count: todayCount } = await supabase
         .from("redemptions")
@@ -300,14 +342,12 @@ Deno.serve(async (req) => {
         .gte("redeemed_at", todayStart.toISOString());
 
       if (caps.daily && todayCount !== null && todayCount >= caps.daily) {
-        return new Response(
-          JSON.stringify({ 
+          return jsonResponse({ 
             success: false, 
             error: caps.alt_offer_text || "Daily redemption limit reached",
-            code: "DAILY_CAP_REACHED"
-          }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+            code: "DAILY_CAP_REACHED",
+            action: "Emeld vagy töröld a napi limitet az adminban, ha élesben is engedni akarod."
+          }, 403);
       }
 
       // Count this hour's redemptions
@@ -322,14 +362,12 @@ Deno.serve(async (req) => {
           .gte("redeemed_at", hourStart.toISOString());
 
         if (hourCount !== null && hourCount >= caps.hourly) {
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: caps.alt_offer_text || "Hourly redemption limit reached",
-              code: "HOURLY_CAP_REACHED"
-            }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ 
+            success: false, 
+            error: caps.alt_offer_text || "Hourly redemption limit reached",
+            code: "HOURLY_CAP_REACHED",
+            action: "Emeld vagy töröld az óránkénti limitet az adminban, ha élesben is engedni akarod."
+          }, 403);
         }
       }
     }
@@ -360,26 +398,25 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error("Error inserting token:", insertError);
-      return new Response(
-        JSON.stringify({ success: false, error: "Failed to create token" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Failed to create token", code: "TOKEN_CREATE_FAILED" }, 500);
     }
 
     // 9. Record rate limit
-    await supabase
-      .from("token_rate_limits")
-      .insert({
-        venue_id: venue_id,
-        identifier: device_fingerprint,
-        identifier_type: "device",
-        issued_at: now.toISOString(),
-      });
+    if (!testMode) {
+      await supabase
+        .from("token_rate_limits")
+        .insert({
+          venue_id: venue_id,
+          identifier: device_fingerprint,
+          identifier_type: "device",
+          issued_at: now.toISOString(),
+        });
+    }
 
     // 10. Return success response
-    return new Response(
-      JSON.stringify({
+    return jsonResponse({
         success: true,
+        test_mode: testMode,
         token: fullToken,
         token_prefix: tokenPrefix,
         expires_at: expiresAt.toISOString(),
@@ -394,15 +431,10 @@ Deno.serve(async (req) => {
           id: venue.id,
           name: venue.name,
         },
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      }, 200);
 
   } catch (error) {
     console.error("Unexpected error:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ success: false, error: "Internal server error", code: "INTERNAL_ERROR" }, 500);
   }
 });
