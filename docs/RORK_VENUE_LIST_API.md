@@ -320,3 +320,55 @@ const venues = await fetch(url).then(r => r.json());
 ```
 
 When the toggle is OFF the admin's manual order (via drag & drop in `/venues`) is respected.
+
+---
+
+## Troubleshooting: „Miért nem változik a sorrend a mobilban?"
+
+Ha az admin `/venues` oldalon drag & droppal átrendezed a helyszíneket, de a Rork appban változatlan marad a sorrend, **a szerver oldalán nincs hiba** — az endpoint minden hívásnál a helyes sorrendet adja vissza. A probléma szinte biztosan az alábbi három ok egyike:
+
+### 1. Kliens oldali újrarendezés (leggyakoribb)
+A default módban (`sort=default` vagy paraméter nélkül) a válasz **már rendezett**. Ne alkalmazz `.sort()`, `orderBy`, `_.sortBy` vagy hasonló műveletet a listán render előtt — hagyd meg a szerver által küldött sorrendet.
+
+```ts
+// ❌ ROSSZ — felülírja az admin sorrendet
+const venues = (await fetchVenues()).sort((a, b) => a.name.localeCompare(b.name));
+
+// ✅ JÓ — a szerver sorrendjét használjuk
+const venues = await fetchVenues();
+```
+
+### 2. Cache
+Ha React Query / SWR / manuális AsyncStorage cache-t használsz, invalidáld vagy frissítsd a listát a képernyő fókuszba kerülésénél:
+
+```ts
+useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+// vagy React Query:
+useQuery({ queryKey: ['venues'], queryFn: fetchVenues, staleTime: 0 });
+```
+
+### 3. `sort=distance` mód aktív
+Ha az URL-ben `?sort=distance&lat=...&lng=...` szerepel, a lista a felhasználó GPS-pozíciójától mért távolság szerint rendeződik — az admin drag & drop ilyenkor **nem érvényes**. Csak akkor használd, ha a user explicit „legközelebbi először" gombot nyomott.
+
+### Diagnosztikai fejlécek (2026-07-08 óta)
+A válasz mostantól tartalmaz debug fejléceket:
+- `X-Sort-Mode: default` vagy `distance` — melyik mód volt aktív
+- `X-Venue-Count: <n>` — hány venue került visszaadásra
+
+```bash
+curl -sI 'https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/get-public-venues' | grep -i x-sort
+# X-Sort-Mode: default
+```
+
+### Gyors ellenőrzés a telefonról
+Nyisd meg böngészőben (vagy `curl`-ral) az endpointot és nézd meg a JSON első 3-5 elemét — ha itt a helyes sorrendben látod, akkor a probléma 100%-ig kliens oldali (sort vagy cache).
+
+### Cache-busting query paraméter
+Ha a CDN vagy a natív fetch layer ignorálja a `Cache-Control: no-store` fejlécet, egy egyszerű timestamp query param bust-olja:
+
+```ts
+const url = `${SUPABASE_URL}/functions/v1/get-public-venues?v=${Date.now()}`;
+```
+
+### `display_order` mező
+Minden venue objektum tartalmazza a `display_order` numerikus mezőt (10, 20, 30, …). Ha kliens oldalon szeretnéd sortolni (pl. egyedi merge miatt), használd ezt — de a default esetben szükségtelen, mert a szerver már így küldi.
