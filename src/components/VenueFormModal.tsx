@@ -827,28 +827,41 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       </Tabs>
 
       <div
-        className="flex-shrink-0 bg-cgi-surface flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 mt-2 border-t border-cgi-muted"
+        className={cn(
+          "flex-shrink-0 bg-cgi-surface border-t border-cgi-muted",
+          isMobile
+            ? "flex flex-row gap-2 pt-2 mt-1"
+            : "flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 mt-2"
+        )}
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
       >
-        <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto min-h-[48px]" disabled={saving || geocoding}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setOpen(false)}
+          className={cn("cgi-button-secondary", isMobile ? "flex-1 h-10 text-sm" : "w-full sm:w-auto min-h-[48px]")}
+          disabled={saving || geocoding}
+        >
           Mégse
         </Button>
+        {!isMobile && (
+          <Button
+            type="submit"
+            variant="outline"
+            className="cgi-button-secondary w-full sm:w-auto min-h-[48px]"
+            disabled={saving || geocoding}
+            onClick={() => { closeAfterSaveRef.current = false; }}
+          >
+            {geocoding ? 'Geocoding...' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
+          </Button>
+        )}
         <Button
           type="submit"
-          variant="outline"
-          className="cgi-button-secondary w-full sm:w-auto min-h-[48px]"
-          disabled={saving || geocoding}
-          onClick={() => { closeAfterSaveRef.current = false; }}
-        >
-          {geocoding ? 'Geocoding...' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
-        </Button>
-        <Button
-          type="submit"
-          className="cgi-button-primary w-full sm:w-auto min-h-[48px]"
+          className={cn("cgi-button-primary", isMobile ? "flex-1 h-10 text-sm" : "w-full sm:w-auto min-h-[48px]")}
           disabled={saving || geocoding}
           onClick={() => { closeAfterSaveRef.current = true; }}
         >
-          {saving && closeAfterSaveRef.current ? 'Mentés...' : 'Mentés és bezárás'}
+          {saving && closeAfterSaveRef.current ? 'Mentés...' : (isMobile ? '✓ Mentés + bezárás' : 'Mentés és bezárás')}
         </Button>
       </div>
     </form>
