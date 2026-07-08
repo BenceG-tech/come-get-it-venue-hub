@@ -214,9 +214,40 @@ POST https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/issue-redemption-toke
 {
   "venue_id": "uuid-of-venue",
   "drink_id": "uuid-of-drink",       // Opcionális
-  "device_fingerprint": "unique-id"  // Kötelező - eszköz azonosító
+  "device_fingerprint": "unique-id"  // Kötelező - eszköz azonosító, 8-256 karakter
 }
 ```
+
+### Nincs lokációs blokkolás a backendben
+
+Az `issue-redemption-token` és `consume-redemption-token` endpoint **nem ellenőriz GPS lokációt**. A lokáció csak venue lista rendezésre használható. A Rork appban a `Beváltás` gombot ezért nem szabad GPS engedélyhez, távolsághoz vagy lokációhibához kötni.
+
+Ha a felhasználó nem ad lokációt:
+- a helyszínlista essen vissza normál `display_order` sorrendre,
+- a beváltási gomb maradjon aktív,
+- csak a távolság címke / közeli rendezés maradjon ki.
+
+### Admin teszt mód a teljes sikeres flow ellenőrzésére
+
+QA/admin ellenőrzéshez lehet `test_mode: true` értéket küldeni, de csak admin JWT-vel. Ez átugorja az aktív időablakot, a rate limitet, a napi user limitet és a venue cap ellenőrzéseket.
+
+```typescript
+await fetch(`${SUPABASE_URL}/functions/v1/issue-redemption-token`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${adminJwt}`,
+  },
+  body: JSON.stringify({
+    venue_id: venueId,
+    drink_id: drinkId,
+    device_fingerprint: `fp_preview_${Date.now()}`,
+    test_mode: true,
+  }),
+});
+```
+
+Éles user flow-ban ne küldd a `test_mode` mezőt.
 
 ### Success Response (200)
 ```json
@@ -243,8 +274,11 @@ POST https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/issue-redemption-toke
 | HTTP | Code | Leírás |
 |------|------|--------|
 | 400 | `NO_ACTIVE_WINDOW` | Nincs aktív ingyenes ital időablak |
+| 400 | `NO_FREE_DRINK` | Nincs ingyenes ital beállítva |
+| 403 | `USER_GLOBAL_DAILY_LIMIT` | A user/device ma már beváltott |
 | 403 | `DAILY_CAP_REACHED` | Napi limit elérve |
 | 403 | `HOURLY_CAP_REACHED` | Óránkénti limit elérve |
+| 403 | `VENUE_PAUSED` | A helyszín inaktív |
 | 429 | `RATE_LIMITED` | 5 percen belül már kért tokent |
 
 ### QR Kód Generálás
@@ -310,6 +344,15 @@ async function requestToken(venueId: string, drinkId: string) {
         case 'RATE_LIMITED':
           showAlert(`Várj ${Math.ceil(data.retry_after_seconds / 60)} percet az új token kéréséhez.`);
           break;
+        case 'USER_GLOBAL_DAILY_LIMIT':
+          showAlert('Ma már beváltottál ingyen italt. Próbáld újra holnap!');
+          break;
+        case 'NO_FREE_DRINK':
+          showAlert('Ehhez a helyszínhez nincs ingyenes ital beállítva.');
+          break;
+        case 'VENUE_PAUSED':
+          showAlert('Ez a helyszín jelenleg nem aktív.');
+          break;
         case 'DAILY_CAP_REACHED':
           showAlert('A mai napi limit elfogyott. Próbáld holnap!');
           break;
@@ -363,6 +406,8 @@ function normalizeWindow(window: any): FreeDrinkWindow {
 - [ ] QR token kérés az `issue-redemption-token` endpoint-tal
 - [ ] 2 perces visszaszámláló + újragenerálás gomb
 - [ ] Hibakezelés: NO_ACTIVE_WINDOW, RATE_LIMITED, CAP_REACHED
+- [ ] Lokációhiba nem tilthatja a beváltás gombot
+- [ ] GPS nélkül fallback normál helyszín sorrendre
 - [ ] Legacy fallback: `dayOfWeek` mező támogatása
 
 ---
@@ -400,6 +445,9 @@ Endpoint: https://nrxfiblssxwzeziomlvc.supabase.co/functions/v1/issue-redemption
 Body: { venue_id, drink_id, device_fingerprint }
 Válasz: { token, expires_at, expires_in_seconds, drink, venue }
 
+- Lokációt NE küldj és NE kérj ehhez a lépéshez.
+- GPS permission hiánya NE tiltsa le a Beváltás gombot.
+- A device_fingerprint lehet pl. fp_<deviceId>, aláhúzás engedélyezett.
 - Token QR kóddá generálása (react-native-qrcode-svg)
 - 2 perces visszaszámláló
 - Lejáratkor token törlése state-ből + újragenerálás gomb
@@ -407,8 +455,14 @@ Válasz: { token, expires_at, expires_in_seconds, drink, venue }
 5. HIBAKEZELÉS
 - NO_ACTIVE_WINDOW: "Nincs aktív időablak" üzenet
 - RATE_LIMITED: visszaszámláló, mikor kérhet újra
+- USER_GLOBAL_DAILY_LIMIT: napi 1 ingyen ital szabály üzenete
+- NO_FREE_DRINK: admin konfigurációs hiba üzenet
 - DAILY_CAP_REACHED / HOURLY_CAP_REACHED: megfelelő üzenet
 - Network error: újrapróbálás gomb
+
+6. TESZT FLOW
+- Admin/QA módban test_mode=true + admin JWT használható a sikeres QR flow végignézésére.
+- Produkciós user flow-ban test_mode soha ne legyen elküldve.
 ```
 
 ---

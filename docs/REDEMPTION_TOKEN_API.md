@@ -32,7 +32,8 @@ Content-Type: application/json
 |------|-------|----------|--------|
 | `venue_id` | UUID | ✅ | A helyszín azonosítója |
 | `drink_id` | UUID | ❌ | Specifikus ital azonosítója (opcionális, ha nincs megadva, az aktív ablakban definiált ital lesz) |
-| `device_fingerprint` | string | ✅ | Egyedi eszközazonosító (rate limiting-hez) |
+| `device_fingerprint` | string | ✅ | Egyedi eszközazonosító (8-256 karakter, betű/szám/kötőjel/aláhúzás) |
+| `test_mode` | boolean | ❌ | Csak admin JWT-vel vagy engedélyezett teszt környezetben: átugorja az időablak/limit/rate-limit ellenőrzéseket |
 
 ### Példa Request
 
@@ -42,6 +43,28 @@ Content-Type: application/json
   "device_fingerprint": "fp_abc123xyz789"
 }
 ```
+
+### Teszt / preview mód
+
+Ha a teljes sikeres beváltási élményt akarod végignézni, de az időablak, napi limit vagy rate limit blokkolná, admin jogosultságú JWT-vel kérhető teszt token:
+
+```json
+{
+  "venue_id": "550e8400-e29b-41d4-a716-446655440000",
+  "drink_id": "550e8400-e29b-41d4-a716-446655440001",
+  "device_fingerprint": "fp_preview_abc123xyz789",
+  "test_mode": true
+}
+```
+
+Headers:
+
+```http
+Authorization: Bearer <admin_jwt>
+Content-Type: application/json
+```
+
+Fontos: éles user flow-ban ne használd a `test_mode` mezőt. Ez csak admin/QA ellenőrzésre való.
 
 ### Sikeres Response (200)
 
@@ -70,10 +93,13 @@ Content-Type: application/json
 | HTTP | Kód | Leírás |
 |------|-----|--------|
 | 400 | `NO_ACTIVE_WINDOW` | Nincs aktív ingyen ital időablak |
-| 400 | - | Nincs beállított ingyen ital a helyszínen |
+| 400 | `NO_FREE_DRINK` | Nincs beállított ingyen ital a helyszínen |
+| 400 | `INVALID_DEVICE_FINGERPRINT` | Nem megfelelő eszközazonosító |
+| 403 | `USER_GLOBAL_DAILY_LIMIT` | A user/device ma már beváltott ingyen italt |
 | 403 | `DAILY_CAP_REACHED` | Elérte a napi beváltási limitet |
 | 403 | `HOURLY_CAP_REACHED` | Elérte az óránkénti beváltási limitet |
-| 404 | - | A helyszín nem található |
+| 403 | `VENUE_PAUSED` | A helyszín inaktív |
+| 404 | `VENUE_NOT_FOUND` | A helyszín nem található |
 | 429 | `RATE_LIMITED` | Túl gyakori kérés (5 percenként max 1 token) |
 
 ### Hiba Response Példa
@@ -82,7 +108,8 @@ Content-Type: application/json
 {
   "success": false,
   "error": "No active free drink window",
-  "code": "NO_ACTIVE_WINDOW"
+  "code": "NO_ACTIVE_WINDOW",
+  "action": "Az adminban állíts be aktív időablakot az ingyenes italhoz, vagy teszteléshez küldj admin JWT-t és test_mode=true értéket."
 }
 ```
 
@@ -145,7 +172,8 @@ Authorization: Bearer <staff_jwt>
 | HTTP | Kód | Leírás |
 |------|-----|--------|
 | 400 | `INVALID_FORMAT` | Érvénytelen token formátum |
-| 401 | - | Hiányzó vagy érvénytelen authorization header |
+| 401 | `NO_AUTH` / `INVALID_AUTH` | Hiányzó vagy érvénytelen authorization header |
+| 403 | `NOT_STAFF` | A bejelentkezett felhasználó nincs staffként hozzárendelve |
 | 403 | `VENUE_UNAUTHORIZED` | A staff nem jogosult ehhez a helyszínhez |
 | 404 | `NOT_FOUND` | A token nem található |
 | 409 | `ALREADY_CONSUMED` | A token már fel lett használva |

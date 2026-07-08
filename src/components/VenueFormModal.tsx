@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage, VenueIntegrationType } from '@/lib/types';
-import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign, Star, Maximize2, Pencil, ImageIcon, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign, Star, Maximize2, Pencil, ImageIcon, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -224,6 +224,16 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     });
   };
 
+  const moveImage = (id: string, direction: 'up' | 'down') => {
+    setFormData(prev => {
+      const imgs = prev.images || [];
+      const index = imgs.findIndex(img => img.id === id);
+      const nextIndex = direction === 'up' ? index - 1 : index + 1;
+      if (index < 0 || nextIndex < 0 || nextIndex >= imgs.length) return prev;
+      return { ...prev, images: arrayMove(imgs, index, nextIndex) };
+    });
+  };
+
   // Geocoding function
   const geocodeAddress = async (address: string) => {
     setGeocoding(true);
@@ -321,7 +331,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
 
     // Extract cover image URL and set it to both image_url and hero_image_url
-    const coverImage = formData.images?.find(img => img.isCover);
+    const coverImage = formData.images?.find(img => img.isCover) || formData.images?.find(img => img.url?.trim());
     const finalFormData: any = {
       ...formData,
       drinks: finalDrinks,
@@ -684,9 +694,8 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </TabsContent>
 
         {/* ITALOK & LIMITEK */}
-        <TabsContent value="drinks" className="space-y-6 mt-0">
+        <TabsContent value="drinks" className="space-y-3 mt-0">
           <div>
-            <p className="text-xs text-cgi-muted-foreground mb-3">Italok, ingyenes ital időablakok és napi/órás beváltási limitek.</p>
             <EnhancedDrinkSelector
               ref={drinkSelectorRef}
               drinks={formData.drinks || []}
@@ -696,9 +705,9 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             />
           </div>
 
-          <div className="pt-4 border-t border-cgi-muted">
-            <h4 className="text-sm font-medium text-cgi-surface-foreground mb-3">Beváltási limitek</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="pt-3 border-t border-cgi-muted">
+            <h4 className="text-sm font-medium text-cgi-surface-foreground mb-2">Beváltási limitek</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1">
                   <Label htmlFor="daily-cap" className="text-cgi-surface-foreground text-xs">Napi</Label>
@@ -729,7 +738,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               </div>
             </div>
 
-            <div className="space-y-2 mt-4">
+            <div className="space-y-2 mt-3">
               <Label className="text-cgi-surface-foreground text-xs">Elfogyás esetén</Label>
               <Select value={formData.caps?.onExhaust || 'close'} onValueChange={(value) => updateCaps({ onExhaust: value as any })}>
                 <SelectTrigger className="cgi-input">
@@ -754,25 +763,24 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           </div>
         </TabsContent>
 
-        {/* KÉPEK – kompakt grid */}
-        <TabsContent value="images" className="space-y-4 mt-0">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+        {/* KÉPEK – mobilbarát galéria */}
+        <TabsContent value="images" className="space-y-3 mt-0">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <Label className="text-cgi-surface-foreground">Képek</Label>
-              <p className="text-xs text-cgi-muted-foreground mt-0.5">
-                Több képet is kijelölhetsz egyszerre. Húzd a képeket a sorrend változtatásához. Az első kép a főkép, ha nincs külön kijelölve.
-              </p>
+              <p className="text-xs text-cgi-muted-foreground mt-0.5">{imageCount} kép · az első vagy kijelölt kép lesz a főkép</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <ImageUploadInput
                 buttonLabel="Feltöltés"
                 onUploaded={(url) => addImageWithUrl(url)}
                 variant="outline"
                 size="sm"
+                className="[&_button]:h-9 [&_button]:px-2 [&_button]:text-xs"
                 multiple
               />
-              <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary">
-                <Plus className="h-4 w-4 mr-1" />
+              <Button type="button" onClick={addImage} size="sm" className="cgi-button-primary h-9 px-2 text-xs">
+                <Plus className="h-4 w-4" />
                 URL
               </Button>
             </div>
@@ -787,7 +795,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               items={(formData.images || []).map(i => i.id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
                 {formData.images?.map((img, idx) => (
                   <ThumbnailImageCard
                     key={img.id}
@@ -797,15 +805,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                     onRemove={() => removeImage(img.id)}
                     onUpdate={(updates) => updateImage(img.id, updates)}
                     onSetCover={() => setCoverImage(img.id)}
+                    onMoveUp={() => moveImage(img.id, 'up')}
+                    onMoveDown={() => moveImage(img.id, 'down')}
+                    canMoveUp={idx > 0}
+                    canMoveDown={idx < (formData.images?.length || 0) - 1}
                   />
                 ))}
               </div>
 
               {!formData.images?.length && (
-                <div className="text-center py-12 text-cgi-muted-foreground border-2 border-dashed border-cgi-muted rounded-lg">
+                <div className="text-center py-10 text-cgi-muted-foreground border border-dashed border-cgi-muted rounded-md bg-cgi-muted/10">
                   <ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Még nincsenek képek hozzáadva.</p>
-                  <p className="text-xs mt-1">Tölts fel egyet a "Feltöltés" gombbal.</p>
+                  <p className="text-xs mt-1">A Feltöltés gombbal több képet is választhatsz.</p>
                 </div>
               )}
             </SortableContext>
@@ -929,9 +941,13 @@ interface ThumbnailImageCardProps {
   onRemove: () => void;
   onUpdate: (updates: Partial<VenueImage>) => void;
   onSetCover: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }
 
-function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, onSetCover }: ThumbnailImageCardProps) {
+function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, onSetCover, onMoveUp, onMoveDown, canMoveUp, canMoveDown }: ThumbnailImageCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: img.id });
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -980,7 +996,7 @@ function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, o
         )}
 
         {/* Index badge */}
-        <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-medium">
+        <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-cgi-background/80 text-cgi-surface-foreground text-[10px] font-medium">
           #{index + 1}
         </div>
 
@@ -989,20 +1005,20 @@ function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, o
           type="button"
           {...attributes}
           {...listeners}
-          className="absolute top-1.5 left-1/2 -translate-x-1/2 touch-none cursor-grab active:cursor-grabbing rounded p-1 bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1.5 left-1/2 -translate-x-1/2 touch-none cursor-grab active:cursor-grabbing rounded p-1 bg-cgi-background/80 text-cgi-surface-foreground opacity-0 sm:group-hover:opacity-100 transition-opacity"
           aria-label="Áthúzás"
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
 
-        {/* Hover action overlay */}
-        <div className="absolute inset-x-0 bottom-0 p-1.5 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Mobile-visible actions, hover on desktop */}
+        <div className="absolute inset-x-0 bottom-0 p-1.5 flex items-center justify-between gap-1 bg-cgi-background/85 backdrop-blur-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <div className="flex gap-1">
             {hasUrl && (
               <button
                 type="button"
                 onClick={() => setLightboxOpen(true)}
-                className="p-1.5 rounded bg-black/60 hover:bg-black/80 text-white"
+                className="p-1.5 rounded bg-cgi-muted/70 hover:bg-cgi-muted text-cgi-surface-foreground"
                 aria-label="Nagyítás"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -1010,10 +1026,28 @@ function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, o
             )}
             <button
               type="button"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              className="p-1.5 rounded bg-cgi-muted/70 hover:bg-cgi-muted text-cgi-surface-foreground disabled:opacity-35"
+              aria-label="Előrébb"
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              className="p-1.5 rounded bg-cgi-muted/70 hover:bg-cgi-muted text-cgi-surface-foreground disabled:opacity-35"
+              aria-label="Hátrébb"
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
               onClick={onSetCover}
               className={cn(
-                'p-1.5 rounded text-white',
-                isCover ? 'bg-cgi-primary' : 'bg-black/60 hover:bg-black/80'
+                'p-1.5 rounded text-cgi-surface-foreground',
+                isCover ? 'bg-cgi-primary text-cgi-primary-foreground' : 'bg-cgi-muted/70 hover:bg-cgi-muted'
               )}
               aria-label="Főkép kijelölése"
               title="Főkép kijelölése"
@@ -1024,7 +1058,7 @@ function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, o
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="p-1.5 rounded bg-black/60 hover:bg-black/80 text-white"
+                  className="p-1.5 rounded bg-cgi-muted/70 hover:bg-cgi-muted text-cgi-surface-foreground"
                   aria-label="Szerkesztés"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -1065,7 +1099,7 @@ function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, o
           <button
             type="button"
             onClick={onRemove}
-            className="p-1.5 rounded bg-red-500/80 hover:bg-red-500 text-white"
+            className="p-1.5 rounded bg-cgi-error/20 hover:bg-cgi-error/30 text-cgi-error"
             aria-label="Törlés"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -1074,7 +1108,7 @@ function ThumbnailImageCard({ img, index, isImplicitCover, onRemove, onUpdate, o
 
         {/* Label strip at bottom (always shown if exists) */}
         {img.label && (
-          <div className="absolute bottom-0 inset-x-0 px-2 py-1 bg-black/60 text-white text-[10px] truncate group-hover:opacity-0 transition-opacity">
+          <div className="absolute bottom-0 inset-x-0 px-2 py-1 bg-cgi-background/80 text-cgi-surface-foreground text-[10px] truncate opacity-0 sm:opacity-100 sm:group-hover:opacity-0 transition-opacity">
             {img.label}
           </div>
         )}
