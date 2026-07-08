@@ -172,3 +172,7 @@ verify_jwt = false
 [functions.get-user-csr-impact]
 verify_jwt = false
 
+[functions.process-scheduled-notifications]
+verify_jwt = false
+
+
