@@ -694,9 +694,8 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </TabsContent>
 
         {/* ITALOK & LIMITEK */}
-        <TabsContent value="drinks" className="space-y-6 mt-0">
+        <TabsContent value="drinks" className="space-y-3 mt-0">
           <div>
-            <p className="text-xs text-cgi-muted-foreground mb-3">Italok, ingyenes ital időablakok és napi/órás beváltási limitek.</p>
             <EnhancedDrinkSelector
               ref={drinkSelectorRef}
               drinks={formData.drinks || []}
@@ -706,9 +705,9 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             />
           </div>
 
-          <div className="pt-4 border-t border-cgi-muted">
-            <h4 className="text-sm font-medium text-cgi-surface-foreground mb-3">Beváltási limitek</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="pt-3 border-t border-cgi-muted">
+            <h4 className="text-sm font-medium text-cgi-surface-foreground mb-2">Beváltási limitek</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1">
                   <Label htmlFor="daily-cap" className="text-cgi-surface-foreground text-xs">Napi</Label>
@@ -739,7 +738,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               </div>
             </div>
 
-            <div className="space-y-2 mt-4">
+            <div className="space-y-2 mt-3">
               <Label className="text-cgi-surface-foreground text-xs">Elfogyás esetén</Label>
               <Select value={formData.caps?.onExhaust || 'close'} onValueChange={(value) => updateCaps({ onExhaust: value as any })}>
                 <SelectTrigger className="cgi-input">
