@@ -116,6 +116,7 @@ export default function Venues() {
         is_paused: venueData.is_paused || false,
         phone_number: venueData.phone_number,
         website_url: venueData.website_url,
+        redemption_radius_m: venueData.redemption_radius_m ?? null,
       };
 
       await dataProvider.create('venues', createData);
