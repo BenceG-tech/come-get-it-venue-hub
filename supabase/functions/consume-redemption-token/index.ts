@@ -9,6 +9,13 @@ interface ConsumeTokenRequest {
   token: string;
 }
 
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 // Hash token with SHA-256
 async function hashToken(token: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -38,10 +45,7 @@ Deno.serve(async (req) => {
     // 1. Validate staff authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized - Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Unauthorized - Missing authorization header", code: "NO_AUTH", action: "A POS/Rork scanner oldalon bejelentkezett staff JWT-t kell küldeni Authorization Bearer headerben." }, 401);
     }
 
     // Create client with user's auth context
@@ -53,10 +57,7 @@ Deno.serve(async (req) => {
     const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
 
     if (claimsError || !claimsData?.claims) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized - Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Unauthorized - Invalid token", code: "INVALID_AUTH", action: "Jelentkeztesd be újra a staff felhasználót a POS oldalon." }, 401);
     }
 
     const staffId = claimsData.claims.sub as string;
@@ -81,10 +82,7 @@ Deno.serve(async (req) => {
     const staffVenueIds = memberships?.map((m) => m.venue_id) || [];
 
     if (!isAdmin && staffVenueIds.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized - Not a staff member" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Unauthorized - Not a staff member", code: "NOT_STAFF", action: "Add hozzá ezt a felhasználót venue_memberships rekordként a helyszínhez, vagy adj neki admin jogosultságot." }, 403);
     }
 
     // 3. Parse request body
@@ -92,18 +90,12 @@ Deno.serve(async (req) => {
     const { token: redemptionToken } = body;
 
     if (!redemptionToken) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Token is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Token is required", code: "TOKEN_REQUIRED" }, 400);
     }
 
     // 4. Validate token format
     if (!isValidTokenFormat(redemptionToken)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid token format", code: "INVALID_FORMAT" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Invalid token format", code: "INVALID_FORMAT", action: "A teljes CGI-XXXXXX-... tokent kell QR-kódba tenni, nem csak a prefixet." }, 400);
     }
 
     // 5. Hash the token and look it up
@@ -126,38 +118,27 @@ Deno.serve(async (req) => {
       .single();
 
     if (tokenError || !tokenData) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Token not found", code: "NOT_FOUND" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Token not found", code: "NOT_FOUND", action: "Generálj új QR tokent az appban, majd azt olvasd be." }, 404);
     }
 
     // 6. Check if staff is authorized for this venue
     if (!isAdmin && !staffVenueIds.includes(tokenData.venue_id)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Not authorized for this venue", code: "VENUE_UNAUTHORIZED" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Not authorized for this venue", code: "VENUE_UNAUTHORIZED", action: "A bejelentkezett staff nincs hozzárendelve ahhoz a helyszínhez, amelyhez a QR token tartozik." }, 403);
     }
 
     // 7. Check token status
     if (tokenData.status === "consumed") {
-      return new Response(
-        JSON.stringify({ 
+      return jsonResponse({ 
           success: false, 
           error: "Token already consumed", 
           code: "ALREADY_CONSUMED",
-          consumed_at: tokenData.consumed_at
-        }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+          consumed_at: tokenData.consumed_at,
+          action: "Ez a QR már sikeresen be lett váltva. Kérj új tokent az appban."
+        }, 409);
     }
 
     if (tokenData.status === "expired" || tokenData.status === "revoked") {
-      return new Response(
-        JSON.stringify({ success: false, error: `Token is ${tokenData.status}`, code: "INVALID_STATUS" }),
-        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: `Token is ${tokenData.status}`, code: "INVALID_STATUS", action: "Generálj új QR tokent az appban." }, 410);
     }
 
     // 8. Check expiration
@@ -171,10 +152,7 @@ Deno.serve(async (req) => {
         .update({ status: "expired" })
         .eq("id", tokenData.id);
 
-      return new Response(
-        JSON.stringify({ success: false, error: "Token has expired", code: "EXPIRED" }),
-        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Token has expired", code: "EXPIRED", action: "A token 2 percig él. Generálj új QR tokent, majd azonnal olvasd be." }, 410);
     }
 
     // 9. Get drink and venue details
@@ -202,10 +180,7 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error("Error updating token:", updateError);
-      return new Response(
-        JSON.stringify({ success: false, error: "Failed to consume token" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: false, error: "Failed to consume token", code: "TOKEN_CONSUME_FAILED" }, 500);
     }
 
     // 11. Create redemption record
@@ -241,8 +216,7 @@ Deno.serve(async (req) => {
     }
 
     // 12. Return success response
-    return new Response(
-      JSON.stringify({
+    return jsonResponse({
         success: true,
         redemption: {
           id: redemption?.id,
@@ -255,15 +229,10 @@ Deno.serve(async (req) => {
           redeemed_at: now.toISOString(),
           staff_id: staffId,
         },
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      }, 200);
 
   } catch (error) {
     console.error("Unexpected error:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ success: false, error: "Internal server error", code: "INTERNAL_ERROR" }, 500);
   }
 });
