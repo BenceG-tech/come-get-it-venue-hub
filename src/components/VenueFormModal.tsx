@@ -55,6 +55,8 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('basic');
+  const closeAfterSaveRef = useRef<boolean>(false);
   const { toast } = useToast();
   const drinkSelectorRef = useRef<EnhancedDrinkSelectorRef>(null);
   const isMobile = useIsMobile();
@@ -340,41 +342,65 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     try {
       setSaving(true);
       await Promise.resolve(onSave(finalFormData));
-      toast({ 
-        title: 'Siker', 
-        description: 'Változások elmentve. Az italok most már láthatók!',
-        duration: 5000
+      toast({
+        title: 'Elmentve',
+        description: closeAfterSaveRef.current
+          ? 'Változások elmentve.'
+          : 'Változások elmentve. Folytathatod a szerkesztést.',
+        duration: 3500,
       });
-      
-      setOpen(false);
+
+      if (closeAfterSaveRef.current) {
+        setOpen(false);
+      }
     } catch (error: any) {
       console.error('Save failed:', error);
-      toast({ 
-        title: 'Hiba', 
-        description: String(error?.message || error), 
+      toast({
+        title: 'Hiba',
+        description: String(error?.message || error),
         variant: 'destructive' as any,
-        duration: 7000 
+        duration: 7000,
       });
     } finally {
       setSaving(false);
+      closeAfterSaveRef.current = false;
     }
   };
 
   const imageCount = formData.images?.length || 0;
 
+  const tabItems = [
+    { value: 'basic', label: 'Általános' },
+    { value: 'location', label: 'Helyszín & Nyitva' },
+    { value: 'drinks', label: 'Italok & Limitek' },
+    { value: 'images', label: `Képek${imageCount > 0 ? ` (${imageCount})` : ''}` },
+    { value: 'integration', label: 'Integráció' },
+  ];
+
   const formContent = (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      <Tabs defaultValue="basic" className="w-full flex-1 flex flex-col min-h-0">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
         <div className="sticky top-0 z-10 bg-cgi-surface pb-2 -mx-1 px-1">
-          <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-auto min-h-[40px] p-1">
-            <TabsTrigger value="basic" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Általános</TabsTrigger>
-            <TabsTrigger value="location" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Helyszín & Nyitva</TabsTrigger>
-            <TabsTrigger value="drinks" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Italok & Limitek</TabsTrigger>
-            <TabsTrigger value="images" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">
-              Képek{imageCount > 0 && <span className="ml-1.5 text-xs text-cgi-muted-foreground">({imageCount})</span>}
-            </TabsTrigger>
-            <TabsTrigger value="integration" className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">Integráció</TabsTrigger>
-          </TabsList>
+          {isMobile ? (
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="cgi-input h-11 bg-cgi-surface border-cgi-muted text-cgi-surface-foreground font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-cgi-surface border-cgi-muted">
+                {tabItems.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-auto min-h-[40px] p-1">
+              {tabItems.map(t => (
+                <TabsTrigger key={t.value} value={t.value} className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto pt-4">
@@ -804,11 +830,25 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         className="flex-shrink-0 bg-cgi-surface flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 mt-2 border-t border-cgi-muted"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
       >
-        <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto" disabled={saving || geocoding}>
+        <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto min-h-[48px]" disabled={saving || geocoding}>
           Mégse
         </Button>
-        <Button type="submit" className="cgi-button-primary w-full sm:w-auto" disabled={saving || geocoding}>
-          {geocoding ? 'Geocoding...' : saving ? (venue ? 'Mentés...' : 'Létrehozás...') : (venue ? 'Mentés' : 'Létrehozás')}
+        <Button
+          type="submit"
+          variant="outline"
+          className="cgi-button-secondary w-full sm:w-auto min-h-[48px]"
+          disabled={saving || geocoding}
+          onClick={() => { closeAfterSaveRef.current = false; }}
+        >
+          {geocoding ? 'Geocoding...' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
+        </Button>
+        <Button
+          type="submit"
+          className="cgi-button-primary w-full sm:w-auto min-h-[48px]"
+          disabled={saving || geocoding}
+          onClick={() => { closeAfterSaveRef.current = true; }}
+        >
+          {saving && closeAfterSaveRef.current ? 'Mentés...' : 'Mentés és bezárás'}
         </Button>
       </div>
     </form>
@@ -823,9 +863,25 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         </SheetTrigger>
         <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted p-4 flex flex-col">
           <SheetHeader className="mb-2 flex-shrink-0">
-            <SheetTitle className="text-cgi-surface-foreground">
-              {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
-            </SheetTitle>
+            <div className="flex items-center justify-between gap-2 pr-8">
+              <SheetTitle className="text-cgi-surface-foreground text-base truncate">
+                {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
+              </SheetTitle>
+              <Button
+                type="button"
+                size="sm"
+                className="cgi-button-primary h-9 px-3 text-xs flex-shrink-0"
+                disabled={saving || geocoding}
+                onClick={() => {
+                  closeAfterSaveRef.current = false;
+                  // Submit the form programmatically
+                  const form = document.querySelector<HTMLFormElement>('form[data-venue-form]');
+                  form?.requestSubmit();
+                }}
+              >
+                {saving ? 'Mentés...' : 'Mentés'}
+              </Button>
+            </div>
           </SheetHeader>
           <div className="flex-1 min-h-0 flex flex-col">
             {formContent}

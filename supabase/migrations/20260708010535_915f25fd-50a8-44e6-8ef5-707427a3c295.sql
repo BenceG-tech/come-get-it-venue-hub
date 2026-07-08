@@ -1,0 +1,1 @@
+ALTER TABLE public.notification_templates ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ NULL;

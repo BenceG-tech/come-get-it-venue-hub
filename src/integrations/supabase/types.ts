@@ -762,6 +762,7 @@ export type Database = {
           quiet_hours: Json | null
           scheduled_at: string | null
           send_mode: string
+          sent_at: string | null
           targeting: Json | null
           title_en: string | null
           title_hu: string
@@ -785,6 +786,7 @@ export type Database = {
           quiet_hours?: Json | null
           scheduled_at?: string | null
           send_mode?: string
+          sent_at?: string | null
           targeting?: Json | null
           title_en?: string | null
           title_hu: string
@@ -808,6 +810,7 @@ export type Database = {
           quiet_hours?: Json | null
           scheduled_at?: string | null
           send_mode?: string
+          sent_at?: string | null
           targeting?: Json | null
           title_en?: string | null
           title_hu?: string
@@ -1138,6 +1141,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_tokens: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          device_id: string | null
+          device_name: string | null
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          device_id?: string | null
+          device_name?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          device_id?: string | null
+          device_name?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       redemption_tokens: {
         Row: {
