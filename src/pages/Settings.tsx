@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,58 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Copy, Crown, Star, Shield } from "lucide-react";
+import { Copy, Crown, Star, Shield, MapPin, Loader2 } from "lucide-react";
 import { mockVenue } from "@/lib/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const [venue, setVenue] = useState(mockVenue);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Platform settings (admin-only)
+  const [enforceRadius, setEnforceRadius] = useState<boolean>(true);
+  const [defaultRadius, setDefaultRadius] = useState<number>(100);
+  const [platformLoading, setPlatformLoading] = useState<boolean>(true);
+  const [platformSaving, setPlatformSaving] = useState<boolean>(false);
+
+  useEffect(() => {
+    (async () => {
+      setPlatformLoading(true);
+      const { data, error } = await supabase
+        .from("platform_settings" as any)
+        .select("key, value")
+        .in("key", ["enforce_redemption_radius", "default_redemption_radius_m"]);
+      if (!error && Array.isArray(data)) {
+        const map = new Map<string, any>(data.map((r: any) => [r.key, r.value]));
+        setEnforceRadius(map.get("enforce_redemption_radius") !== false);
+        const dr = Number(map.get("default_redemption_radius_m") ?? 100);
+        setDefaultRadius(Number.isFinite(dr) && dr > 0 ? dr : 100);
+      }
+      setPlatformLoading(false);
+    })();
+  }, []);
+
+  const savePlatformSettings = async () => {
+    setPlatformSaving(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const uid = sess.session?.user.id;
+      const rows = [
+        { key: "enforce_redemption_radius", value: enforceRadius as any, updated_by: uid, updated_at: new Date().toISOString() },
+        { key: "default_redemption_radius_m", value: Math.max(10, Math.min(5000, defaultRadius)) as any, updated_by: uid, updated_at: new Date().toISOString() },
+      ];
+      const { error } = await supabase.from("platform_settings" as any).upsert(rows, { onConflict: "key" });
+      if (error) throw error;
+      toast({ title: "Elmentve", description: "Platform beállítások frissítve." });
+    } catch (e: any) {
+      toast({ title: "Hiba", description: String(e?.message || e), variant: "destructive" });
+    } finally {
+      setPlatformSaving(false);
+    }
+  };
+
 
   const handleSave = async () => {
     setIsLoading(true);
