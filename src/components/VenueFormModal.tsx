@@ -342,23 +342,28 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     try {
       setSaving(true);
       await Promise.resolve(onSave(finalFormData));
-      toast({ 
-        title: 'Siker', 
-        description: 'Változások elmentve. Az italok most már láthatók!',
-        duration: 5000
+      toast({
+        title: 'Elmentve',
+        description: closeAfterSaveRef.current
+          ? 'Változások elmentve.'
+          : 'Változások elmentve. Folytathatod a szerkesztést.',
+        duration: 3500,
       });
-      
-      setOpen(false);
+
+      if (closeAfterSaveRef.current) {
+        setOpen(false);
+      }
     } catch (error: any) {
       console.error('Save failed:', error);
-      toast({ 
-        title: 'Hiba', 
-        description: String(error?.message || error), 
+      toast({
+        title: 'Hiba',
+        description: String(error?.message || error),
         variant: 'destructive' as any,
-        duration: 7000 
+        duration: 7000,
       });
     } finally {
       setSaving(false);
+      closeAfterSaveRef.current = false;
     }
   };
 
