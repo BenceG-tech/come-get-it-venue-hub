@@ -762,6 +762,7 @@ export type Database = {
           quiet_hours: Json | null
           scheduled_at: string | null
           send_mode: string
+          sent_at: string | null
           targeting: Json | null
           title_en: string | null
           title_hu: string
@@ -785,6 +786,7 @@ export type Database = {
           quiet_hours?: Json | null
           scheduled_at?: string | null
           send_mode?: string
+          sent_at?: string | null
           targeting?: Json | null
           title_en?: string | null
           title_hu: string
@@ -808,6 +810,7 @@ export type Database = {
           quiet_hours?: Json | null
           scheduled_at?: string | null
           send_mode?: string
+          sent_at?: string | null
           targeting?: Json | null
           title_en?: string | null
           title_hu?: string
