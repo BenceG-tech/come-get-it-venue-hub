@@ -1,108 +1,108 @@
 
 ## Cél
 
-1. A beváltás azonnal működjön demo/videó rögzítéshez — a Rork szimulátorban a "túl messze vagy" hiba ne akadályozzon.
-2. Hosszabb távon konfigurálható legyen: helyszínenkénti radius + admin bypass + globális kapcsoló.
-3. Ezután: Felhasználók lista és QuickView modal mobil használhatóság javítása.
+A Rork mobil app már tartalék („teszt") módban működik, mert két konkrét nevű edge function hiányzik. Ezeket telepítjük pontosan a Rork spec szerint, hogy a sárga „Teszt mód" címke eltűnjön és a beváltás élesben, szerveroldali rögzítéssel menjen.
 
----
+## Új edge functionök
 
-## 1. rész — Beváltás azonnali demózhatósága
+### 1. `supabase/functions/create-redemption-window/index.ts`
 
-### 1.1 Globális "distance check" kapcsoló (feature flag)
-- Új rekord `platform_settings` táblában (ha nincs, létrehozzuk): `enforce_redemption_radius` (boolean, default `false` amíg demózol, később `true`).
-- Admin felületen új kapcsoló a **Beállítások** oldalon: „Beváltásnál távolság-ellenőrzés kényszerítése" — egy kattintással ki/be.
-- A Rork app és az edge functionok innen olvassák a beállítást.
+**Auth:** JWT kötelező (`Authorization: Bearer <user_jwt>`), 401 ha hiányzik/érvénytelen.
 
-### 1.2 Helyszínenkénti radius mező
-- Új oszlop: `venues.redemption_radius_m` (integer, default 100, nullable).
-- `VenueFormModal`-ban új mező „Beváltási sugár (m)" — üresen hagyva a globális default (100 m) érvényes.
-- Rork app ezt olvassa a helyszín rekordból távolság-check során.
+**Body:** `{ venue_id: UUID (required), drink_id?: UUID, user_latitude?: number, user_longitude?: number }`
 
-### 1.3 Admin JWT bypass a Rork appban
-- `issue-redemption-token` már tud `test_mode`-ot (előző körben megcsináltuk). Kiegészítjük egy `skip_distance` flaggel, amit csak `cgi_admin` állíthat.
-- Rork oldalra rövid dokumentáció (`docs/RORK_FREE_DRINKS_INTEGRATION.md` frissítés): ha admin user van bejelentkezve, a kliens automatikusan `skip_distance: true`-t küld.
+**Folyamat:**
+1. Venue lekérés → 404 ha nincs, 403 `VENUE_PAUSED` ha `is_paused`.
+2. **Távolság-ellenőrzés (globális kapcsolóval):**
+   - Beolvassa `platform_settings.enforce_redemption_radius` (default `true` ha nincs).
+   - Ha `false` → kihagyja.
+   - Ha `true` ÉS mindkét koordináta megvan (venue_locations elsődleges, fallback `venues.lat/lng`) → Haversine távolság; ha > `venues.redemption_radius_m` (default 100) → 403 `TOO_FAR` `{ distance_m, allowed_m }`.
+   - Ha koordináta hiányzik → átengedi.
+   - **Admin bypass:** ha a felhasználó `profiles.is_admin = true`, a távolság-ellenőrzés kimarad.
+3. **Ital kiválasztás:** ha `drink_id` megadva, azt használja; különben `venue_drinks` első `is_free_drink = true` sora. 400 `NO_FREE_DRINK` ha nincs.
+4. **Időablak-ellenőrzés:** `free_drink_windows` ahol `drink_id` egyezik.
+   - Ha nincs egyetlen sor sem → bármikor beváltható.
+   - Ha van → Europe/Budapest szerint mai ISO nap (1=hétfő..7=vasárnap) benne a `days` tömbben ÉS `start_time <= now <= end_time` valamelyik sornál. Ha nem → 400 `NO_ACTIVE_WINDOW` `{ windows: [...] }`.
+5. **Napi globális limit:** meglévő szabály (1/nap/user Europe/Budapest a `redemptions` táblán) — ha admin, kihagyja.
+6. **Token gyártás:** `CGI-{6char}-{32char}`; SHA-256 hash; insert `redemption_tokens` (token_hash, token_prefix, user_id, venue_id, drink_id, device_fingerprint (opcionális, ha jön), issued_at=now, expires_at=now+120s, status='issued').
+7. **Response 200:**
+   ```json
+   {
+     "success": true,
+     "token": "CGI-ABC123-...",
+     "token_id": "...",
+     "token_prefix": "ABC123",
+     "expires_at": "...",
+     "expires_in_seconds": 120,
+     "qr_payload": "CGI-ABC123-...",
+     "venue": { "id", "name" },
+     "drink": { "id", "name", "image_url", "category" }
+   }
+   ```
 
-### 1.4 Demo-mód (a videózáshoz — azonnal használható)
-- A globális kapcsoló `enforce_redemption_radius = false`-ra állítása → a Rork app kihagyja a távolság-checket az összes usernél, amíg vissza nem kapcsoljuk.
-- Így most **egyszerűen kikapcsolod, videózol, majd visszakapcsolod**.
-- Rork felé rövid instrukció, hogy a kliens az `enforce_redemption_radius` értékét figyelje induláskor és beváltás előtt.
+### 2. `supabase/functions/confirm-redemption/index.ts`
 
-### 1.5 Nap-migráció most kihagyva
-- A Rork logja szerint az élő free_drink_windows sorok mind `[1..7]` napra érvényesek, tehát a nap-check átmegy.
-- A migrációt (régi vasárnap=0 → ISO hétfő=1) most kihagyjuk, később nyugodtan lefuttatjuk.
+**Auth:** JWT kötelező (a beváltó felhasználó, nem staff — a Rork „guest button" flow-hoz).
 
----
+**Body:** `{ token: string }`
 
-## 2. rész — Felhasználók lista + QuickView mobil optimalizálás
+**Folyamat:**
+1. Token formátum validáció (`CGI-[A-Z0-9]{6}-[A-Za-z0-9]{32}`) → 400 `INVALID_FORMAT`.
+2. SHA-256 hash, keresés `redemption_tokens`-ben → 404 `NOT_FOUND`.
+3. Ellenőrzés: `user_id === auth.uid()` (kivéve admin) → 403 `NOT_OWNER`.
+4. Státusz: `consumed` → 409 `ALREADY_CONSUMED`; `expired`/`revoked` → 410 `INVALID_STATUS`; lejárt (`expires_at < now`) → státusz frissítés + 410 `EXPIRED`.
+5. Token frissítés: `status='consumed'`, `consumed_at=now`, `consumed_by_staff_id=user_id` (guest flow-ban a user maga).
+6. Drink + venue adatok lekérése.
+7. Insert `redemptions`: `venue_id, user_id, drink (név), drink_id, value: 0, token_id, redeemed_at, status: 'redeemed', metadata: { flow: 'guest_button' }`.
+8. **CSR bónusz:** ha `venues.csr_enabled = true` ÉS `default_charity_id` van → insert `csr_donations` `amount_huf = venues.donation_per_redemption || 250`, `charity_id`, `user_id`, `venue_id`, `redemption_id`.
+9. **Impact üzenet:** összes `csr_donations` a `default_charity_id`-nál (vagy `charities.impact_per_unit` szerint) → `total_impact_units` számolás; `impact_delta = 1`; `impact_message` a `charities.impact_unit_label`-ből vagy fix `'+1 ember kap ma tiszta vizet'`.
+10. Async trigger `match-redemption-transaction` (meglévő).
+11. **Response 200:**
+    ```json
+    {
+      "success": true,
+      "redemption_id": "...",
+      "impact_delta": 1,
+      "impact_message": "+1 ember kap ma tiszta vizet",
+      "total_impact_units": 42
+    }
+    ```
 
-### 2.1 Felhasználók lista (mobil)
-- Már van kártya-alapú mobil layout — átnézzük és tömörítjük:
-  - Kisebb avatar (40 → 32 px), egysoros név + tag chip.
-  - Másodlagos sor: pontok · beváltások · utolsó aktivitás — kompakt ikonokkal.
-  - Bulk action bar mobilon lefelé úszó (sticky bottom) — nem takarja el a listát.
-- Szűrők/tabok: horizontálisan scrollolható chip-sor a jelenlegi dropdown helyett.
-- Server-side pagination gomb kompaktabb (jelenleg túl sok helyet foglal).
+### 3. `supabase/config.toml`
 
-### 2.2 QuickView modal (mobil Sheet)
-- Jelenlegi modal → alulról felhúzható `Sheet` mobilon (asztali gépen marad Dialog).
-- Fejléc: avatar + név + státusz chip egy sorban, közvetlenül alatta a fő KPI-ok (pontok, beváltások, utolsó aktivitás) egyetlen kompakt gridben.
-- Akciógombok (`ManualNotificationModal`, `SingleBonusPointsModal`, „Részletek megnyitása") a Sheet aljára fixen — nem kell görgetni értük.
-- Behavioral tag chip-ek 2 sorba tömörítve, felesleges térközök nélkül.
+Két új blokk:
+```toml
+[functions.create-redemption-window]
+verify_jwt = true
 
-### 2.3 Konzisztencia
-- Ugyanaz a mobil sűrítés kerül a Users detail lap tab-fejlécére is (chip-scroll, kompakt padding).
-
----
-
-## Technikai részletek
-
-**Migráció (új):**
-```sql
-alter table public.venues
-  add column if not exists redemption_radius_m integer default 100;
-
-create table if not exists public.platform_settings (
-  key text primary key,
-  value jsonb not null,
-  updated_at timestamptz default now(),
-  updated_by uuid references auth.users(id)
-);
-grant select on public.platform_settings to anon, authenticated;
-grant all on public.platform_settings to service_role;
-alter table public.platform_settings enable row level security;
-create policy "anyone can read" on public.platform_settings for select using (true);
-create policy "admins can write" on public.platform_settings
-  for all to authenticated
-  using (public.has_role(auth.uid(), 'admin'))
-  with check (public.has_role(auth.uid(), 'admin'));
-
-insert into public.platform_settings(key, value)
-  values ('enforce_redemption_radius', 'false'::jsonb)
-  on conflict (key) do nothing;
+[functions.confirm-redemption]
+verify_jwt = true
 ```
+(Rork spec kifejezetten kéri a `verify_jwt = true`-t.)
 
-**Edge function változás:**
-- `issue-redemption-token`: `skip_distance` paraméter elfogadása admin JWT-nél; egyébként a `platform_settings.enforce_redemption_radius` alapján dönt.
+### 4. CORS
 
-**Admin UI:**
-- `src/pages/Settings.tsx` (vagy megfelelő) → új Switch komponens.
-- `VenueFormModal.tsx` → új numerikus input a beváltási sugárhoz.
-- `src/pages/Users.tsx` + `UserQuickViewModal.tsx` → mobil layout tömörítés, Sheet konverzió.
+Mindkét function: OPTIONS preflight, `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: authorization, x-client-info, apikey, content-type`, minden válaszban (hibában is).
 
-**Rork felé dokumentáció:**
-- `docs/RORK_FREE_DRINKS_INTEGRATION.md` kiegészül:
-  - Olvasd az `enforce_redemption_radius` platform_setting-et — ha `false`, ne végezz távolság-checket.
-  - Olvasd a `venues.redemption_radius_m`-t — ha van, ezt használd a 100 m helyett.
-  - Ha admin user van bejelentkezve (`is_admin=true`), küldj `skip_distance: true`-t.
+### 5. Dokumentáció
 
----
+`docs/RORK_FREE_DRINKS_INTEGRATION.md` frissítése: az új két endpoint leírása, mikor melyiket hívja a Rork app (create → QR kijelzés; confirm → „BEVÁLTOM" gomb megnyomásakor), példa payloadok és hibakódok.
 
-## Sorrend
+## Amit NEM változtatunk
 
-1. Migráció + platform_settings + venues.redemption_radius_m.
-2. Admin UI: globális kapcsoló + helyszínenkénti radius mező.
-3. Edge function frissítés + Rork dokumentáció.
-4. Users lista + QuickView mobil tömörítés.
+- Meglévő `issue-redemption-token` és `consume-redemption-token` marad (staff-scanner flow).
+- Nincs adatbázis-migráció — minden szükséges oszlop és tábla létezik (`redemption_tokens`, `redemptions`, `csr_donations`, `platform_settings.enforce_redemption_radius`, `venues.redemption_radius_m`).
 
-Az 1–3 lépés után **azonnal ki tudod kapcsolni a radius-t és felveheted a demo videót**, mielőtt a 4. lépés elkészül.
+## Ellenőrzés
+
+Deploy után:
+1. Supabase dashboard → Edge Functions → mindkettő megjelenik és `active`.
+2. Rork app-ban a beváltás sárga „Teszt mód" címkéje eltűnik.
+3. Log ellenőrzés: `create-redemption-window` és `confirm-redemption` hívások sikeresek.
+
+## Érintett fájlok
+
+- `supabase/functions/create-redemption-window/index.ts` (új)
+- `supabase/functions/confirm-redemption/index.ts` (új)
+- `supabase/config.toml` (2 blokk)
+- `docs/RORK_FREE_DRINKS_INTEGRATION.md` (kiegészítés)

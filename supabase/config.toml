@@ -109,6 +109,12 @@ verify_jwt = false
 [functions.consume-redemption-token]
 verify_jwt = false
 
+[functions.create-redemption-window]
+verify_jwt = true
+
+[functions.confirm-redemption]
+verify_jwt = true
+
 [functions.generate-user-qr]
 verify_jwt = false
 
