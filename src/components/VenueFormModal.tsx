@@ -378,7 +378,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   ];
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
         <div className="sticky top-0 z-10 bg-cgi-surface pb-2 -mx-1 px-1">
           {isMobile ? (
