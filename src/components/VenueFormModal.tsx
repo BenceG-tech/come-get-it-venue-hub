@@ -380,10 +380,10 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const formContent = (
     <form onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
-        <div className="sticky top-0 z-10 bg-cgi-surface pb-2 -mx-1 px-1">
+        <div className="sticky top-0 z-10 bg-cgi-surface pb-1.5 -mx-1 px-1">
           {isMobile ? (
             <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="cgi-input h-11 bg-cgi-surface border-cgi-muted text-cgi-surface-foreground font-medium">
+              <SelectTrigger className="cgi-input h-9 bg-cgi-surface border-cgi-muted text-cgi-surface-foreground font-medium text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-cgi-surface border-cgi-muted">
@@ -403,7 +403,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-4">
+        <div className="flex-1 overflow-y-auto pt-3">
 
         {/* ÁLTALÁNOS */}
         <TabsContent value="basic" className="space-y-4 mt-0">
@@ -827,28 +827,41 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       </Tabs>
 
       <div
-        className="flex-shrink-0 bg-cgi-surface flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 mt-2 border-t border-cgi-muted"
+        className={cn(
+          "flex-shrink-0 bg-cgi-surface border-t border-cgi-muted",
+          isMobile
+            ? "flex flex-row gap-2 pt-2 mt-1"
+            : "flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 mt-2"
+        )}
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
       >
-        <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary w-full sm:w-auto min-h-[48px]" disabled={saving || geocoding}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setOpen(false)}
+          className={cn("cgi-button-secondary", isMobile ? "flex-1 h-10 text-sm" : "w-full sm:w-auto min-h-[48px]")}
+          disabled={saving || geocoding}
+        >
           Mégse
         </Button>
+        {!isMobile && (
+          <Button
+            type="submit"
+            variant="outline"
+            className="cgi-button-secondary w-full sm:w-auto min-h-[48px]"
+            disabled={saving || geocoding}
+            onClick={() => { closeAfterSaveRef.current = false; }}
+          >
+            {geocoding ? 'Geocoding...' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
+          </Button>
+        )}
         <Button
           type="submit"
-          variant="outline"
-          className="cgi-button-secondary w-full sm:w-auto min-h-[48px]"
-          disabled={saving || geocoding}
-          onClick={() => { closeAfterSaveRef.current = false; }}
-        >
-          {geocoding ? 'Geocoding...' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
-        </Button>
-        <Button
-          type="submit"
-          className="cgi-button-primary w-full sm:w-auto min-h-[48px]"
+          className={cn("cgi-button-primary", isMobile ? "flex-1 h-10 text-sm" : "w-full sm:w-auto min-h-[48px]")}
           disabled={saving || geocoding}
           onClick={() => { closeAfterSaveRef.current = true; }}
         >
-          {saving && closeAfterSaveRef.current ? 'Mentés...' : 'Mentés és bezárás'}
+          {saving && closeAfterSaveRef.current ? 'Mentés...' : (isMobile ? '✓ Mentés + bezárás' : 'Mentés és bezárás')}
         </Button>
       </div>
     </form>
@@ -861,20 +874,19 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         <SheetTrigger asChild>
           {trigger}
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted p-4 flex flex-col">
-          <SheetHeader className="mb-2 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2 pr-8">
-              <SheetTitle className="text-cgi-surface-foreground text-base truncate">
+        <SheetContent side="bottom" className="h-[95vh] bg-cgi-surface border-cgi-muted px-3 pt-3 pb-2 flex flex-col">
+          <SheetHeader className="mb-1 flex-shrink-0">
+            <div className="flex items-center justify-between gap-2 pr-7">
+              <SheetTitle className="text-cgi-surface-foreground text-sm truncate">
                 {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
               </SheetTitle>
               <Button
                 type="button"
                 size="sm"
-                className="cgi-button-primary h-9 px-3 text-xs flex-shrink-0"
+                className="cgi-button-primary h-8 px-3 text-xs flex-shrink-0"
                 disabled={saving || geocoding}
                 onClick={() => {
                   closeAfterSaveRef.current = false;
-                  // Submit the form programmatically
                   const form = document.querySelector<HTMLFormElement>('form[data-venue-form]');
                   form?.requestSubmit();
                 }}
