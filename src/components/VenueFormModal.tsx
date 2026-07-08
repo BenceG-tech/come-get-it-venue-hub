@@ -684,6 +684,32 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             </CollapsibleContent>
           </Collapsible>
 
+          <div className="pt-2 space-y-2">
+            <Label htmlFor="redemption-radius" className="text-cgi-surface-foreground text-sm">
+              Beváltási sugár (méter)
+            </Label>
+            <Input
+              id="redemption-radius"
+              type="number"
+              min={10}
+              max={5000}
+              inputMode="numeric"
+              value={formData.redemption_radius_m ?? ''}
+              placeholder="Üres = platform alapérték (100 m)"
+              onChange={(e) => {
+                const v = e.target.value;
+                setFormData(prev => ({
+                  ...prev,
+                  redemption_radius_m: v === '' ? null : Math.max(10, Math.min(5000, parseInt(v, 10) || 0)),
+                }));
+              }}
+              className="cgi-input bg-cgi-surface border-cgi-muted text-cgi-surface-foreground max-w-xs"
+            />
+            <p className="text-xs text-cgi-muted-foreground">
+              A vendégnek ekkora távolságon belül kell lennie a helyszínhez, hogy beválthasson. Üresen a globális beállítás érvényes.
+            </p>
+          </div>
+
           <div className="pt-2">
             <h4 className="text-sm font-medium text-cgi-surface-foreground mb-3">Nyitvatartás</h4>
             <BusinessHoursEditor
