@@ -22,7 +22,6 @@ import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManage
 import { PriceTierBadge } from '@/components/PriceTierBadge';
 import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
-import { seedData } from '@/lib/mock/seed';
 import { 
   getActiveFreeDrinkStatus, 
   getNextActiveWindow, 
@@ -64,10 +63,6 @@ export default function VenueDetail() {
     };
 
     loadVenue();
-    // Seed only when NOT using Supabase
-    if (!runtimeConfig.useSupabase) {
-      seedData();
-    }
   }, [id]);
 
   // Business logic calculations with proper null checks
