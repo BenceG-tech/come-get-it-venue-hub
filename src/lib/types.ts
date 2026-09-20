@@ -231,7 +231,7 @@ export interface Reward {
   valid_until: string;
   active: boolean;
   description?: string;
-  venue_id: string;
+  venue_id?: string | null; // null / empty for global rewards
   image_url?: string;
   
   // New unified fields
