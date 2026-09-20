@@ -9,7 +9,7 @@ import { RouteGuard } from "@/components/RouteGuard";
 import { TourProvider } from "@/contexts/TourContext";
 import { supabase } from "@/integrations/supabase/client";
 import { hydrateSessionFromSupabaseUser } from "@/auth/supabaseAuth";
-import { sessionManager } from "@/auth/mockSession";
+import { sessionManager } from "@/auth/session";
 import { runtimeConfig } from "@/config/runtime";
 import Login from "./pages/Login";
 import NoAccess from "./pages/NoAccess";

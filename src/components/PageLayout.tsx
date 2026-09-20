@@ -1,6 +1,6 @@
 
 import { Sidebar } from "@/components/Sidebar";
-import { sessionManager } from '@/auth/mockSession';
+import { sessionManager } from '@/auth/session';
 import adminBackground from '@/assets/admin-background.png';
 
 interface PageLayoutProps {

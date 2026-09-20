@@ -1,6 +1,6 @@
 
 import { Navigate, useLocation } from 'react-router-dom';
-import { sessionManager } from '@/auth/mockSession';
+import { sessionManager } from '@/auth/session';
 
 interface RouteGuardProps {
   children: React.ReactNode;

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NotificationTemplate } from '@/lib/types';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { useToast } from '@/hooks/use-toast';
-import { sessionManager } from '@/auth/mockSession';
+import { sessionManager } from '@/auth/session';
 import { Slider } from '@/components/ui/slider';
 
 interface NotificationFormModalProps {

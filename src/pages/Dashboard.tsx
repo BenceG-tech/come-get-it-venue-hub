@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
-import { sessionManager } from "@/auth/mockSession";
+import { sessionManager } from "@/auth/session";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { OwnerDashboard } from "@/components/dashboard/OwnerDashboard";
 import { StaffDashboard } from "@/components/dashboard/StaffDashboard";

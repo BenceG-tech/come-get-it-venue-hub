@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Lock, Mail, Building2, UserCheck, Crown, Briefcase } from "lucide-react";
 import logoImage from "@/assets/come-get-it-logo.png";
 import loginBackground from "@/assets/login-background.png";
-import { DEMO_USERS, sessionManager } from "@/auth/mockSession";
+import { DEMO_USERS, sessionManager } from "@/auth/session";
 import { seedData } from "@/lib/mock/seed";
 import { runtimeConfig } from "@/config/runtime";
 import { signInWithEmailPassword, signInWithGoogle } from "@/auth/supabaseAuth";
