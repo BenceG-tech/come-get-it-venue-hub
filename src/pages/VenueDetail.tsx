@@ -33,7 +33,6 @@ import {
 import { Venue, FreeDrinkWindow, BusinessHours } from '@/lib/types';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useToast } from '@/hooks/use-toast';
-import { runtimeConfig } from '@/config/runtime';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function VenueDetail() {
