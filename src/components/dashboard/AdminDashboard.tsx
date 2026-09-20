@@ -117,8 +117,8 @@ export function AdminDashboard() {
 
         {/* Top Venues */}
         <ChartCard 
-          title="Top 5 Helyszín - Bevétel"
-          tooltip="A legjobban teljesítő helyszínek bevétel alapján rangsorolva. Ez segít azonosítani a sikeres partnereket és a legjobb gyakorlatokat."
+          title="Top 5 Helyszín - Beváltott italok értéke"
+          tooltip="A helyszínek rangsora a beváltott italok névértéke (redemptions.value) alapján. Ez nem tranzakciós bevétel."
         >
           {isLoading ? (
             <div className="h-[300px] flex items-center justify-center">
@@ -143,7 +143,7 @@ export function AdminDashboard() {
                 <Tooltip 
                   {...chartTooltipStyle}
                   cursor={barChartCursor}
-                  formatter={(value: any) => [formatCurrency(value), 'Bevétel']}
+                  formatter={(value: any) => [formatCurrency(value), 'Beváltott érték']}
                 />
                 <Bar 
                   dataKey="revenue" 
