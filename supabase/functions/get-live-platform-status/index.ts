@@ -99,9 +99,9 @@ Deno.serve(async (req) => {
     // Get redemptions in last hour
     const { data: recentRedemptions } = await supabase
       .from("redemptions")
-      .select("id, venue_id, user_id, created_at, drink_name")
-      .gte("created_at", oneHourAgo.toISOString())
-      .order("created_at", { ascending: false });
+      .select("id, venue_id, user_id, redeemed_at, drink")
+      .gte("redeemed_at", oneHourAgo.toISOString())
+      .order("redeemed_at", { ascending: false });
 
     const redemptionsLastHour = recentRedemptions?.length || 0;
     const redemptionsPerMinute = Math.round((redemptionsLastHour / 60) * 10) / 10;
@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
     const { data: previousRedemptions } = await supabase
       .from("redemptions")
       .select("id")
-      .gte("created_at", twoHoursAgo.toISOString())
-      .lt("created_at", oneHourAgo.toISOString());
+      .gte("redeemed_at", twoHoursAgo.toISOString())
+      .lt("redeemed_at", oneHourAgo.toISOString());
 
     const previousPerMinute = Math.round(((previousRedemptions?.length || 0) / 60) * 10) / 10;
     const redemptionsChange = Math.round((redemptionsPerMinute - previousPerMinute) * 10) / 10;
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     const { data: todayRedemptions } = await supabase
       .from("redemptions")
       .select("venue_id")
-      .gte("created_at", todayStart.toISOString());
+      .gte("redeemed_at", todayStart.toISOString());
 
     const venueRedemptionCounts = new Map<string, number>();
     todayRedemptions?.forEach(r => {
@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
       active_users: activeUsersNow,
       redemptions_last_hour: redemptionsLastHour,
       redemptions_last_5min: recentRedemptions?.filter(r => 
-        new Date(r.created_at) >= fiveMinutesAgo
+        new Date(r.redeemed_at) >= fiveMinutesAgo
       ).length || 0,
       hottest_venue_id: hottestVenue?.id,
       hottest_venue_count: hottestVenue?.active_count || 0,
@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error in get-live-platform-status:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unexpected error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
