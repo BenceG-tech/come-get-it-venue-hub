@@ -28,16 +28,16 @@ export interface StaffStats {
     drink: string;
     value: number;
     time: string;
-    user_type: 'new' | 'returning';
+    user_type?: 'new' | 'returning';
   }>;
   top_drinks: Array<{ name: string; count: number; revenue: number }>;
 }
 
 export interface BrandStats {
   total_partner_venues: number;
-  active_campaigns: number;
-  monthly_reach: number;
-  conversion_rate: number;
+  active_campaigns: number | null;
+  monthly_reach: number | null;
+  conversion_rate: number | null;
 }
 
 type DashboardRole = 'admin' | 'owner' | 'staff' | 'brand';
@@ -56,18 +56,15 @@ export function useDashboardStats<R extends DashboardRole>(
   return useQuery<StatsResult<R>>({
     queryKey: ['dashboard-stats', role, venueId],
     queryFn: async () => {
-      
-      
       const { data, error } = await supabase.functions.invoke('get-dashboard-stats', {
         body: { role, venue_id: venueId }
       });
-      
+
       if (error) {
-        console.error('[useDashboardStats] Error:', error);
+        console.error('[useDashboardStats] request failed:', error.message ?? 'unknown error');
         throw error;
       }
-      
-      console.log('[useDashboardStats] Received data:', data);
+
       return data as StatsResult<R>;
     },
     refetchInterval: 30000, // Refresh every 30 seconds

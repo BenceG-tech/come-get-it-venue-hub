@@ -1,14 +1,17 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { DataTable } from "@/components/DataTable";
 import { RewardFormModal } from "@/components/RewardFormModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Gift, Utensils, Star, Percent, PartyPopper, Handshake, Globe } from "lucide-react";
-import { Reward, RewardCategory } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Edit, Trash2, Gift, Utensils, Star, Percent, PartyPopper, Handshake, Globe, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Reward, RewardCategory, Venue } from "@/lib/types";
 import { supabaseProvider } from "@/lib/dataProvider/supabaseProvider";
 import { useToast } from "@/hooks/use-toast";
+import { getRewardVisibility, VenueVisibilityInfo } from "@/lib/rewardVisibility";
+import { sessionManager } from "@/auth/session";
 
 const categoryIcons: Record<RewardCategory, React.ReactNode> = {
   drink: <Gift className="h-4 w-4" />,
@@ -30,19 +33,38 @@ const categoryLabels: Record<RewardCategory, string> = {
 
 export default function Rewards() {
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [venues, setVenues] = useState<VenueVisibilityInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchRewards = async () => {
+  const isAdmin = sessionManager.getRole() === 'cgi_admin';
+  const myVenueIds = sessionManager.getCurrentSession()?.venues ?? [];
+
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await supabaseProvider.getList<Reward>('rewards', {
-        orderBy: 'priority',
-        orderDir: 'desc'
-      });
-      setRewards(data);
+      const [rewardData, venueData] = await Promise.all([
+        supabaseProvider.getList<Reward>('rewards', {
+          orderBy: 'priority',
+          orderDir: 'desc'
+        }),
+        // RLS is the backstop: owners only receive their own venues.
+        supabaseProvider.getList<Venue>('venues')
+      ]);
+
+      const visibleVenues = (venueData as unknown as VenueVisibilityInfo[]).filter(
+        (v) => isAdmin || myVenueIds.includes(v.id)
+      );
+      const allowedIds = new Set(visibleVenues.map((v) => v.id));
+
+      setVenues(visibleVenues);
+      setRewards(
+        isAdmin
+          ? rewardData
+          : rewardData.filter((r) => r.is_global || (r.venue_id && allowedIds.has(r.venue_id)))
+      );
     } catch (error) {
-      console.error('Failed to fetch rewards:', error);
+      console.error('Failed to fetch rewards');
       toast({
         title: "Hiba",
         description: "Nem sikerült betölteni a jutalmakat",
@@ -54,19 +76,31 @@ export default function Rewards() {
   };
 
   useEffect(() => {
-    fetchRewards();
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const venuesById = useMemo(() => {
+    const map: Record<string, VenueVisibilityInfo> = {};
+    venues.forEach((v) => { map[v.id] = v; });
+    return map;
+  }, [venues]);
+
+  const visibleCount = useMemo(
+    () => rewards.filter((r) => getRewardVisibility(r, r.venue_id ? venuesById[r.venue_id] : null).visible).length,
+    [rewards, venuesById]
+  );
 
   const handleCreateReward = async (newReward: Omit<Reward, 'id'>) => {
     try {
       await supabaseProvider.create('rewards', newReward);
       toast({
         title: "Siker",
-        description: "Jutalom létrehozva"
+        description: "Jutalom létrehozva (inaktívként, amíg nem publikálod)"
       });
-      fetchRewards();
+      fetchData();
     } catch (error) {
-      console.error('Failed to create reward:', error);
+      console.error('Failed to create reward');
       toast({
         title: "Hiba",
         description: "Nem sikerült létrehozni a jutalmat",
@@ -82,9 +116,9 @@ export default function Rewards() {
         title: "Siker",
         description: "Jutalom frissítve"
       });
-      fetchRewards();
+      fetchData();
     } catch (error) {
-      console.error('Failed to update reward:', error);
+      console.error('Failed to update reward');
       toast({
         title: "Hiba",
         description: "Nem sikerült frissíteni a jutalmat",
@@ -100,9 +134,9 @@ export default function Rewards() {
         title: "Siker",
         description: "Jutalom törölve"
       });
-      fetchRewards();
+      fetchData();
     } catch (error) {
-      console.error('Failed to delete reward:', error);
+      console.error('Failed to delete reward');
       toast({
         title: "Hiba",
         description: "Nem sikerült törölni a jutalmat",
@@ -127,6 +161,27 @@ export default function Rewards() {
       )
     },
     {
+      key: 'venue_id' as keyof Reward,
+      label: 'Helyszín',
+      render: (value: string | null | undefined, item: Reward) => {
+        if (item.is_global && !value) {
+          return <span className="text-cgi-secondary text-sm">Minden helyszín</span>;
+        }
+        const venue = value ? venuesById[value] : undefined;
+        if (!venue) {
+          return <span className="text-cgi-muted-foreground text-sm">Nincs helyszín</span>;
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-cgi-surface-foreground text-sm">{venue.name}</span>
+            <Badge className={venue.is_paused ? 'cgi-badge-error' : 'cgi-badge-success'}>
+              {venue.is_paused ? 'Szüneteltetve' : 'Aktív'}
+            </Badge>
+          </div>
+        );
+      }
+    },
+    {
       key: 'category' as keyof Reward,
       label: 'Kategória',
       render: (value: RewardCategory | undefined) => value ? (
@@ -149,10 +204,13 @@ export default function Rewards() {
       )
     },
     {
-      key: 'priority' as keyof Reward,
-      label: 'Prioritás',
-      render: (value: number | undefined) => (
-        <span className="text-cgi-surface-foreground">{value ?? 0}</span>
+      key: 'current_redemptions' as keyof Reward,
+      label: 'Beváltás / limit',
+      render: (value: number | undefined, item: Reward) => (
+        <span className="text-cgi-surface-foreground text-sm">
+          {value ?? 0}
+          {item.max_redemptions != null ? ` / ${item.max_redemptions}` : ' / ∞'}
+        </span>
       )
     },
     {
@@ -160,18 +218,24 @@ export default function Rewards() {
       label: 'Érvényesség',
       render: (value: string) => (
         <span className="text-cgi-surface-foreground">
-          {new Date(value).toLocaleDateString('hu-HU')}
+          {value ? new Date(value).toLocaleDateString('hu-HU') : '-'}
         </span>
       )
     },
     {
       key: 'active' as keyof Reward,
-      label: 'Állapot',
-      render: (value: boolean) => (
-        <Badge className={value ? 'cgi-badge-success' : 'cgi-badge-error'}>
-          {value ? 'Aktív' : 'Inaktív'}
-        </Badge>
-      )
+      label: 'Megjelenés az appban',
+      render: (_value: boolean, item: Reward) => {
+        const visibility = getRewardVisibility(item, item.venue_id ? venuesById[item.venue_id] : null);
+        return (
+          <Badge className={visibility.visible ? 'cgi-badge-success' : 'cgi-badge-error'}>
+            <span className="flex items-center gap-1.5">
+              {visibility.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {visibility.label}
+            </span>
+          </Badge>
+        );
+      }
     },
     {
       key: 'id' as keyof Reward,
@@ -180,6 +244,7 @@ export default function Rewards() {
         <div className="flex items-center gap-2">
           <RewardFormModal
             reward={item}
+            venues={venues}
             onSubmit={(updatedReward) => handleUpdateReward(updatedReward, value)}
             trigger={
               <Button variant="ghost" size="sm" className="cgi-button-ghost">
@@ -209,8 +274,26 @@ export default function Rewards() {
             A pontgyűjtési rendszer jutalmainak kezelése
           </p>
         </div>
-        <RewardFormModal onSubmit={handleCreateReward} />
+        <RewardFormModal onSubmit={handleCreateReward} venues={venues} />
       </div>
+
+      {!loading && (
+        <div className="mb-6 space-y-4">
+          <p className="text-sm text-cgi-muted-foreground">
+            {visibleCount} / {rewards.length} jutalom látható most a mobilappban.
+          </p>
+          {rewards.length > 0 && visibleCount === 0 && (
+            <Alert className="border-cgi-warning/40 bg-cgi-warning/10">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Egyetlen jutalom sem látható az appban</AlertTitle>
+              <AlertDescription>
+                A mobilapp csak aktív, érvényes, limit alatti jutalmakat mutat, amelyek globálisak vagy nem
+                szüneteltetett helyszínhez tartoznak.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
 
       <div className="cgi-card">
         {loading ? (

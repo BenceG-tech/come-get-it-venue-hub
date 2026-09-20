@@ -3,13 +3,15 @@ import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
-import { Building, DollarSign, Users, Zap, TrendingUp, ArrowUpRight, Loader2 } from "lucide-react";
+import { Building, DollarSign, Users, Zap, TrendingUp, ArrowUpRight, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDashboardStats, formatCurrency } from "@/hooks/useDashboardStats";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useVisibleRewardsCount } from "@/hooks/useVisibleRewardsCount";
 
 export function AdminDashboard() {
-  const { data: stats, isLoading, error } = useDashboardStats('admin');
+  const { data: stats, isLoading } = useDashboardStats('admin');
+  const { data: rewardCounts, isLoading: rewardsLoading } = useVisibleRewardsCount();
 
   // Fallback data for loading/error states
   const kpiData = {
@@ -33,34 +35,44 @@ export function AdminDashboard() {
       </div>
 
       {/* Global KPI Cards */}
+      {/* Warning: nothing is publishable to the mobile app */}
+      {!rewardsLoading && rewardCounts && rewardCounts.visible === 0 && (
+        <Alert className="border-cgi-warning/40 bg-cgi-warning/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Egyetlen jutalom sem látható az appban</AlertTitle>
+          <AlertDescription>
+            {rewardCounts.total === 0
+              ? 'Még nincs létrehozott jutalom. A mobilapp jelenleg üres jutalomlistát kap.'
+              : `${rewardCounts.total} jutalom létezik, de egyik sem felel meg a megjelenítési feltételeknek (aktív, érvényes, limit alatt, nem szüneteltetett helyszín).`}{' '}
+            <Link to="/rewards" className="underline">Jutalmak kezelése</Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title="Összes beváltás"
           value={isLoading ? "..." : kpiData.total_redemptions.toLocaleString()}
-          change={{ value: 15, isPositive: true }}
           icon={Zap}
           tooltip="Az összes aktív helyszínen beváltott italok teljes száma. Ez a platform teljes aktivitásának fő mutatója."
         />
         <KPICard
-          title="Platform forgalom"
+          title="Tranzakciós forgalom"
           value={isLoading ? "..." : formatCurrency(kpiData.total_revenue)}
-          change={{ value: 12, isPositive: true }}
           icon={DollarSign}
-          tooltip="A teljes platform napi bevétele az összes helyszínről összesítve. Tartalmazza az italbeváltásokat és a kapcsolódó vásárlásokat."
+          tooltip="A POS / banki tranzakciókból (transactions.amount) származó teljes összeg. Nem tartalmazza a beváltott italok névértékét."
         />
         <KPICard
           title="Összes felhasználó"
           value={isLoading ? "..." : kpiData.total_users.toLocaleString()}
-          change={{ value: 8, isPositive: true }}
           icon={Users}
-          tooltip="A platformon regisztrált felhasználók teljes száma. Ez mutatja a felhasználói bázis növekedését és aktivitását."
+          tooltip="A platformon regisztrált felhasználók teljes száma."
         />
         <KPICard
           title="Aktív helyszínek"
           value={isLoading ? "..." : kpiData.active_venues.toLocaleString()}
-          change={{ value: 5, isPositive: true }}
           icon={Building}
-          tooltip="A jelenleg aktív és működő helyszínek száma. Egy helyszín akkor aktív, ha rendelkezik érvényes előfizetéssel és fogad beváltásokat."
+          tooltip="A nem szüneteltetett helyszínek száma – ezek jelennek meg a mobilappban."
         />
       </div>
 
@@ -105,8 +117,8 @@ export function AdminDashboard() {
 
         {/* Top Venues */}
         <ChartCard 
-          title="Top 5 Helyszín - Bevétel"
-          tooltip="A legjobban teljesítő helyszínek bevétel alapján rangsorolva. Ez segít azonosítani a sikeres partnereket és a legjobb gyakorlatokat."
+          title="Top 5 Helyszín - Beváltott italok értéke"
+          tooltip="A helyszínek rangsora a beváltott italok névértéke (redemptions.value) alapján. Ez nem tranzakciós bevétel."
         >
           {isLoading ? (
             <div className="h-[300px] flex items-center justify-center">
@@ -131,7 +143,7 @@ export function AdminDashboard() {
                 <Tooltip 
                   {...chartTooltipStyle}
                   cursor={barChartCursor}
-                  formatter={(value: any) => [formatCurrency(value), 'Bevétel']}
+                  formatter={(value: any) => [formatCurrency(value), 'Beváltott érték']}
                 />
                 <Bar 
                   dataKey="revenue" 

@@ -6,6 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type DashboardRole = 'admin' | 'owner' | 'staff' | 'brand';
+
+const ALLOWED_ROLES: DashboardRole[] = ['admin', 'owner', 'staff', 'brand'];
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status,
+  });
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -18,10 +29,79 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Parse request body
-    const { role = 'admin', venue_id } = await req.json().catch(() => ({}));
+    // ---- Authentication: a live Supabase user is required ----
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) {
+      return jsonResponse({ error: 'UNAUTHORIZED' }, 401);
+    }
 
-    console.log(`[get-dashboard-stats] Fetching stats for role: ${role}, venue_id: ${venue_id}`);
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const authUser = userData?.user;
+    if (userError || !authUser) {
+      return jsonResponse({ error: 'UNAUTHORIZED' }, 401);
+    }
+
+    // Parse request body (client input is a *request*, never an authority)
+    const body = await req.json().catch(() => ({}));
+    const requestedRole = typeof body?.role === 'string' ? body.role : 'admin';
+    const requestedVenueId = typeof body?.venue_id === 'string' ? body.venue_id : null;
+
+    // ---- Authorization: derive the effective role server-side ----
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    const isAdmin = profile?.is_admin === true;
+
+    let role: DashboardRole;
+    let venue_id: string | null = null;
+
+    if (isAdmin) {
+      // Platform admin: may request any scope.
+      role = ALLOWED_ROLES.includes(requestedRole as DashboardRole)
+        ? (requestedRole as DashboardRole)
+        : 'admin';
+      venue_id = requestedVenueId;
+      if ((role === 'owner' || role === 'staff') && !venue_id) {
+        return jsonResponse({ error: 'VENUE_ID_REQUIRED' }, 400);
+      }
+    } else {
+      // Non-admin: scope is always a single venue the user actually belongs to.
+      if (!requestedVenueId) {
+        return jsonResponse({ error: 'VENUE_ID_REQUIRED' }, 400);
+      }
+
+      const [membershipResult, ownedVenueResult] = await Promise.all([
+        supabaseClient
+          .from('venue_memberships')
+          .select('role')
+          .eq('profile_id', authUser.id)
+          .eq('venue_id', requestedVenueId)
+          .maybeSingle(),
+        supabaseClient
+          .from('venues')
+          .select('id')
+          .eq('id', requestedVenueId)
+          .eq('owner_profile_id', authUser.id)
+          .maybeSingle(),
+      ]);
+
+      const membershipRole = membershipResult.data?.role ?? null;
+      const isOwnerOfVenue = !!ownedVenueResult.data;
+
+      if (!membershipRole && !isOwnerOfVenue) {
+        return jsonResponse({ error: 'FORBIDDEN' }, 403);
+      }
+
+      // Any client-requested admin/brand role is ignored here.
+      role = isOwnerOfVenue || membershipRole === 'venue_owner' ? 'owner' : 'staff';
+      venue_id = requestedVenueId;
+    }
+
+    console.log(`[get-dashboard-stats] scope role=${role} venue_scoped=${venue_id ? 'yes' : 'no'}`);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -31,7 +111,7 @@ serve(async (req) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoISO = sevenDaysAgo.toISOString();
 
-    // Build response based on role
+    // Build response based on the *derived* role
     let stats: Record<string, any> = {};
 
     if (role === 'admin') {
@@ -83,12 +163,12 @@ serve(async (req) => {
       const totalRevenue = transactionsResult.data?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
       // Process trend data - group by date
-      const trendMap = new Map<string, { redemptions: number; revenue: number }>();
+      const trendMap = new Map<string, { redemptions: number; redemption_value: number }>();
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        trendMap.set(dateStr, { redemptions: 0, revenue: 0 });
+        trendMap.set(dateStr, { redemptions: 0, redemption_value: 0 });
       }
       
       trendResult.data?.forEach((r: any) => {
@@ -96,32 +176,35 @@ serve(async (req) => {
         if (trendMap.has(dateStr)) {
           const current = trendMap.get(dateStr)!;
           current.redemptions += 1;
-          current.revenue += r.value || 0;
+          current.redemption_value += r.value || 0;
         }
       });
 
       const trends = Array.from(trendMap.entries()).map(([date, data]) => ({
         date,
         redemptions: data.redemptions,
-        revenue: data.revenue
+        // value of redeemed drinks (NOT transaction revenue)
+        redemption_value: data.redemption_value,
+        revenue: data.redemption_value
       }));
 
       // Process top venues
-      const venueStats = new Map<string, { name: string; count: number; revenue: number }>();
+      const venueStats = new Map<string, { name: string; count: number; redemption_value: number }>();
       topVenuesResult.data?.forEach((r: any) => {
         const venueId = r.venue_id;
         const venueName = r.venues?.name || 'Unknown';
         if (!venueStats.has(venueId)) {
-          venueStats.set(venueId, { name: venueName, count: 0, revenue: 0 });
+          venueStats.set(venueId, { name: venueName, count: 0, redemption_value: 0 });
         }
         const current = venueStats.get(venueId)!;
         current.count += 1;
-        current.revenue += r.value || 0;
+        current.redemption_value += r.value || 0;
       });
 
       const topVenues = Array.from(venueStats.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
+        .sort((a, b) => b.redemption_value - a.redemption_value)
+        .slice(0, 5)
+        .map((v) => ({ ...v, revenue: v.redemption_value }));
 
       stats = {
         total_redemptions: redemptionsResult.count || 0,
@@ -178,7 +261,7 @@ serve(async (req) => {
           .gte('redeemed_at', sevenDaysAgoISO)
       ]);
 
-      // Calculate daily revenue
+      // Calculate daily revenue (real transactions)
       const dailyRevenue = todayTransactionsResult.data?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
       // Calculate returning rate
@@ -192,17 +275,16 @@ serve(async (req) => {
       const returningRate = totalUsers > 0 ? Math.round((returningUsers / totalUsers) * 100) : 0;
 
       // Calculate avg basket value
-      const totalTransactionValue = todayTransactionsResult.data?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
-      const transactionCount = todayTransactionsResult.data?.length || 1;
-      const avgBasketValue = Math.round(totalTransactionValue / transactionCount);
+      const transactionCount = todayTransactionsResult.data?.length || 0;
+      const avgBasketValue = transactionCount > 0 ? Math.round(dailyRevenue / transactionCount) : 0;
 
       // Process trend data
-      const trendMap = new Map<string, { redemptions: number; revenue: number }>();
+      const trendMap = new Map<string, { redemptions: number; redemption_value: number }>();
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        trendMap.set(dateStr, { redemptions: 0, revenue: 0 });
+        trendMap.set(dateStr, { redemptions: 0, redemption_value: 0 });
       }
       
       weekRedemptionsResult.data?.forEach((r: any) => {
@@ -210,31 +292,33 @@ serve(async (req) => {
         if (trendMap.has(dateStr)) {
           const current = trendMap.get(dateStr)!;
           current.redemptions += 1;
-          current.revenue += r.value || 0;
+          current.redemption_value += r.value || 0;
         }
       });
 
       const trends = Array.from(trendMap.entries()).map(([date, data]) => ({
         date,
         redemptions: data.redemptions,
-        revenue: data.revenue
+        redemption_value: data.redemption_value,
+        revenue: data.redemption_value
       }));
 
       // Process top drinks
-      const drinkStats = new Map<string, { name: string; count: number; revenue: number }>();
+      const drinkStats = new Map<string, { name: string; count: number; redemption_value: number }>();
       topDrinksResult.data?.forEach((r: any) => {
         const drinkName = r.drink || 'Unknown';
         if (!drinkStats.has(drinkName)) {
-          drinkStats.set(drinkName, { name: drinkName, count: 0, revenue: 0 });
+          drinkStats.set(drinkName, { name: drinkName, count: 0, redemption_value: 0 });
         }
         const current = drinkStats.get(drinkName)!;
         current.count += 1;
-        current.revenue += r.value || 0;
+        current.redemption_value += r.value || 0;
       });
 
       const topDrinks = Array.from(drinkStats.values())
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .slice(0, 5)
+        .map((d) => ({ ...d, revenue: d.redemption_value }));
 
       stats = {
         daily_redemptions: todayRedemptionsResult.count || 0,
@@ -265,7 +349,7 @@ serve(async (req) => {
           .from('caps')
           .select('daily')
           .eq('venue_id', venue_id)
-          .single(),
+          .maybeSingle(),
         
         // Recent redemptions for live feed
         supabaseClient
@@ -290,20 +374,21 @@ serve(async (req) => {
       const capUsage = Math.min(100, Math.round((todayCount / dailyCap) * 100));
 
       // Process top drinks
-      const drinkStats = new Map<string, { name: string; count: number; revenue: number }>();
+      const drinkStats = new Map<string, { name: string; count: number; redemption_value: number }>();
       topDrinksResult.data?.forEach((r: any) => {
         const drinkName = r.drink || 'Unknown';
         if (!drinkStats.has(drinkName)) {
-          drinkStats.set(drinkName, { name: drinkName, count: 0, revenue: 0 });
+          drinkStats.set(drinkName, { name: drinkName, count: 0, redemption_value: 0 });
         }
         const current = drinkStats.get(drinkName)!;
         current.count += 1;
-        current.revenue += r.value || 0;
+        current.redemption_value += r.value || 0;
       });
 
       const topDrinks = Array.from(drinkStats.values())
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .slice(0, 5)
+        .map((d) => ({ ...d, revenue: d.redemption_value }));
 
       // Format recent redemptions
       const recentRedemptions = recentRedemptionsResult.data?.map((r: any) => ({
@@ -311,7 +396,6 @@ serve(async (req) => {
         drink: r.drink,
         value: r.value,
         time: r.redeemed_at,
-        user_type: 'returning' // Simplified for now
       })) || [];
 
       stats = {
@@ -323,7 +407,7 @@ serve(async (req) => {
       };
 
     } else if (role === 'brand') {
-      // Brand stats - placeholder for brand dashboard
+      // Brand stats - only figures that are actually measured
       const [venuesResult] = await Promise.all([
         supabaseClient
           .from('venues')
@@ -333,24 +417,18 @@ serve(async (req) => {
 
       stats = {
         total_partner_venues: venuesResult.count || 0,
-        active_campaigns: 3, // Placeholder
-        monthly_reach: 2500, // Placeholder
-        conversion_rate: 12.5 // Placeholder
+        active_campaigns: null,
+        monthly_reach: null,
+        conversion_rate: null
       };
     }
 
-    console.log(`[get-dashboard-stats] Returning stats for ${role}:`, Object.keys(stats));
+    console.log(`[get-dashboard-stats] returning keys for ${role}:`, Object.keys(stats));
 
-    return new Response(JSON.stringify(stats), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+    return jsonResponse(stats, 200);
 
   } catch (error) {
-    console.error('[get-dashboard-stats] Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
+    console.error('[get-dashboard-stats] Error:', error instanceof Error ? error.message : 'unknown error');
+    return jsonResponse({ error: 'INTERNAL_ERROR' }, 500);
   }
 });
