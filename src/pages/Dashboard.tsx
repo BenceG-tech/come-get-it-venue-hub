@@ -9,7 +9,6 @@ import { BrandDashboard } from "@/components/dashboard/BrandDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getDataProvider } from "@/lib/dataProvider/providerFactory";
-import { runtimeConfig } from "@/config/runtime";
 import { useTour } from "@/contexts/TourContext";
 import { OnboardingTour } from "@/components/tours/OnboardingTour";
 
