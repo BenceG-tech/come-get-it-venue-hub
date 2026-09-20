@@ -21,27 +21,39 @@ export async function hydrateSessionFromSupabaseUser(supaUser: SupabaseUser) {
     throw profileError;
   }
 
-  const { data: memberships, error: membershipsError } = await supabase
-    .from("venue_memberships")
-    .select("venue_id, role")
-    .eq("profile_id", profileId);
+  const [membershipsResult, ownedVenuesResult] = await Promise.all([
+    supabase.from("venue_memberships").select("venue_id, role").eq("profile_id", profileId),
+    supabase.from("venues").select("id").eq("owner_profile_id", profileId),
+  ]);
+
+  const { data: memberships, error: membershipsError } = membershipsResult;
+  const { data: ownedVenues, error: ownedVenuesError } = ownedVenuesResult;
 
   if (membershipsError) {
     console.error("[supabaseAuth] memberships fetch failed", membershipsError.message);
     throw membershipsError;
   }
 
-  const venueIds = (memberships ?? []).map((m) => m.venue_id);
+  if (ownedVenuesError) {
+    console.error("[supabaseAuth] owned venues fetch failed", ownedVenuesError.message);
+    throw ownedVenuesError;
+  }
+
+  const ownedVenueIds = (ownedVenues ?? []).map((v) => v.id);
+  // Union + dedupe membership venues and directly owned venues.
+  const venueIds = Array.from(
+    new Set([...(memberships ?? []).map((m) => m.venue_id), ...ownedVenueIds]),
+  );
   let role: "cgi_admin" | "venue_owner" | "venue_staff";
 
   if (profile?.is_admin) {
     role = "cgi_admin";
-  } else if ((memberships ?? []).some((m) => m.role === "venue_owner")) {
+  } else if ((memberships ?? []).some((m) => m.role === "venue_owner") || ownedVenueIds.length > 0) {
     role = "venue_owner";
   } else if (venueIds.length > 0) {
     role = "venue_staff";
   } else {
-    // Authenticated, but no admin flag and no venue membership.
+    // Authenticated, but no admin flag, no membership and no owned venue.
     sessionManager.setNoAccess();
     return { hasAccess: false as const };
   }
