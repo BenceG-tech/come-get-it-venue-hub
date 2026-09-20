@@ -29,7 +29,6 @@ import UserDetail from "./pages/UserDetail";
 import DataInsights from "./pages/DataInsights";
 import CommandCenter from "./pages/CommandCenter";
 import NotFound from "./pages/NotFound";
-import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
 import AuditLog from "./pages/AuditLog";
 import POSRedeem from "./pages/pos/POSRedeem";
@@ -47,23 +46,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => {
-  useEffect(() => {
-    if (!runtimeConfig.useSupabase) return;
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[App] auth event", event);
-      if (event === "SIGNED_IN" && session?.user) {
-        // Defer to avoid running supabase calls inside the callback
-        setTimeout(() => {
-          hydrateSessionFromSupabaseUser(session.user).catch((e) =>
-            console.error("[App] hydrate failed", e)
-          );
-        }, 0);
-      } else if (event === "SIGNED_OUT") {
-        sessionManager.clear?.();
-      }
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+  // Single Supabase auth bootstrap + subscription for the whole app.
+  useEffect(() => initAuth(), []);
 
   return (
     <QueryClientProvider client={queryClient}>
