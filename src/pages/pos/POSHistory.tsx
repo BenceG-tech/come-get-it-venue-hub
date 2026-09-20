@@ -215,7 +215,11 @@ export default function POSHistory() {
 
         {/* Filters */}
         <div className="flex gap-2">
-          <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
+          <Select
+            value={selectedVenueId}
+            onValueChange={setSelectedVenueId}
+            disabled={venues.length <= 1}
+          >
             <SelectTrigger className="flex-1">
               <SelectValue placeholder="Válassz helyszínt..." />
             </SelectTrigger>
