@@ -62,10 +62,12 @@ const App = () => {
             {/* No-access fallback for authenticated users without admin/owner role */}
             <Route path="/no-access" element={<NoAccess />} />
 
-            {/* Consumer app */}
-            <Route path="/app" element={<ConsumerApp />} />
-            <Route path="/app/venue/:id" element={<PublicVenueDetail />} />
-            <Route path="/venue/:id" element={<Navigate to="/app/venue/:id" replace />} />
+            {/* Password reset (public, same origin as resetPasswordForEmail redirect) */}
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Consumer surface lives in the mobile app — redirect legacy routes */}
+            <Route path="/app/*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/venue/:id" element={<Navigate to="/dashboard" replace />} />
             
             {/* Protected admin routes */}
             <Route path="/dashboard" element={
