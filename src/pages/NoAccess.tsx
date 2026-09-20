@@ -26,7 +26,7 @@ export default function NoAccess() {
         <p className="text-sm text-cgi-muted-foreground">
           A Come Get It admin felülete csak partnerek és belső munkatársak számára
           érhető el. Ha úgy gondolod, hogy hozzáférést kéne kapnod, vedd fel a
-          kapcsolatot a CGI csapattal a <a href="mailto:hello@come-get-it.app" className="text-cgi-primary underline">hello@come-get-it.app</a> címen.
+          kapcsolatot a CGI csapattal a <a href="mailto:gataibence@gmail.com" className="text-cgi-primary underline">gataibence@gmail.com</a> címen.
         </p>
         <Button onClick={handleSignOut} variant="outline" className="w-full">
           Kijelentkezés
