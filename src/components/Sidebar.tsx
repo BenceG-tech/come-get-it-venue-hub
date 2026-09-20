@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTour } from "@/contexts/TourContext";
+import { useCsrConfigured } from "@/hooks/useCsrConfigured";
+import { signOutSupabase } from "@/auth/supabaseAuth";
 
 type NavGroup = 'core' | 'tx' | 'marketing' | 'analytics' | 'admin';
 
