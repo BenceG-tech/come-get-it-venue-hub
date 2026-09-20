@@ -1,14 +1,8 @@
-
 /**
  * Runtime configuration.
- * Supabase mode is now always enabled - no more mock mode.
+ * This deployment always uses the live Supabase backend.
  */
 export const runtimeConfig = {
-  useSupabase: true, // Always use Supabase for live data
-  useLegacyPublicListLayout: true, // Feature flag to restore compact venue list layout
+  useSupabase: true as const,
+  useLegacyPublicListLayout: true, // compact venue list layout in admin
 };
-
-// Log confirmation
-if (typeof window !== 'undefined') {
-  console.log("[runtimeConfig] useSupabase:", runtimeConfig.useSupabase);
-}

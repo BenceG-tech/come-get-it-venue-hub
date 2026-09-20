@@ -7,32 +7,14 @@ interface POSGuardProps {
   children: ReactNode;
 }
 
+const ALLOWED_ROLES = ["cgi_admin", "venue_owner", "venue_staff"];
+
 export function POSGuard({ children }: POSGuardProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [, setTick] = useState(0);
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const session = sessionManager.getCurrentSession();
-      
-      if (!session) {
-        setIsAuthorized(false);
-        setIsLoading(false);
-        return;
-      }
+  useEffect(() => sessionManager.addListener(() => setTick((t) => t + 1)), []);
 
-      // Allow cgi_admin, venue_owner, and venue_staff
-      const allowedRoles = ["cgi_admin", "venue_owner", "venue_staff"];
-      const hasAccess = allowedRoles.includes(session.user.role);
-      
-      setIsAuthorized(hasAccess);
-      setIsLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  if (isLoading) {
+  if (!sessionManager.isBootstrapped()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -40,7 +22,12 @@ export function POSGuard({ children }: POSGuardProps) {
     );
   }
 
-  if (!isAuthorized) {
+  if (sessionManager.hasNoAccess()) {
+    return <Navigate to="/no-access" replace />;
+  }
+
+  const session = sessionManager.getCurrentSession();
+  if (!session || !ALLOWED_ROLES.includes(session.user.role)) {
     return <Navigate to="/" replace />;
   }
 
