@@ -66,6 +66,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
   const { startTour } = useTour();
+  const { isCsrConfigured } = useCsrConfigured();
 
   useEffect(() => {
     const unsubscribe = sessionManager.addListener(() => {
@@ -92,12 +93,14 @@ export function Sidebar() {
 
   const filteredNavigation = navigation.filter(item => {
     if (!effectiveRole) return false;
+    // Charity impact only when CSR is actually live on an active venue.
+    if (item.href === '/charity-impact' && !isCsrConfigured) return false;
     return item.roles.includes(effectiveRole);
   });
 
-  const handleLogout = () => {
-    sessionManager.clearSession();
-    navigate('/');
+  const handleLogout = async () => {
+    await signOutSupabase();
+    navigate('/', { replace: true });
   };
   const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin') => {
     sessionManager.setPreviewRole(role === 'cgi_admin' ? null : role);
