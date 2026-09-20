@@ -63,8 +63,6 @@ export default function Dashboard() {
   }
 
   const renderDashboard = () => {
-    console.log('Dashboard: Rendering for role:', effectiveRole);
-    
     switch (effectiveRole) {
       case 'cgi_admin':
         return <AdminDashboard />;
@@ -99,11 +97,7 @@ export default function Dashboard() {
           )}
         </div>
         <div className="mt-2 text-sm text-cgi-muted-foreground">
-          {apiError
-            ? `Hiba: ${apiError}`
-            : runtimeConfig.useSupabase
-              ? `Venues száma: ${apiCount ?? '—'}`
-              : 'Mock provider használatban'}
+          {apiError ? `Hiba: ${apiError}` : `Venues száma: ${apiCount ?? '—'}`}
         </div>
       </Card>
 
