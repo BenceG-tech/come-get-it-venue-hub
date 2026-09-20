@@ -25,40 +25,27 @@ export default function Dashboard() {
   // Listen for role changes
   useEffect(() => {
     const unsubscribe = sessionManager.addListener(() => {
-      const newEffectiveRole = sessionManager.getEffectiveRole();
-      const newIsInPreviewMode = sessionManager.isInPreviewMode();
-      
-      console.log('Dashboard: Role changed to:', newEffectiveRole);
-      console.log('Dashboard: Preview mode:', newIsInPreviewMode);
-      
-      setEffectiveRole(newEffectiveRole);
-      setIsInPreviewMode(newIsInPreviewMode);
+      setEffectiveRole(sessionManager.getEffectiveRole());
+      setIsInPreviewMode(sessionManager.isInPreviewMode());
     });
 
     return unsubscribe;
   }, []);
 
   useEffect(() => {
-    console.log("[Dashboard] runtimeConfig.useSupabase:", runtimeConfig.useSupabase);
     const provider = getDataProvider() as any;
-    console.log("[Dashboard] Provider has getCount:", typeof provider.getCount === 'function');
+    if (typeof provider.getCount !== 'function') return;
 
-    // Only check API status if Supabase is active
-    if (runtimeConfig.useSupabase && typeof provider.getCount === 'function') {
-      provider.getCount("venues")
-        .then((count: number) => {
-          setApiCount(count);
-          setApiError(null);
-        })
-        .catch((err: any) => {
-          console.error("[Dashboard] API status error:", err);
-          setApiCount(null);
-          setApiError(err?.message || String(err));
-        });
-    } else {
-      setApiCount(null);
-      setApiError(null);
-    }
+    provider.getCount("venues")
+      .then((count: number) => {
+        setApiCount(count);
+        setApiError(null);
+      })
+      .catch((err: any) => {
+        console.error("[Dashboard] API status error:", err?.message || err);
+        setApiCount(null);
+        setApiError(err?.message || String(err));
+      });
   }, []);
 
   // Auto-start tour for first-time users
