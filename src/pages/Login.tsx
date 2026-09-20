@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Lock, Mail, ArrowLeft } from "lucide-react";
 import logoImage from "@/assets/come-get-it-logo.png";
 import loginBackground from "@/assets/login-background.png";
 import { signInWithEmailPassword, requestPasswordReset } from "@/auth/supabaseAuth";
+import { sessionManager } from "@/auth/session";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -17,6 +18,21 @@ export default function Login() {
   const [mode, setMode] = useState<"login" | "forgot">("login");
   const [resetSent, setResetSent] = useState(false);
   const navigate = useNavigate();
+
+  // A live Supabase session already exists → skip the login form.
+  useEffect(() => {
+    const redirectIfSignedIn = () => {
+      if (!sessionManager.isBootstrapped()) return;
+      if (sessionManager.getCurrentSession()) {
+        navigate("/dashboard", { replace: true });
+      } else if (sessionManager.hasNoAccess()) {
+        navigate("/no-access", { replace: true });
+      }
+    };
+
+    redirectIfSignedIn();
+    return sessionManager.addListener(redirectIfSignedIn);
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
