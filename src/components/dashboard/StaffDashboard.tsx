@@ -57,23 +57,20 @@ export function StaffDashboard() {
         <KPICard
           title="Mai beváltások"
           value={isLoading ? "..." : kpiData.today_redemptions.toLocaleString()}
-          change={{ value: 8, isPositive: true }}
           icon={Receipt}
-          tooltip="Az aktuális nap során az italbeváltó alkalmazáson keresztül beváltott italok teljes száma. Ez mutatja a napi forgalom aktivitását."
+          tooltip="Az aktuális nap során beváltott italok száma ezen a helyszínen."
         />
         <KPICard
           title="Free drink státusz"
           value={isFreeDrinkPaused ? "Szüneteltetve" : "Aktív"}
-          change={{ value: 0, isPositive: true }}
           icon={Clock}
-          tooltip="A free drink kampány jelenlegi állapota. Aktív állapotban a felhasználók beválthatják az ingyenes italokat, szüneteltetett állapotban nem."
+          tooltip="A free drink kampány jelenlegi állapota. Aktív állapotban a felhasználók beválthatják az ingyenes italokat."
         />
         <KPICard
           title="Cap kihasználtság"
           value={isLoading ? "..." : `${kpiData.cap_usage}%`}
-          change={{ value: 12, isPositive: true }}
           icon={TrendingUp}
-          tooltip="A napi italbeváltási limit kihasználtsága százalékban. A cap védi a helyszínt a túlzott ingyenes italfogyasztástól."
+          tooltip="A napi italbeváltási limit kihasználtsága százalékban."
         />
       </div>
 

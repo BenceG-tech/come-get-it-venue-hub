@@ -72,30 +72,26 @@ export function OwnerDashboard() {
         <KPICard
           title="Mai beváltások"
           value={isLoading ? "..." : kpiData.daily_redemptions.toLocaleString()}
-          change={{ value: 12, isPositive: true }}
           icon={Receipt}
-          tooltip="Az Ön helyszínén ma beváltott italok száma. Ez az adat valós időben frissül és segít nyomon követni a napi teljesítményt."
+          tooltip="Az Ön helyszínén ma beváltott italok száma."
         />
         <KPICard
-          title="Napi forgalom"
+          title="Mai tranzakciós forgalom"
           value={isLoading ? "..." : formatCurrency(kpiData.daily_revenue)}
-          change={{ value: 8, isPositive: true }}
           icon={DollarSign}
-          tooltip="A mai nap teljes bevétele az italbeváltásokból és egyéb vásárlásokból. Tartalmazza mind a fizetős, mind az ingyenes italok elszámolását."
+          tooltip="A mai napra rögzített tranzakciók összege (transactions.amount). Csak összekapcsolt POS / banki adatból származik."
         />
         <KPICard
           title="Visszatérő arány"
           value={isLoading ? "..." : `${kpiData.returning_rate}%`}
-          change={{ value: 5, isPositive: true }}
           icon={Users}
-          tooltip="A visszatérő vendégek aránya az összes mai látogatóhoz képest. Magasabb érték erősebb vendéglojalitást jelez."
+          tooltip="Az elmúlt 7 napban egynél többször beváltó vendégek aránya."
         />
         <KPICard
-          title="Átlag kosárérték"
+          title="Átlag tranzakcióérték"
           value={isLoading ? "..." : formatCurrency(kpiData.avg_basket_value)}
-          change={{ value: 15, isPositive: true }}
           icon={TrendingUp}
-          tooltip="Az egy látogató által átlagosan elköltött összeg. Ez tartalmazza az italokat és egyéb termékeket is."
+          tooltip="A mai tranzakciók átlagos összege. Ha nincs tranzakciós integráció, ez 0."
         />
       </div>
 
