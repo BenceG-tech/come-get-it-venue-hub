@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { sessionManager } from "@/auth/mockSession";
+import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTour } from "@/contexts/TourContext";
+import { useCsrConfigured } from "@/hooks/useCsrConfigured";
+import { signOutSupabase } from "@/auth/supabaseAuth";
 
 type NavGroup = 'core' | 'tx' | 'marketing' | 'analytics' | 'admin';
 
@@ -64,6 +66,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const session = sessionManager.getCurrentSession();
   const { startTour } = useTour();
+  const { isCsrConfigured } = useCsrConfigured();
 
   useEffect(() => {
     const unsubscribe = sessionManager.addListener(() => {
@@ -90,12 +93,14 @@ export function Sidebar() {
 
   const filteredNavigation = navigation.filter(item => {
     if (!effectiveRole) return false;
+    // Charity impact only when CSR is actually live on an active venue.
+    if (item.href === '/charity-impact' && !isCsrConfigured) return false;
     return item.roles.includes(effectiveRole);
   });
 
-  const handleLogout = () => {
-    sessionManager.clearSession();
-    navigate('/');
+  const handleLogout = async () => {
+    await signOutSupabase();
+    navigate('/', { replace: true });
   };
   const handleRoleChange = (role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin') => {
     sessionManager.setPreviewRole(role === 'cgi_admin' ? null : role);

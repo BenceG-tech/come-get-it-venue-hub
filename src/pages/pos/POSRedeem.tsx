@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { sessionManager } from "@/auth/mockSession";
+import { sessionManager } from "@/auth/session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -274,27 +274,41 @@ export default function POSRedeem() {
       <div className="max-w-md mx-auto space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Come Get It POS</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Come Get It POS</h1>
+            <span className="inline-flex items-center mt-1 rounded-full bg-amber-500/15 text-amber-500 px-2 py-0.5 text-[11px] font-medium">
+              QR/POS béta
+            </span>
+          </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
           </Button>
         </div>
 
-        {/* Venue Selector */}
+        {/* Venue selector — only the venues this user is a member of */}
         <Card>
           <CardContent className="pt-4">
-            <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Válassz helyszínt..." />
-              </SelectTrigger>
-              <SelectContent>
-                {venues.map((venue) => (
-                  <SelectItem key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {venues.length <= 1 ? (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Helyszín: </span>
+                <span className="font-medium text-foreground">
+                  {venues[0]?.name ?? "Nincs hozzárendelt helyszín"}
+                </span>
+              </div>
+            ) : (
+              <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Válassz helyszínt..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {venues.map((venue) => (
+                    <SelectItem key={venue.id} value={venue.id}>
+                      {venue.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
 

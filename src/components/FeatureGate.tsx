@@ -1,5 +1,5 @@
 
-import { sessionManager } from '@/auth/mockSession';
+import { sessionManager } from '@/auth/session';
 import { Venue } from '@/lib/types';
 
 interface FeatureGateProps {

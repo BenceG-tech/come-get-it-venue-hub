@@ -7,10 +7,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { chartTooltipStyle, gridStyle, axisStyle } from "@/lib/chartStyles";
+import { useCsrConfigured } from "@/hooks/useCsrConfigured";
 
 const COLORS = ['hsl(var(--cgi-primary))', 'hsl(var(--cgi-secondary))', '#10b981', '#f59e0b', '#8b5cf6'];
 
 export default function CharityImpact() {
+  const { isCsrConfigured, isLoading: csrLoading } = useCsrConfigured();
+
   // Fetch charities
   const { data: charities, isLoading: charitiesLoading } = useQuery({
     queryKey: ['charities'],
@@ -79,6 +82,27 @@ export default function CharityImpact() {
       amount
     }));
 
+  if (!csrLoading && !isCsrConfigured) {
+    return (
+      <PageLayout>
+        <div className="max-w-xl mx-auto mt-10">
+          <Card className="cgi-card p-6 text-center space-y-3">
+            <Heart className="h-8 w-8 text-red-500 mx-auto" />
+            <h1 className="text-xl font-bold text-foreground">
+              Jótékonysági Hatás – nincs konfigurálva
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Jelenleg egyetlen aktív helyszínen sincs bekapcsolva a jótékonysági
+              funkció kiválasztott szervezettel, ezért nincs megjeleníthető hatásadat.
+              Kapcsold be egy helyszínnél a CSR opciót és válassz szervezetet, hogy
+              itt valós adatok jelenjenek meg.
+            </p>
+          </Card>
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout>
       <div className="space-y-6">
@@ -90,6 +114,7 @@ export default function CharityImpact() {
             <p className="text-muted-foreground">CSR adományok és társadalmi hatás áttekintése</p>
           </div>
         </div>
+
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

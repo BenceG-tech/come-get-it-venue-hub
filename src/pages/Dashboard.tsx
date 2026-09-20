@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
-import { sessionManager } from "@/auth/mockSession";
+import { sessionManager } from "@/auth/session";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { OwnerDashboard } from "@/components/dashboard/OwnerDashboard";
 import { StaffDashboard } from "@/components/dashboard/StaffDashboard";
@@ -9,7 +9,6 @@ import { BrandDashboard } from "@/components/dashboard/BrandDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getDataProvider } from "@/lib/dataProvider/providerFactory";
-import { runtimeConfig } from "@/config/runtime";
 import { useTour } from "@/contexts/TourContext";
 import { OnboardingTour } from "@/components/tours/OnboardingTour";
 
@@ -25,40 +24,27 @@ export default function Dashboard() {
   // Listen for role changes
   useEffect(() => {
     const unsubscribe = sessionManager.addListener(() => {
-      const newEffectiveRole = sessionManager.getEffectiveRole();
-      const newIsInPreviewMode = sessionManager.isInPreviewMode();
-      
-      console.log('Dashboard: Role changed to:', newEffectiveRole);
-      console.log('Dashboard: Preview mode:', newIsInPreviewMode);
-      
-      setEffectiveRole(newEffectiveRole);
-      setIsInPreviewMode(newIsInPreviewMode);
+      setEffectiveRole(sessionManager.getEffectiveRole());
+      setIsInPreviewMode(sessionManager.isInPreviewMode());
     });
 
     return unsubscribe;
   }, []);
 
   useEffect(() => {
-    console.log("[Dashboard] runtimeConfig.useSupabase:", runtimeConfig.useSupabase);
     const provider = getDataProvider() as any;
-    console.log("[Dashboard] Provider has getCount:", typeof provider.getCount === 'function');
+    if (typeof provider.getCount !== 'function') return;
 
-    // Only check API status if Supabase is active
-    if (runtimeConfig.useSupabase && typeof provider.getCount === 'function') {
-      provider.getCount("venues")
-        .then((count: number) => {
-          setApiCount(count);
-          setApiError(null);
-        })
-        .catch((err: any) => {
-          console.error("[Dashboard] API status error:", err);
-          setApiCount(null);
-          setApiError(err?.message || String(err));
-        });
-    } else {
-      setApiCount(null);
-      setApiError(null);
-    }
+    provider.getCount("venues")
+      .then((count: number) => {
+        setApiCount(count);
+        setApiError(null);
+      })
+      .catch((err: any) => {
+        console.error("[Dashboard] API status error:", err?.message || err);
+        setApiCount(null);
+        setApiError(err?.message || String(err));
+      });
   }, []);
 
   // Auto-start tour for first-time users
@@ -76,8 +62,6 @@ export default function Dashboard() {
   }
 
   const renderDashboard = () => {
-    console.log('Dashboard: Rendering for role:', effectiveRole);
-    
     switch (effectiveRole) {
       case 'cgi_admin':
         return <AdminDashboard />;
@@ -112,11 +96,7 @@ export default function Dashboard() {
           )}
         </div>
         <div className="mt-2 text-sm text-cgi-muted-foreground">
-          {apiError
-            ? `Hiba: ${apiError}`
-            : runtimeConfig.useSupabase
-              ? `Venues száma: ${apiCount ?? '—'}`
-              : 'Mock provider használatban'}
+          {apiError ? `Hiba: ${apiError}` : `Venues száma: ${apiCount ?? '—'}`}
         </div>
       </Card>
 

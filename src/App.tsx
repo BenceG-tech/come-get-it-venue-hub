@@ -7,14 +7,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { RouteGuard } from "@/components/RouteGuard";
 import { TourProvider } from "@/contexts/TourContext";
-import { supabase } from "@/integrations/supabase/client";
-import { hydrateSessionFromSupabaseUser } from "@/auth/supabaseAuth";
-import { sessionManager } from "@/auth/mockSession";
-import { runtimeConfig } from "@/config/runtime";
+import { initAuth } from "@/auth/supabaseAuth";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import NoAccess from "./pages/NoAccess";
 import Dashboard from "./pages/Dashboard";
-import ConsumerApp from "./pages/ConsumerApp";
 import Redemptions from "./pages/Redemptions";
 import Transactions from "./pages/Transactions";
 import Rewards from "./pages/Rewards";
@@ -32,7 +29,6 @@ import UserDetail from "./pages/UserDetail";
 import DataInsights from "./pages/DataInsights";
 import CommandCenter from "./pages/CommandCenter";
 import NotFound from "./pages/NotFound";
-import PublicVenueDetail from "./pages/PublicVenueDetail";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
 import AuditLog from "./pages/AuditLog";
 import POSRedeem from "./pages/pos/POSRedeem";
@@ -50,23 +46,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => {
-  useEffect(() => {
-    if (!runtimeConfig.useSupabase) return;
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[App] auth event", event);
-      if (event === "SIGNED_IN" && session?.user) {
-        // Defer to avoid running supabase calls inside the callback
-        setTimeout(() => {
-          hydrateSessionFromSupabaseUser(session.user).catch((e) =>
-            console.error("[App] hydrate failed", e)
-          );
-        }, 0);
-      } else if (event === "SIGNED_OUT") {
-        sessionManager.clear?.();
-      }
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+  // Single Supabase auth bootstrap + subscription for the whole app.
+  useEffect(() => initAuth(), []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -81,10 +62,12 @@ const App = () => {
             {/* No-access fallback for authenticated users without admin/owner role */}
             <Route path="/no-access" element={<NoAccess />} />
 
-            {/* Consumer app */}
-            <Route path="/app" element={<ConsumerApp />} />
-            <Route path="/app/venue/:id" element={<PublicVenueDetail />} />
-            <Route path="/venue/:id" element={<Navigate to="/app/venue/:id" replace />} />
+            {/* Password reset (public, same origin as resetPasswordForEmail redirect) */}
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Consumer surface lives in the mobile app — redirect legacy routes */}
+            <Route path="/app/*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/venue/:id" element={<Navigate to="/dashboard" replace />} />
             
             {/* Protected admin routes */}
             <Route path="/dashboard" element={

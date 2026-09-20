@@ -22,7 +22,6 @@ import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManage
 import { PriceTierBadge } from '@/components/PriceTierBadge';
 import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
-import { seedData } from '@/lib/mock/seed';
 import { 
   getActiveFreeDrinkStatus, 
   getNextActiveWindow, 
@@ -34,7 +33,6 @@ import {
 import { Venue, FreeDrinkWindow, BusinessHours } from '@/lib/types';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useToast } from '@/hooks/use-toast';
-import { runtimeConfig } from '@/config/runtime';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function VenueDetail() {
@@ -64,10 +62,6 @@ export default function VenueDetail() {
     };
 
     loadVenue();
-    // Seed only when NOT using Supabase
-    if (!runtimeConfig.useSupabase) {
-      seedData();
-    }
   }, [id]);
 
   // Business logic calculations with proper null checks
