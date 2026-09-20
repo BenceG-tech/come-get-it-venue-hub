@@ -11,12 +11,16 @@ import { Plus, Edit, Gift, Utensils, Star, Percent, PartyPopper, Handshake } fro
 import { Reward, RewardCategory, Venue } from "@/lib/types";
 import { ImageUploadInput } from "@/components/ImageUploadInput";
 import { supabaseProvider } from "@/lib/dataProvider/supabaseProvider";
+import { VenueVisibilityInfo } from "@/lib/rewardVisibility";
+import { sessionManager } from "@/auth/session";
 
 interface RewardFormModalProps {
   reward?: Reward;
   onSubmit: (reward: Omit<Reward, 'id'>) => void;
   trigger?: React.ReactNode;
   venueId?: string;
+  /** Venues the current user may attach rewards to. Fetched when omitted. */
+  venues?: VenueVisibilityInfo[];
 }
 
 const categoryOptions: { value: RewardCategory; label: string; icon: React.ReactNode }[] = [
@@ -28,14 +32,15 @@ const categoryOptions: { value: RewardCategory; label: string; icon: React.React
   { value: 'partner', label: 'Partner', icon: <Handshake className="h-4 w-4" /> }
 ];
 
-export function RewardFormModal({ reward, onSubmit, trigger, venueId = '' }: RewardFormModalProps) {
+export function RewardFormModal({ reward, onSubmit, trigger, venueId = '', venues: venuesProp }: RewardFormModalProps) {
   const [open, setOpen] = useState(false);
-  const [venues, setVenues] = useState<Venue[]>([]);
+  const [venues, setVenues] = useState<VenueVisibilityInfo[]>(venuesProp ?? []);
   const [formData, setFormData] = useState({
     name: reward?.name || '',
     points_required: reward?.points_required || 0,
     valid_until: reward?.valid_until || '',
-    active: reward?.active ?? true,
+    // New rewards start inactive so publishing is deliberate.
+    active: reward?.active ?? false,
     description: reward?.description || '',
     venue_id: reward?.venue_id || venueId,
     image_url: reward?.image_url || '',
@@ -47,41 +52,63 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '' }: Rew
     max_redemptions: reward?.max_redemptions || undefined as number | undefined
   });
 
-  // Fetch venues for partner selection
+  const isAdmin = sessionManager.getRole() === 'cgi_admin';
+  const myVenueIds = sessionManager.getCurrentSession()?.venues ?? [];
+
   useEffect(() => {
+    if (venuesProp) {
+      setVenues(venuesProp);
+      return;
+    }
     const fetchVenues = async () => {
       try {
         const data = await supabaseProvider.getList<Venue>('venues');
-        setVenues(data);
-        // If no venueId provided but we have venues, use the first one
-        if (!venueId && !reward?.venue_id && data.length > 0) {
-          setFormData(prev => ({ ...prev, venue_id: data[0].id }));
-        }
-      } catch (error) {
-        console.error('Failed to fetch venues:', error);
+        // Owners / staff may only pick their membership venues (RLS is the backstop).
+        setVenues(
+          (data as unknown as VenueVisibilityInfo[]).filter((v) => isAdmin || myVenueIds.includes(v.id))
+        );
+      } catch {
+        console.error('Failed to fetch venues for reward form');
       }
     };
-    if (open) {
-      fetchVenues();
+    if (open) fetchVenues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, venuesProp]);
+
+  const selectedVenue = formData.venue_id ? venues.find((v) => v.id === formData.venue_id) : undefined;
+  const venuePaused = !formData.is_global && !!selectedVenue?.is_paused;
+  // Global rewards need no venue; venue rewards do.
+  const missingVenue = !formData.is_global && !formData.venue_id;
+  const canPublish = !venuePaused && !missingVenue;
+
+  useEffect(() => {
+    // Never allow an active reward on a paused venue.
+    if (venuePaused && formData.active) {
+      setFormData((prev) => ({ ...prev, active: false }));
     }
-  }, [open, venueId, reward?.venue_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venuePaused]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (missingVenue) return;
+
     const submitData = {
       ...formData,
+      venue_id: formData.is_global ? (formData.venue_id || null) : formData.venue_id,
+      active: canPublish ? formData.active : false,
       max_redemptions: formData.max_redemptions || null
     };
-    onSubmit(submitData as Omit<Reward, 'id'>);
+    onSubmit(submitData as unknown as Omit<Reward, 'id'>);
     setOpen(false);
     if (!reward) {
       setFormData({
         name: '',
         points_required: 0,
         valid_until: '',
-        active: true,
+        active: false,
         description: '',
-        venue_id: venueId || (venues[0]?.id || ''),
+        venue_id: venueId,
         image_url: '',
         category: undefined,
         is_global: false,
@@ -190,25 +217,45 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '' }: Rew
             </div>
           </div>
 
-          {/* Venue Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="venue_id" className="text-cgi-surface-foreground">Helyszín *</Label>
-            <Select
-              value={formData.venue_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, venue_id: value }))}
-            >
-              <SelectTrigger className="cgi-input">
-                <SelectValue placeholder="Válassz helyszínt" />
-              </SelectTrigger>
-              <SelectContent>
-                {venues.map(venue => (
-                  <SelectItem key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Global toggle first: it decides whether a venue is needed */}
+          <div className="flex items-center justify-between rounded-md border border-cgi-muted p-3">
+            <div>
+              <Label htmlFor="is_global" className="text-cgi-surface-foreground">Globális jutalom</Label>
+              <p className="text-xs text-cgi-muted-foreground">Minden helyszínen elérhető, nem kell helyszínt választani</p>
+            </div>
+            <Switch
+              id="is_global"
+              checked={formData.is_global}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_global: checked }))}
+            />
           </div>
+
+          {/* Venue Selection */}
+          {!formData.is_global && (
+            <div className="space-y-2">
+              <Label htmlFor="venue_id" className="text-cgi-surface-foreground">Helyszín *</Label>
+              <Select
+                value={formData.venue_id || ''}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, venue_id: value }))}
+              >
+                <SelectTrigger className="cgi-input">
+                  <SelectValue placeholder="Válassz helyszínt" />
+                </SelectTrigger>
+                <SelectContent>
+                  {venues.map(venue => (
+                    <SelectItem key={venue.id} value={venue.id}>
+                      {venue.name}{venue.is_paused ? ' (szüneteltetve)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {venuePaused && (
+                <p className="text-xs text-red-400">
+                  Ez a helyszín szüneteltetve van, ezért a jutalom nem publikálható. Aktiváld először a helyszínt.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Partner Venue (if category is partner) */}
           {formData.category === 'partner' && (
@@ -293,34 +340,29 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '' }: Rew
             />
           </div>
 
-          {/* Toggles */}
-          <div className="flex flex-col gap-3 pt-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="active" className="text-cgi-surface-foreground">Aktív</Label>
-              <Switch
-                id="active"
-                checked={formData.active}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
-              />
+          {/* Publish toggle */}
+          <div className="flex items-center justify-between rounded-md border border-cgi-muted p-3">
+            <div>
+              <Label htmlFor="active" className="text-cgi-surface-foreground">Aktív (látható az appban)</Label>
+              <p className="text-xs text-cgi-muted-foreground">
+                {canPublish
+                  ? 'Bekapcsolva a jutalom megjelenik a mobilappban.'
+                  : 'Publikálás előtt válassz aktív helyszínt.'}
+              </p>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="is_global" className="text-cgi-surface-foreground">Globális jutalom</Label>
-                <p className="text-xs text-cgi-muted-foreground">Minden helyszínen elérhető</p>
-              </div>
-              <Switch
-                id="is_global"
-                checked={formData.is_global}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_global: checked }))}
-              />
-            </div>
+            <Switch
+              id="active"
+              checked={formData.active}
+              disabled={!canPublish}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
+            />
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="cgi-button-secondary">
               Mégse
             </Button>
-            <Button type="submit" className="cgi-button-primary">
+            <Button type="submit" className="cgi-button-primary" disabled={missingVenue}>
               {reward ? 'Mentés' : 'Létrehozás'}
             </Button>
           </div>
