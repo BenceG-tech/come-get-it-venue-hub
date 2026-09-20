@@ -3,13 +3,15 @@ import { chartTooltipStyle, barChartCursor } from "@/lib/chartStyles";
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
 import { Button } from "@/components/ui/button";
-import { Building, DollarSign, Users, Zap, TrendingUp, ArrowUpRight, Loader2 } from "lucide-react";
+import { Building, DollarSign, Users, Zap, TrendingUp, ArrowUpRight, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDashboardStats, formatCurrency } from "@/hooks/useDashboardStats";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useVisibleRewardsCount } from "@/hooks/useVisibleRewardsCount";
 
 export function AdminDashboard() {
-  const { data: stats, isLoading, error } = useDashboardStats('admin');
+  const { data: stats, isLoading } = useDashboardStats('admin');
+  const { data: rewardCounts, isLoading: rewardsLoading } = useVisibleRewardsCount();
 
   // Fallback data for loading/error states
   const kpiData = {
