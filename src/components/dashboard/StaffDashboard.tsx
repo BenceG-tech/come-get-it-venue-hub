@@ -138,11 +138,13 @@ export function StaffDashboard() {
                           drinkName={redemption.drink}
                           size="sm"
                         />
-                        <MobileTooltip content={redemption.user_type === 'new' ? 'Első látogatás ezen a helyszínen' : 'Már járt korábban itt'}>
-                          <Badge variant={redemption.user_type === 'new' ? 'default' : 'secondary'} className="text-xs">
-                            {redemption.user_type === 'new' ? 'Új' : 'Visszatérő'}
-                          </Badge>
-                        </MobileTooltip>
+                        {(redemption.user_type === 'new' || redemption.user_type === 'returning') && (
+                          <MobileTooltip content={redemption.user_type === 'new' ? 'Első látogatás ezen a helyszínen' : 'Már járt korábban itt'}>
+                            <Badge variant={redemption.user_type === 'new' ? 'default' : 'secondary'} className="text-xs">
+                              {redemption.user_type === 'new' ? 'Új' : 'Visszatérő'}
+                            </Badge>
+                          </MobileTooltip>
+                        )}
                       </div>
                       
                       {/* User and venue info */}
