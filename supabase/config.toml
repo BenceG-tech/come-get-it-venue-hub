@@ -104,7 +104,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.issue-redemption-token]
-verify_jwt = false
+verify_jwt = true
+
+[functions.seed-test-data]
+verify_jwt = true
 
 [functions.consume-redemption-token]
 verify_jwt = false
