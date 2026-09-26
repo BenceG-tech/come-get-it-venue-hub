@@ -60,41 +60,38 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // --- Authorization: admin-only access ---
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const token = authHeader.replace("Bearer ", "").trim();
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData?.user) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: adminProfile } = await supabase
       .from("profiles")
       .select("is_admin")
-      .eq("id", userData.user.id)
+      .eq("id", user.id)
       .single();
-
-    if (profileError || !profile?.is_admin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    if (!adminProfile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // --- End authorization ---
 
     const now = new Date();
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
@@ -277,7 +274,7 @@ Deno.serve(async (req) => {
       .limit(50);
 
     const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
-    const inactivePowerUsers = powerUsers?.filter(u => 
+    const inactivePowerUsers = powerUsers?.filter(u =>
       u.last_transaction_at && new Date(u.last_transaction_at) < tenDaysAgo
     ) || [];
 
@@ -313,7 +310,7 @@ Deno.serve(async (req) => {
       snapshot_time: now.toISOString(),
       active_users: activeUsersNow,
       redemptions_last_hour: redemptionsLastHour,
-      redemptions_last_5min: recentRedemptions?.filter(r => 
+      redemptions_last_5min: recentRedemptions?.filter(r =>
         new Date(r.redeemed_at) >= fiveMinutesAgo
       ).length || 0,
       hottest_venue_id: hottestVenue?.id,

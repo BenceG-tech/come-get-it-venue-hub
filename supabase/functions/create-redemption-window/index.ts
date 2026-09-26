@@ -1,231 +1,236 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
+const WINDOW_SECONDS = 120;
+const MAX_DISTANCE_METERS = 100;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type JsonRecord = Record<string, unknown>;
+
+type VenueRow = {
+  id: string;
+  name: string;
+  is_paused?: boolean | null;
+  coordinates?: { lat?: number | string; lng?: number | string } | null;
+};
+
+type DrinkRow = {
+  id: string;
+  drink_name: string;
+};
+
+type WindowRow = {
+  id: string;
+  days?: number[] | null;
+  start_time: string;
+  end_time: string;
+  timezone?: string | null;
+};
+
+function json(data: JsonRecord, status = 200): Response {
+  return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-async function sha256(input: string) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
 }
 
-function randPrefix(len = 6) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let s = "";
-  const bytes = new Uint8Array(len);
-  crypto.getRandomValues(bytes);
-  for (let i = 0; i < len; i++) s += chars[bytes[i] % chars.length];
-  return s;
+function numeric(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function randSecret(len = 32) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let s = "";
-  const bytes = new Uint8Array(len);
-  crypto.getRandomValues(bytes);
-  for (let i = 0; i < len; i++) s += chars[bytes[i] % chars.length];
-  return s;
+function venueCoordinates(venue: VenueRow): { latitude: number; longitude: number } | null {
+  const latitude = numeric(venue.coordinates?.lat);
+  const longitude = numeric(venue.coordinates?.lng);
+  if (latitude === null || longitude === null || (latitude === 0 && longitude === 0)) return null;
+  return { latitude, longitude };
 }
 
-function haversineM(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
+function distanceMeters(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }): number {
+  const radius = 6371e3;
+  const phi1 = (a.latitude * Math.PI) / 180;
+  const phi2 = (b.latitude * Math.PI) / 180;
+  const deltaPhi = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const deltaLambda = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const h = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+  return radius * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-// Returns ISO weekday 1..7 (Mon..Sun) in Europe/Budapest
-function budapestDayAndTime(now: Date): { isoDay: number; hhmm: string } {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Budapest",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-  const map: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
-  const wd = parts.find((p) => p.type === "weekday")?.value ?? "Mon";
-  const hh = parts.find((p) => p.type === "hour")?.value ?? "00";
-  const mm = parts.find((p) => p.type === "minute")?.value ?? "00";
-  const ss = parts.find((p) => p.type === "second")?.value ?? "00";
-  return { isoDay: map[wd] ?? 1, hhmm: `${hh}:${mm}:${ss}` };
+function todayIsoDayInBudapest(): number {
+  const day = Number(new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/Budapest' })
+    .formatToParts(new Date())
+    .find((part) => part.type === 'weekday')?.value
+    .replace('Mon', '1')
+    .replace('Tue', '2')
+    .replace('Wed', '3')
+    .replace('Thu', '4')
+    .replace('Fri', '5')
+    .replace('Sat', '6')
+    .replace('Sun', '7'));
+  return Number.isFinite(day) ? day : 1;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+function currentTimeInBudapest(): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Europe/Budapest',
+  }).format(new Date());
+}
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return json({ success: false, error: "Unauthorized", code: "NO_AUTH" }, 401);
-    }
+function randomToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  const body = Array.from(bytes).map((byte) => byte.toString(36).padStart(2, '0')).join('').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  return `CGI-${body.slice(0, 6)}-${body.slice(6, 12)}`;
+}
 
-    const supaAuth = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const jwt = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await supaAuth.auth.getClaims(jwt);
-    if (claimsErr || !claimsData?.claims) {
-      return json({ success: false, error: "Invalid token", code: "INVALID_AUTH" }, 401);
-    }
-    const userId = claimsData.claims.sub as string;
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-    const supabase = createClient(supabaseUrl, serviceKey);
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const serverDemoMode = Deno.env.get('DEMO_MODE') === 'true';
 
-    const body = await req.json().catch(() => ({}));
-    const { venue_id, drink_id, user_latitude, user_longitude, device_fingerprint } = body ?? {};
+  const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+  const admin = createClient(supabaseUrl, serviceRole);
 
-    if (!venue_id || typeof venue_id !== "string") {
-      return json({ success: false, error: "venue_id required", code: "VENUE_REQUIRED" }, 400);
-    }
+  const { data: userData, error: userError } = await userClient.auth.getUser();
+  if (userError || !userData.user) return json({ error: 'Unauthorized' }, 401);
 
-    // Admin check
-    const { data: profile } = await supabase
-      .from("profiles").select("is_admin").eq("id", userId).single();
-    const isAdmin = profile?.is_admin === true;
+  const body = await req.json().catch(() => ({})) as JsonRecord;
+  const venueId = body.venue_id;
+  const drinkId = body.drink_id;
+  const clientDemoMode = body.demo_mode === true;
+  const demoMode = serverDemoMode && clientDemoMode;
 
-    // Venue
-    const { data: venue, error: vErr } = await supabase
-      .from("venues")
-      .select("id, name, is_paused, coordinates, redemption_radius_m, csr_enabled, default_charity_id, donation_per_redemption")
-      .eq("id", venue_id).maybeSingle();
-    if (vErr || !venue) return json({ success: false, error: "Venue not found", code: "VENUE_NOT_FOUND" }, 404);
-    if (venue.is_paused) return json({ success: false, error: "Venue paused", code: "VENUE_PAUSED" }, 403);
+  const { data: reviewAccess, error: reviewAccessError } = await admin
+    .from('app_review_testers')
+    .select('enabled')
+    .eq('user_id', userData.user.id)
+    .maybeSingle<{ enabled: boolean }>();
+  if (reviewAccessError) {
+    console.warn('[create-redemption-window] App Review allowlist lookup failed', reviewAccessError.message);
+  }
+  const appReviewMode = reviewAccess?.enabled === true;
+  const bypassVenueChecks = demoMode || appReviewMode;
 
-    // Distance check
-    if (!isAdmin) {
-      const { data: platformRow } = await supabase
-        .from("platform_settings").select("value").eq("key", "enforce_redemption_radius").maybeSingle();
-      const enforce = platformRow?.value === true || platformRow?.value === "true" ||
-        (platformRow?.value && typeof platformRow.value === "object" && (platformRow.value as any).enabled === true);
-      // Default true if row missing
-      const enforceRadius = platformRow === null || platformRow === undefined ? true : Boolean(enforce);
+  if (!isUuid(venueId)) return json({ error: 'Missing or invalid venue_id' }, 400);
+  if (drinkId !== null && drinkId !== undefined && !isUuid(drinkId)) return json({ error: 'Invalid drink_id' }, 400);
 
-      if (enforceRadius) {
-        const vLat = (venue.coordinates as any)?.lat;
-        const vLng = (venue.coordinates as any)?.lng;
-        const uLat = Number(user_latitude);
-        const uLng = Number(user_longitude);
-        if (Number.isFinite(vLat) && Number.isFinite(vLng) && Number.isFinite(uLat) && Number.isFinite(uLng)) {
-          const allowed = venue.redemption_radius_m ?? 100;
-          const dist = haversineM(uLat, uLng, vLat, vLng);
-          if (dist > allowed) {
-            return json({
-              success: false, error: "Too far from venue", code: "TOO_FAR",
-              distance_m: Math.round(dist), allowed_m: allowed,
-            }, 403);
-          }
-        }
-      }
-    }
+  const { data: venue, error: venueError } = await admin
+    .from('venues')
+    .select('id,name,is_paused,coordinates')
+    .eq('id', venueId)
+    .maybeSingle<VenueRow>();
 
-    // Drink selection
-    let drink;
-    if (drink_id) {
-      const { data } = await supabase
-        .from("venue_drinks").select("id, drink_name, image_url, category")
-        .eq("id", drink_id).eq("venue_id", venue_id).maybeSingle();
-      drink = data;
-    } else {
-      const { data } = await supabase
-        .from("venue_drinks").select("id, drink_name, image_url, category")
-        .eq("venue_id", venue_id).eq("is_free_drink", true).limit(1).maybeSingle();
-      drink = data;
-    }
-    if (!drink) return json({ success: false, error: "No free drink configured", code: "NO_FREE_DRINK" }, 400);
+  if (venueError) return json({ error: 'Venue lookup failed', detail: venueError.message }, 500);
+  if (!venue) return json({ error: 'Venue not found' }, 404);
+  if (venue.is_paused) return json({ error: 'Venue is paused' }, 403);
 
-    // Free drink windows
-    const { data: windows } = await supabase
-      .from("free_drink_windows").select("days, start_time, end_time")
-      .eq("drink_id", drink.id);
+  if (!bypassVenueChecks) {
+    const venueCoords = venueCoordinates(venue);
+    const userLatitude = numeric(body.user_latitude);
+    const userLongitude = numeric(body.user_longitude);
+    if (!venueCoords) return json({ error: 'VENUE_LOCATION_MISSING' }, 409);
+    if (userLatitude === null || userLongitude === null) return json({ error: 'LOCATION_REQUIRED' }, 400);
 
-    if (windows && windows.length > 0) {
-      const { isoDay, hhmm } = budapestDayAndTime(new Date());
-      const active = windows.some((w: any) => {
-        const days: number[] = Array.isArray(w.days) ? w.days : [];
-        if (!days.includes(isoDay)) return false;
-        return String(w.start_time) <= hhmm && hhmm <= String(w.end_time);
+    const measured = distanceMeters({ latitude: userLatitude, longitude: userLongitude }, venueCoords);
+    if (measured > MAX_DISTANCE_METERS) return json({ error: 'TOO_FAR', distance_meters: Math.round(measured) }, 403);
+  }
+
+  let drinkQuery = admin.from('venue_drinks').select('id,drink_name').eq('venue_id', venueId).eq('is_free_drink', true);
+  if (isUuid(drinkId)) drinkQuery = drinkQuery.eq('id', drinkId);
+  const { data: drinks, error: drinkError } = await drinkQuery.limit(1).returns<DrinkRow[]>();
+  if (drinkError) return json({ error: 'Drink lookup failed', detail: drinkError.message }, 500);
+  const drink = drinks?.[0];
+  if (!drink) return json({ error: 'No free drink configured' }, 400);
+
+  if (!bypassVenueChecks) {
+    const { data: windows, error: windowError } = await admin
+      .from('free_drink_windows')
+      .select('id,days,start_time,end_time,timezone')
+      .eq('venue_id', venueId)
+      .eq('drink_id', drink.id)
+      .returns<WindowRow[]>();
+    if (windowError) return json({ error: 'Window lookup failed', detail: windowError.message }, 500);
+    // Drinks without configured windows are redeemable anytime — only enforce
+    // the time check when at least one window exists.
+    const windowList = windows ?? [];
+    if (windowList.length > 0) {
+      const today = todayIsoDayInBudapest();
+      const nowTime = currentTimeInBudapest();
+      const active = windowList.some((window) => {
+        const days = Array.isArray(window.days) ? window.days : [];
+        return days.includes(today) && window.start_time <= nowTime && window.end_time >= nowTime;
       });
-      if (!active && !isAdmin) {
+      if (!active) {
+        console.log('[create-redemption-window] NO_ACTIVE_WINDOW', { today, nowTime, windows: windowList });
         return json({
-          success: false, error: "No active free drink window", code: "NO_ACTIVE_WINDOW",
-          windows,
+          error: 'NO_ACTIVE_WINDOW',
+          today_iso_day: today,
+          current_time: nowTime,
+          configured_windows: windowList.map((window) => ({
+            days: Array.isArray(window.days) ? window.days : [],
+            start_time: window.start_time,
+            end_time: window.end_time,
+          })),
         }, 400);
       }
     }
-
-    // Global daily limit (1/day/user Europe/Budapest) — bypass for admin
-    if (!isAdmin) {
-      const now = new Date();
-      const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Budapest", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
-      const y = parts.find(p => p.type === "year")!.value;
-      const m = parts.find(p => p.type === "month")!.value;
-      const d = parts.find(p => p.type === "day")!.value;
-      // Budapest day boundaries in UTC (approx via offset)
-      const startLocal = new Date(`${y}-${m}-${d}T00:00:00+01:00`);
-      const endLocal = new Date(startLocal.getTime() + 24 * 3600 * 1000);
-      const { count } = await supabase
-        .from("redemptions").select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .gte("redeemed_at", startLocal.toISOString())
-        .lt("redeemed_at", endLocal.toISOString());
-      if ((count ?? 0) > 0) {
-        return json({ success: false, error: "Daily free drink already redeemed", code: "USER_GLOBAL_DAILY_LIMIT" }, 403);
-      }
-    }
-
-    // Token
-    const prefix = randPrefix(6);
-    const secret = randSecret(32);
-    const token = `CGI-${prefix}-${secret}`;
-    const token_hash = await sha256(token);
-    const issued_at = new Date();
-    const expires_at = new Date(issued_at.getTime() + 120 * 1000);
-
-    const { data: inserted, error: insErr } = await supabase
-      .from("redemption_tokens")
-      .insert({
-        token_hash, token_prefix: prefix, user_id: userId, venue_id, drink_id: drink.id,
-        device_fingerprint: device_fingerprint ?? null,
-        issued_at: issued_at.toISOString(), expires_at: expires_at.toISOString(),
-        status: "issued",
-      })
-      .select("id").single();
-
-    if (insErr || !inserted) {
-      console.error("token insert failed", insErr);
-      return json({ success: false, error: "Failed to create token", code: "TOKEN_CREATE_FAILED" }, 500);
-    }
-
-    return json({
-      success: true,
-      token,
-      token_id: inserted.id,
-      token_prefix: prefix,
-      expires_at: expires_at.toISOString(),
-      expires_in_seconds: 120,
-      qr_payload: token,
-      venue: { id: venue.id, name: venue.name },
-      drink: { id: drink.id, name: drink.drink_name, image_url: drink.image_url, category: drink.category },
-    });
-  } catch (e) {
-    console.error("unexpected", e);
-    return json({ success: false, error: "Internal server error", code: "INTERNAL_ERROR" }, 500);
   }
+
+  const token = randomToken();
+  const tokenHash = await sha256Hex(token);
+  const expiresAt = new Date(Date.now() + WINDOW_SECONDS * 1000).toISOString();
+  const deviceFingerprint = `dusk-${userData.user.id.slice(0, 8)}-${Date.now()}`;
+
+  const { data: tokenRow, error: tokenError } = await admin
+    .from('redemption_tokens')
+    .insert({
+      token_hash: tokenHash,
+      token_prefix: token.slice(0, 10),
+      user_id: userData.user.id,
+      venue_id: venueId,
+      drink_id: drink.id,
+      device_fingerprint: deviceFingerprint,
+      issued_at: new Date().toISOString(),
+      expires_at: expiresAt,
+      status: 'issued',
+    })
+    .select('id')
+    .single<{ id: string }>();
+
+  if (tokenError) return json({ error: 'Token insert failed', detail: tokenError.message }, 500);
+
+  return json({
+    token,
+    token_id: tokenRow.id,
+    expires_at: expiresAt,
+    expires_in_seconds: WINDOW_SECONDS,
+    qr_payload: `cgi://redeem?t=${encodeURIComponent(token)}&v=${encodeURIComponent(venueId)}`,
+    venue: { id: venue.id, name: venue.name },
+    drink: { id: drink.id, name: drink.drink_name },
+    demo_mode: demoMode,
+    app_review_mode: appReviewMode,
+  });
 });
