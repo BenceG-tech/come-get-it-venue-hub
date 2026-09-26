@@ -1,106 +1,87 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+function json(data: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
-  try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+type DonationRow = {
+  id?: string;
+  created_at?: string;
+  amount_huf?: number | null;
+  venue_id?: string | null;
+  charity_id?: string | null;
+  venues?: { name?: string | null } | null;
+  charities?: { name?: string | null } | null;
+};
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'GET' && req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-    // Verify user JWT
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+  const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+  const admin = createClient(supabaseUrl, serviceRole);
 
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: userData, error: userError } = await userClient.auth.getUser();
+  if (userError || !userData.user) return json({ error: 'Unauthorized' }, 401);
 
-    // Get user's CSR donations
-    const { data: donations, error: donationsError } = await serviceClient
-      .from("csr_donations")
-      .select("amount_huf, charity_id, created_at")
-      .eq("user_id", user.id);
+  const { data: donations, error } = await admin
+    .from('csr_donations')
+    .select('id,created_at,amount_huf,venue_id,charity_id,venues(name),charities(name)')
+    .eq('user_id', userData.user.id)
+    .order('created_at', { ascending: false })
+    .limit(20)
+    .returns<DonationRow[]>();
 
-    if (donationsError) {
-      console.error("Error fetching donations:", donationsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch donation data" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+  if (error) return json({ error: error.message }, 500);
 
-    const donationList = donations || [];
+  const rows = donations ?? [];
+  const totalDonationsHuf = rows.reduce((sum, row) => sum + (typeof row.amount_huf === 'number' ? row.amount_huf : 0), 0);
+  const donationCount = rows.length;
+  const recentDonations = rows.slice(0, 10).map((row) => ({
+    date: row.created_at ?? new Date().toISOString(),
+    amount: row.amount_huf ?? 0,
+    impact_description: '+1 ember kap ma tiszta vizet',
+    charity_name: row.charities?.name ?? 'Come Get It GIVE',
+    venue_name: row.venues?.name ?? 'Partnerhely',
+  }));
 
-    // Calculate totals
-    const totalDonations = donationList.reduce((sum, d) => sum + (d.amount_huf || 0), 0);
-    const donationCount = donationList.length;
-
-    // Find favorite charity (most frequent)
-    let favoriteCharity: { id: string; name: string } | null = null;
-
-    if (donationList.length > 0) {
-      const charityFrequency: Record<string, number> = {};
-      for (const d of donationList) {
-        if (d.charity_id) {
-          charityFrequency[d.charity_id] = (charityFrequency[d.charity_id] || 0) + 1;
+  return json({
+    total_donations_huf: totalDonationsHuf,
+    donation_count: donationCount,
+    favorite_charity: rows[0]?.charities?.name ?? null,
+    recent_donations: recentDonations,
+    stats: {
+      total_donations_huf: totalDonationsHuf,
+      total_impact_units: donationCount,
+      total_redemptions: donationCount,
+      current_streak_days: 0,
+      longest_streak_days: 0,
+      last_donation_date: rows[0]?.created_at ?? null,
+      global_rank: null,
+      city_rank: null,
+    },
+    next_milestone: donationCount < 10
+      ? {
+          target_units: 10,
+          current_units: donationCount,
+          remaining_units: Math.max(0, 10 - donationCount),
+          description: 'Tartsd életben a GIVE hatásod.',
         }
-      }
-
-      const topCharityId = Object.entries(charityFrequency).sort(
-        (a, b) => b[1] - a[1]
-      )[0]?.[0];
-
-      if (topCharityId) {
-        const { data: charity } = await serviceClient
-          .from("charities")
-          .select("id, name")
-          .eq("id", topCharityId)
-          .single();
-
-        if (charity) {
-          favoriteCharity = { id: charity.id, name: charity.name };
-        }
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        total_donations_huf: totalDonations,
-        donation_count: donationCount,
-        favorite_charity: favoriteCharity,
-        recent_donations: donationList.slice(0, 10),
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("CSR impact error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+      : null,
+    leaderboard_position: null,
+  });
 });

@@ -69,31 +69,31 @@ function findVenueByMerchant(
 
     // 1. Exact name match (confidence: 1.0)
     if (rules.names?.some(n => mName.includes(n.toLowerCase()))) {
-      return { 
-        venueId: venue.id, 
-        venueName: venue.name, 
-        confidence: 1.0, 
-        matchMethod: 'name_exact' 
+      return {
+        venueId: venue.id,
+        venueName: venue.name,
+        confidence: 1.0,
+        matchMethod: 'name_exact'
       };
     }
 
     // 2. Contains match (confidence: 0.9)
     if (rules.contains?.some(c => desc.includes(c.toLowerCase()))) {
-      return { 
-        venueId: venue.id, 
-        venueName: venue.name, 
-        confidence: 0.9, 
-        matchMethod: 'description_contains' 
+      return {
+        venueId: venue.id,
+        venueName: venue.name,
+        confidence: 0.9,
+        matchMethod: 'description_contains'
       };
     }
 
     // 3. MCC match (confidence: 0.5 - less specific)
     if (rules.mcc?.includes(mcc)) {
-      return { 
-        venueId: venue.id, 
-        venueName: venue.name, 
-        confidence: 0.5, 
-        matchMethod: 'mcc_category' 
+      return {
+        venueId: venue.id,
+        venueName: venue.name,
+        confidence: 0.5,
+        matchMethod: 'mcc_category'
       };
     }
   }
@@ -104,13 +104,60 @@ function findVenueByMerchant(
 function calculatePoints(amount: number, pointsRules: { per_huf: number; min_amount_huf: number } | null): number {
   const absoluteAmount = Math.abs(amount);
   const rules = pointsRules || { per_huf: 100, min_amount_huf: 0 };
-  
+
   if (absoluteAmount < rules.min_amount_huf) {
     return 0;
   }
-  
+
   // 1 point per X HUF (default: 100 HUF = 1 point)
   return Math.floor(absoluteAmount / rules.per_huf);
+}
+
+
+const DEFAULT_SALTEDGE_CALLBACK_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvL/Xxdmj7/cpZgvDMvxr
+nTTU/vkHGM/qkJ0Q+rmfYLru0Z/rSWthPDEK3orY5BTa0sAe2wUV5Fes677X6+Ib
+roCF8nODW5hSVTrqWcrQ55I7InpFkpTxyMkiFN8XPS7qmYXl/xofbYq0olcwE/aw
+9lfHlZD7iwOpVJqTsYiXzSMRu92ZdECV895kYS/ggymSEtoMSW3405dQ6OfnK53x
+7AJPdkAp0Wa2Lk4BNBMd24uu2tasO1bTYBsHpxonwbA+o8BXffdTEloloJgW7pV+
+TWvxB/Uxil4yhZZJaFmvTCefxWFovyzLdjn2aSAEI7D1y4IYOdByMOPYQ6Mn7J9A
+9wIDAQAB
+-----END PUBLIC KEY-----`;
+
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value.replace(/\s+/g, ""));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function verifySaltEdgeSignature(
+  callbackUrl: string,
+  rawBody: string,
+  signature: string,
+  publicKeyPem: string
+): Promise<boolean> {
+  try {
+    const keyBytes = decodeBase64(
+      publicKeyPem
+        .replace("-----BEGIN PUBLIC KEY-----", "")
+        .replace("-----END PUBLIC KEY-----", "")
+    );
+    const publicKey = await crypto.subtle.importKey(
+      "spki",
+      keyBytes,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      publicKey,
+      decodeBase64(signature),
+      new TextEncoder().encode(`${callbackUrl}|${rawBody}`)
+    );
+  } catch (error) {
+    console.error("[saltedge-webhook] Signature verification failed", error);
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -124,8 +171,34 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse webhook payload
-    const payload: SaltEdgeWebhookPayload = await req.json();
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const rawBody = await req.text();
+    const signature = req.headers.get("Signature");
+    if (!signature) {
+      return new Response(JSON.stringify({ error: "Missing Salt Edge signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const callbackUrl = Deno.env.get("SALTEDGE_CALLBACK_URL") ?? req.url;
+    const publicKey = Deno.env.get("SALTEDGE_CALLBACK_PUBLIC_KEY") ?? DEFAULT_SALTEDGE_CALLBACK_PUBLIC_KEY;
+    const isValidSignature = await verifySaltEdgeSignature(callbackUrl, rawBody, signature, publicKey);
+    if (!isValidSignature) {
+      return new Response(JSON.stringify({ error: "Invalid Salt Edge signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Parse the exact body that was verified.
+    const payload: SaltEdgeWebhookPayload = JSON.parse(rawBody);
     const txData = payload.data;
 
     console.log(`[saltedge-webhook] Received transaction: ${txData.id}, amount: ${txData.amount} ${txData.currency_code}`);
@@ -265,7 +338,7 @@ Deno.serve(async (req) => {
       try {
         // Find recent redemption for this user at this venue (last 2 hours)
         const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-        
+
         const { data: recentRedemptions } = await supabase
           .from("redemptions")
           .select("id, redeemed_at")

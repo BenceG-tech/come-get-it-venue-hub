@@ -1,11 +1,5 @@
 project_id = "nrxfiblssxwzeziomlvc"
 
-[functions.get-user-analytics]
-verify_jwt = false
-
-[functions.get-dashboard-stats]
-verify_jwt = false
-
 [api]
 enabled = true
 port = 54321
@@ -88,100 +82,161 @@ backend = "postgres"
 [experimental.webhooks]
 enabled = false
 
-[functions.fidel-webhook]
-verify_jwt = false
-
-[functions.get-public-venue]
-verify_jwt = false
+[functions.add-user-tags]
+verify_jwt = true
 
 [functions.ai-venue-recommend]
-verify_jwt = false
-
-[functions.get-public-venues]
-verify_jwt = false
-
-[functions.geocode-address]
-verify_jwt = false
-
-[functions.issue-redemption-token]
 verify_jwt = true
 
-[functions.seed-test-data]
+[functions.analyze-user-behavior]
 verify_jwt = true
 
-[functions.consume-redemption-token]
-verify_jwt = false
+[functions.bulk-send-bonus]
+verify_jwt = true
 
-[functions.create-redemption-window]
+[functions.bulk-send-notification]
 verify_jwt = true
 
 [functions.confirm-redemption]
 verify_jwt = true
 
-[functions.generate-user-qr]
-verify_jwt = false
+[functions.consume-redemption-token]
+verify_jwt = true
 
-[functions.validate-user-qr]
-verify_jwt = false
+[functions.create-redemption-window]
+verify_jwt = true
 
-[functions.get-user-points]
-verify_jwt = false
-
-[functions.redeem-reward]
-verify_jwt = false
-
-[functions.goorderz-webhook]
-verify_jwt = false
-
-[functions.log-user-activity]
-verify_jwt = false
-
-[functions.get-user-stats]
-verify_jwt = false
-
-[functions.get-users]
-verify_jwt = false
-
-[functions.void-redemption]
-verify_jwt = false
-
-[functions.analyze-user-behavior]
-verify_jwt = false
-
-[functions.generate-user-story]
-verify_jwt = false
-
-[functions.get-user-stats-extended]
-verify_jwt = false
-
-[functions.get-live-platform-status]
-verify_jwt = false
-
-[functions.get-anomaly-report]
-verify_jwt = false
-
-[functions.get-user-revenue-impact]
-verify_jwt = false
+[functions.delete-account]
+verify_jwt = true
 
 [functions.detect-loyalty-milestones]
 verify_jwt = false
 
+[functions.export-user-data]
+verify_jwt = true
+
+[functions.fidel-webhook]
+verify_jwt = false
+
+[functions.generate-user-qr]
+verify_jwt = true
+
+[functions.generate-user-story]
+verify_jwt = true
+
+[functions.geocode-address]
+verify_jwt = true
+
+[functions.get-all-tags]
+verify_jwt = true
+
+[functions.get-anomaly-report]
+verify_jwt = true
+
+[functions.get-audit-logs]
+verify_jwt = true
+
+[functions.get-dashboard-stats]
+verify_jwt = true
+
+[functions.get-data-value-insights]
+verify_jwt = true
+
+[functions.get-first-glass-analytics]
+verify_jwt = true
+
+[functions.get-live-platform-status]
+verify_jwt = true
+
+[functions.get-notification-analytics]
+verify_jwt = true
+
 [functions.get-pending-loyalty-alerts]
+verify_jwt = true
+
+[functions.get-public-rewards]
 verify_jwt = false
 
-[functions.send-loyalty-reward]
+[functions.get-public-venue]
 verify_jwt = false
 
-[functions.saltedge-webhook]
+[functions.get-public-venues]
 verify_jwt = false
 
-[functions.get-venue-free-drink-stats]
-verify_jwt = false
+[functions.get-redemption-window-status]
+verify_jwt = true
+
+[functions.get-rewards]
+verify_jwt = true
+
+[functions.get-user-analytics]
+verify_jwt = true
 
 [functions.get-user-csr-impact]
+verify_jwt = true
+
+[functions.get-user-points]
+verify_jwt = true
+
+[functions.get-user-revenue-impact]
+verify_jwt = true
+
+[functions.get-user-stats]
+verify_jwt = true
+
+[functions.get-user-stats-extended]
+verify_jwt = true
+
+[functions.get-users]
+verify_jwt = true
+
+[functions.get-venue-free-drink-stats]
+verify_jwt = true
+
+[functions.goorderz-webhook]
+verify_jwt = false
+
+[functions.issue-redemption-token]
+verify_jwt = true
+
+[functions.log-audit-event]
+verify_jwt = true
+
+[functions.log-user-activity]
+verify_jwt = true
+
+[functions.match-redemption-transaction]
 verify_jwt = false
 
 [functions.process-scheduled-notifications]
 verify_jwt = false
 
+[functions.redeem-reward]
+verify_jwt = true
 
+[functions.register-push-token]
+verify_jwt = true
+
+[functions.saltedge-webhook]
+verify_jwt = false
+
+[functions.seed-test-data]
+verify_jwt = true
+
+[functions.send-loyalty-reward]
+verify_jwt = true
+
+[functions.send-user-notification]
+verify_jwt = false
+
+[functions.submit-beta-feedback]
+verify_jwt = true
+
+[functions.suggest-user-notification]
+verify_jwt = true
+
+[functions.validate-user-qr]
+verify_jwt = true
+
+[functions.void-redemption]
+verify_jwt = true

@@ -1,12 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-// Permanently disabled legacy endpoint: the mobile app now authenticates
-// redemptions through create-redemption-window / confirm-redemption.
-// This handler intentionally performs no database access and does not
-// import or use the service-role client.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
-serve(async (req) => {
+Deno.serve((req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -20,6 +20,6 @@ serve(async (req) => {
     {
       status: 410,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-    }
+    },
   );
 });
