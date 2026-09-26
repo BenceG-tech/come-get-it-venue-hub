@@ -96,9 +96,9 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 function randomToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(9));
-  const body = Array.from(bytes).map((byte) => byte.toString(36).padStart(2, '0')).join('').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
-  return `CGI-${body.slice(0, 6)}-${body.slice(6, 12)}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(19));
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return `CGI-${hex.slice(0, 6)}-${hex.slice(6, 38)}`;
 }
 
 Deno.serve(async (req: Request) => {
