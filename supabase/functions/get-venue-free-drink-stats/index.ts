@@ -47,27 +47,27 @@ function isWindowActive(
     minute: "2-digit",
     hour12: false,
   });
-  
+
   const parts = formatter.formatToParts(now);
   const weekdayStr = parts.find(p => p.type === "weekday")?.value || "";
   const hour = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
   const minute = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
-  
+
   const dayMap: Record<string, number> = {
     Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
   };
   const currentDay = dayMap[weekdayStr] || 1;
-  
+
   if (!days.includes(currentDay)) {
     return false;
   }
-  
+
   const currentMinutes = hour * 60 + minute;
   const [startH, startM] = startTime.split(":").map(Number);
   const [endH, endM] = endTime.split(":").map(Number);
   const startMinutes = startH * 60 + startM;
   const endMinutes = endH * 60 + endM;
-  
+
   return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 }
 
@@ -76,7 +76,7 @@ function getNextWindow(
   now: Date
 ): FreeDrinkWindow | null {
   if (!windows.length) return null;
-  
+
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Budapest",
     weekday: "short",
@@ -84,18 +84,18 @@ function getNextWindow(
     minute: "2-digit",
     hour12: false,
   });
-  
+
   const parts = formatter.formatToParts(now);
   const weekdayStr = parts.find(p => p.type === "weekday")?.value || "";
   const hour = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
   const minute = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
-  
+
   const dayMap: Record<string, number> = {
     Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
   };
   const currentDay = dayMap[weekdayStr] || 1;
   const currentMinutes = hour * 60 + minute;
-  
+
   // Find next window today
   for (const window of windows) {
     if (!window.days.includes(currentDay)) continue;
@@ -105,7 +105,7 @@ function getNextWindow(
       return window;
     }
   }
-  
+
   // Find next window in upcoming days
   for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
     const checkDay = ((currentDay - 1 + dayOffset) % 7) + 1;
@@ -115,7 +115,7 @@ function getNextWindow(
       return dayWindows[0];
     }
   }
-  
+
   return null;
 }
 
@@ -130,7 +130,35 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { venue_id } = await req.json();
-    
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const [{ data: profile }, { data: membership }] = await Promise.all([
+      supabase.from("profiles").select("is_admin").eq("id", user.id).single(),
+      supabase.from("venue_memberships").select("venue_id").eq("profile_id", user.id).eq("venue_id", venue_id).maybeSingle(),
+    ]);
+    if (!profile?.is_admin && !membership) {
+      return new Response(JSON.stringify({ error: "Venue access required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!venue_id) {
       return new Response(
         JSON.stringify({ error: "venue_id is required" }),
@@ -209,7 +237,7 @@ Deno.serve(async (req) => {
     // Find current active window
     let currentActiveWindow: FreeDrinkWindow | null = null;
     let isActiveNow = false;
-    
+
     for (const window of windows || []) {
       if (isWindowActive(window.days, window.start_time, window.end_time, window.timezone, now)) {
         currentActiveWindow = {

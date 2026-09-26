@@ -44,6 +44,35 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+    if (!adminProfile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Admin access required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -229,7 +258,7 @@ Deno.serve(async (req) => {
     const allAnomalies = existingAnomalies || [];
     const stats: AnomalyStats = {
       total_30_days: allAnomalies.length + newAnomalies.length,
-      critical_count: allAnomalies.filter(a => a.severity === 'critical').length + 
+      critical_count: allAnomalies.filter(a => a.severity === 'critical').length +
                       newAnomalies.filter(a => a.severity === 'critical').length,
       resolved_count: allAnomalies.filter(a => a.resolved_at).length,
       false_positive_rate: 0.12, // Placeholder - would need tracking
