@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-key",
 };
 
 interface MilestoneDefinition {
@@ -72,10 +72,43 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const internalKey = req.headers.get("x-internal-key");
+    const isInternal = Boolean(internalKey && internalKey === supabaseServiceKey);
+    let actorUserId: string | null = null;
+    let actorIsAdmin = false;
+
+    if (!isInternal) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const userClient = createClient(supabaseUrl, supabaseServiceKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      actorUserId = user.id;
+      const { data: actorProfile } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .single();
+      actorIsAdmin = actorProfile?.is_admin === true;
+    }
 
     // Parse request - can be triggered after a redemption or as a cron job
     let userId: string | null = null;
@@ -85,6 +118,15 @@ Deno.serve(async (req) => {
       const body = await req.json();
       userId = body.user_id;
       venueId = body.venue_id;
+    }
+
+    if (!isInternal && !actorIsAdmin) {
+      if (!userId || userId !== actorUserId) {
+        return new Response(JSON.stringify({ error: "Cannot process another user" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Calculate date boundaries

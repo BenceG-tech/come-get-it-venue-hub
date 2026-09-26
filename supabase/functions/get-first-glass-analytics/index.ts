@@ -31,14 +31,42 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing Supabase configuration");
     }
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { venue_id, start_date, end_date } = await req.json();
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const [{ data: profile }, { data: membership }] = await Promise.all([
+      supabase.from("profiles").select("is_admin").eq("id", user.id).single(),
+      supabase.from("venue_memberships").select("venue_id").eq("profile_id", user.id).eq("venue_id", venue_id).maybeSingle(),
+    ]);
+    if (!profile?.is_admin && !membership) {
+      return new Response(JSON.stringify({ error: "Venue access required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!venue_id) {
       return new Response(JSON.stringify({ error: "venue_id is required" }), {

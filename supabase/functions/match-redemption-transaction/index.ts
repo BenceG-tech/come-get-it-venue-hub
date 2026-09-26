@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-key",
 };
 
 interface MatchResult {
@@ -31,14 +31,65 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing Supabase configuration");
     }
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const internalKey = req.headers.get("x-internal-key");
+    const isInternal = Boolean(internalKey && internalKey === supabaseServiceKey);
+    let actorIsAdmin = false;
+    let actorVenueIds: string[] = [];
+
+    if (!isInternal) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const userClient = createClient(supabaseUrl, supabaseServiceKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const [{ data: profile }, { data: memberships }] = await Promise.all([
+        supabase.from("profiles").select("is_admin").eq("id", user.id).single(),
+        supabase.from("venue_memberships").select("venue_id").eq("profile_id", user.id),
+      ]);
+      actorIsAdmin = profile?.is_admin === true;
+      actorVenueIds = (memberships ?? []).map((membership) => membership.venue_id);
+    }
+
     const { redemption_id, venue_id, user_id, redeemed_at, batch_mode } = await req.json();
+
+    if (!isInternal && !actorIsAdmin) {
+      let targetVenueId = venue_id as string | undefined;
+      if (!targetVenueId && redemption_id) {
+        const { data: redemption } = await supabase
+          .from("redemptions")
+          .select("venue_id")
+          .eq("id", redemption_id)
+          .maybeSingle();
+        targetVenueId = redemption?.venue_id;
+      }
+      if (!targetVenueId || !actorVenueIds.includes(targetVenueId)) {
+        return new Response(JSON.stringify({ error: "Venue access required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Single redemption matching
     if (redemption_id) {
@@ -118,9 +169,9 @@ async function matchSingleRedemption(supabase: any, redemptionId: string): Promi
 }
 
 async function findMatchingTransaction(
-  supabase: any, 
-  venueId: string, 
-  userId: string, 
+  supabase: any,
+  venueId: string,
+  userId: string,
   redeemedAt: string,
   redemptionId?: string,
   integrationType?: string
@@ -248,9 +299,9 @@ async function matchVenueRedemptions(supabase: any, venueId: string): Promise<Ma
     if (existingMatch) continue;
 
     const match = await findMatchingTransaction(
-      supabase, 
-      redemption.venue_id, 
-      redemption.user_id, 
+      supabase,
+      redemption.venue_id,
+      redemption.user_id,
       redemption.redeemed_at,
       redemption.id,
       venue?.integration_type
