@@ -2576,6 +2576,10 @@ export type Database = {
     }
     Functions: {
       cleanup_old_snapshots: { Args: never; Returns: undefined }
+      consume_redemption_token_atomic: {
+        Args: { p_staff_id: string; p_token_hash: string }
+        Returns: Json
+      }
       get_public_venues: {
         Args: { limit_count?: number; search_term?: string }
         Returns: {
