@@ -130,6 +130,12 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { venue_id } = await req.json();
+    if (!venue_id) {
+      return new Response(
+        JSON.stringify({ error: "venue_id is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -158,13 +164,6 @@ Deno.serve(async (req) => {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    if (!venue_id) {
-      return new Response(
-        JSON.stringify({ error: "venue_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     const now = new Date();
