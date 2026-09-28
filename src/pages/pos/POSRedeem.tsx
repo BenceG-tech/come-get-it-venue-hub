@@ -40,6 +40,22 @@ interface Venue {
   name: string;
 }
 
+interface ConsumeRedemptionResponse {
+  success: boolean;
+  code?: string;
+  error?: string;
+  redemption?: {
+    drink_name?: string;
+    drink_image_url?: string;
+    venue_name?: string;
+    token_prefix?: string;
+    redeemed_at?: string;
+  };
+}
+
+const getErrorText = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 export default function POSRedeem() {
   const navigate = useNavigate();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -49,9 +65,30 @@ export default function POSRedeem() {
   const [lastResult, setLastResult] = useState<RedemptionResult | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [activeCameraLabel, setActiveCameraLabel] = useState<string | null>(null);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = "qr-reader";
+  const isEmbeddedPreview = window.self !== window.top;
+
+  const disposeScanner = useCallback(async () => {
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) return;
+
+    try {
+      if (scanner.isScanning) await scanner.stop();
+    } catch {
+      // The camera may already have stopped after a scan or browser interruption.
+    }
+
+    try {
+      scanner.clear();
+    } catch {
+      // Clearing an already removed scanner container is harmless.
+    }
+
+    html5QrCodeRef.current = null;
+  }, []);
 
   // Load user's venues
   useEffect(() => {
@@ -102,13 +139,11 @@ export default function POSRedeem() {
   // Cleanup scanner on unmount
   useEffect(() => {
     return () => {
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
-      }
+      void disposeScanner();
     };
-  }, []);
+  }, [disposeScanner]);
 
-  const startScanner = useCallback(async () => {
+  const startScanner = async () => {
     if (!selectedVenueId) {
       toast.error("Kérlek válassz helyszínt!");
       return;
@@ -116,47 +151,67 @@ export default function POSRedeem() {
 
     setCameraError(null);
     setShowResult(false);
+    setActiveCameraLabel(null);
 
     try {
+      await disposeScanner();
+
+      // The scanner library needs a visible, measured container before it
+      // creates the video element. Previously this div was `display: none`
+      // until after start() resolved, which can leave a black/zero-size feed.
+      setIsScanning(true);
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
+      const cameras = await Html5Qrcode.getCameras();
+      if (cameras.length === 0) {
+        throw new Error("NO_CAMERA");
+      }
+
+      const preferredCamera =
+        cameras.find((camera) => /back|rear|environment|hátsó/i.test(camera.label)) ?? cameras[0];
+
       const html5QrCode = new Html5Qrcode(scannerContainerId);
       html5QrCodeRef.current = html5QrCode;
 
       await html5QrCode.start(
-        { facingMode: "environment" },
+        preferredCamera.id,
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
         },
         async (decodedText) => {
           // Stop scanning while processing
-          await html5QrCode.stop();
+          await disposeScanner();
           setIsScanning(false);
           await handleTokenScan(decodedText);
         },
         () => {} // Ignore scan failures
       );
 
+      setActiveCameraLabel(preferredCamera.label || "Alapértelmezett kamera");
       setIsScanning(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Camera error:", error);
+      await disposeScanner();
+      setIsScanning(false);
+      const errorText = getErrorText(error);
       setCameraError(
-        error.message?.includes("Permission")
+        errorText === "NO_CAMERA"
+          ? "Nem található használható kamera ezen az eszközön."
+          : /permission|notallowed|denied/i.test(errorText)
           ? "Kamera hozzáférés megtagadva. Kérlek engedélyezd a kamera használatát."
-          : "Nem sikerült elindítani a kamerát. Ellenőrizd, hogy a készülék rendelkezik kamerával."
+          : "Nem sikerült elindítani a kamerát. Zárd be a kamerát használó másik alkalmazást, majd próbáld újra."
       );
     }
-  }, [selectedVenueId]);
+  };
 
   const stopScanner = useCallback(async () => {
-    if (html5QrCodeRef.current) {
-      try {
-        await html5QrCodeRef.current.stop();
-      } catch (e) {
-        // Ignore
-      }
-    }
+    await disposeScanner();
     setIsScanning(false);
-  }, []);
+    setActiveCameraLabel(null);
+  }, [disposeScanner]);
 
   const handleTokenScan = async (token: string) => {
     setIsProcessing(true);
@@ -190,15 +245,17 @@ export default function POSRedeem() {
         }
       );
 
-      const result = await response.json();
+      const result = await response.json() as ConsumeRedemptionResponse;
 
-      if (result.success) {
+      if (result.success && result.redemption) {
         // Play success sound
         try {
           const audio = new Audio("/sounds/success.mp3");
           audio.volume = 0.5;
           audio.play().catch(() => {});
-        } catch {}
+        } catch {
+          // Audio feedback is optional and may be blocked by the browser.
+        }
 
         setLastResult({
           success: true,
@@ -214,15 +271,17 @@ export default function POSRedeem() {
           const audio = new Audio("/sounds/error.mp3");
           audio.volume = 0.5;
           audio.play().catch(() => {});
-        } catch {}
+        } catch {
+          // Audio feedback is optional and may be blocked by the browser.
+        }
 
         setLastResult({
           success: false,
-          error: getErrorMessage(result.code, result.error),
+          error: getErrorMessage(result.code ?? "UNKNOWN", result.error ?? ""),
           code: result.code,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Consume error:", error);
       setLastResult({
         success: false,
@@ -313,6 +372,24 @@ export default function POSRedeem() {
         </Card>
 
         {/* Scanner Area */}
+        {isEmbeddedPreview && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+            <p className="font-medium">A Lovable előnézet beágyazott ablak.</p>
+            <p className="mt-1 text-amber-100/80">
+              A Chrome itt engedélyezett kamera mellett is blokkolhatja a videóképet. A valódi beolvasáshoz nyisd meg az éles POS-oldalt külön lapon.
+            </p>
+            <Button asChild variant="outline" className="mt-3 w-full border-amber-500/50">
+              <a
+                href="https://come-get-it-venue-hub.lovable.app/pos/redeem"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Éles szkenner megnyitása
+              </a>
+            </Button>
+          </div>
+        )}
+
         <Card className="overflow-hidden">
           <CardContent className="p-0">
             {/* QR Scanner Container */}
@@ -320,6 +397,12 @@ export default function POSRedeem() {
               id={scannerContainerId} 
               className={`w-full aspect-square bg-muted ${!isScanning ? 'hidden' : ''}`}
             />
+
+            {isScanning && activeCameraLabel && (
+              <div className="border-t border-border bg-card px-3 py-2 text-center text-xs text-muted-foreground">
+                Aktív kamera: {activeCameraLabel} · Tartsd a QR-kódot a keretbe
+              </div>
+            )}
 
             {/* Start/Processing State */}
             {!isScanning && !showResult && (
