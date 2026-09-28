@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -25,6 +25,7 @@ const navigation: NavItem[] = [
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core' },
   { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core' },
   // TRANZAKCIÓK
+  { name: 'QR beváltás', href: '/pos/redeem', icon: ScanLine, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-pos-redeem', group: 'tx' },
   { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions', group: 'tx' },
   { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-transactions', group: 'tx' },
   { name: 'Banki Tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'], tourId: 'nav-saltedge', group: 'tx' },
@@ -160,6 +161,7 @@ export function Sidebar() {
                     {items.map(item => {
                       const isActive =
                         location.pathname === item.href ||
+                        (item.href === '/pos/redeem' && location.pathname.startsWith('/pos')) ||
                         (item.href === '/venues' && location.pathname.startsWith('/venues')) ||
                         (item.href === '/users' && location.pathname.startsWith('/users'));
                       const Icon = item.icon;
