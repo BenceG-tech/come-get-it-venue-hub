@@ -70,6 +70,7 @@ export default function POSRedeem() {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = "qr-reader";
   const isEmbeddedPreview = window.self !== window.top;
+  const liveScannerUrl = "https://come-get-it-venue-hub.lovable.app/pos/redeem";
 
   const disposeScanner = useCallback(async () => {
     const scanner = html5QrCodeRef.current;
@@ -146,6 +147,16 @@ export default function POSRedeem() {
   const startScanner = async () => {
     if (!selectedVenueId) {
       toast.error("Kérlek válassz helyszínt!");
+      return;
+    }
+
+    // Browser camera access is commonly blocked inside Lovable's embedded
+    // preview iframe even after the top-level site permission is granted.
+    // A direct user click may safely open the production scanner instead of
+    // leaving a blank video surface that can never receive a stream.
+    if (isEmbeddedPreview) {
+      window.open(liveScannerUrl, "_blank", "noopener,noreferrer");
+      toast.info("Az éles szkenner külön lapon nyílt meg.");
       return;
     }
 
@@ -311,7 +322,7 @@ export default function POSRedeem() {
   const handleContinue = () => {
     setShowResult(false);
     setLastResult(null);
-    startScanner();
+    if (!isEmbeddedPreview) void startScanner();
   };
 
   const handleLogout = async () => {
@@ -380,7 +391,7 @@ export default function POSRedeem() {
             </p>
             <Button asChild variant="outline" className="mt-3 w-full border-amber-500/50">
               <a
-                href="https://come-get-it-venue-hub.lovable.app/pos/redeem"
+                href={liveScannerUrl}
                 target="_blank"
                 rel="noreferrer"
               >
