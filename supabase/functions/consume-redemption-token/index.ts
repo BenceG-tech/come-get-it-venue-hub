@@ -25,6 +25,21 @@ function isValidTokenFormat(value: string) {
   return /^CGI-[A-Z0-9]{6}-[A-Za-z0-9]{32}$/.test(value);
 }
 
+function extractRedemptionToken(scannedValue: string): string {
+  const value = scannedValue.trim();
+  if (isValidTokenFormat(value)) return value;
+
+  try {
+    const payload = new URL(value);
+    if (payload.protocol !== "cgi:" || payload.hostname !== "redeem") return "";
+
+    const token = payload.searchParams.get("t")?.trim() ?? "";
+    return isValidTokenFormat(token) ? token : "";
+  } catch {
+    return "";
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -58,11 +73,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => null) as { token?: unknown } | null;
-    const token = typeof body?.token === "string" ? body.token.trim() : "";
-    if (!token) {
+    const scannedValue = typeof body?.token === "string" ? body.token : "";
+    if (!scannedValue.trim()) {
       return jsonResponse({ success: false, error: "Token is required", code: "TOKEN_REQUIRED" }, 400);
     }
-    if (!isValidTokenFormat(token)) {
+
+    const token = extractRedemptionToken(scannedValue);
+    if (!token) {
       return jsonResponse({ success: false, error: "Invalid token format", code: "INVALID_FORMAT" }, 400);
     }
 
