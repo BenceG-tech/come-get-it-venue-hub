@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { sessionManager } from "@/auth/session";
+import { extractRedemptionToken } from "@/lib/redemptionQr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -224,9 +225,21 @@ export default function POSRedeem() {
     setActiveCameraLabel(null);
   }, [disposeScanner]);
 
-  const handleTokenScan = async (token: string) => {
+  const handleTokenScan = async (scannedValue: string) => {
     setIsProcessing(true);
     setShowResult(false);
+
+    const token = extractRedemptionToken(scannedValue);
+    if (!token) {
+      setLastResult({
+        success: false,
+        error: "Érvénytelen QR kód formátum",
+        code: "INVALID_FORMAT",
+      });
+      setShowResult(true);
+      setIsProcessing(false);
+      return;
+    }
 
     try {
       // Get current session for auth
