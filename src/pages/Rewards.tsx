@@ -6,7 +6,7 @@ import { RewardFormModal } from "@/components/RewardFormModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Edit, Trash2, Gift, Utensils, Star, Percent, PartyPopper, Handshake, Globe, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Edit, Trash2, Gift, Utensils, Star, Percent, PartyPopper, Handshake, Globe, Eye, EyeOff, AlertTriangle, LockKeyhole } from "lucide-react";
 import { Reward, RewardCategory, Venue } from "@/lib/types";
 import { supabaseProvider } from "@/lib/dataProvider/supabaseProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -90,6 +90,9 @@ export default function Rewards() {
     () => rewards.filter((r) => getRewardVisibility(r, r.venue_id ? venuesById[r.venue_id] : null).visible).length,
     [rewards, venuesById]
   );
+
+  const canManageReward = (reward: Reward) =>
+    isAdmin || (!!reward.venue_id && myVenueIds.includes(reward.venue_id));
 
   const handleCreateReward = async (newReward: Omit<Reward, 'id'>) => {
     try {
@@ -240,28 +243,39 @@ export default function Rewards() {
     {
       key: 'id' as keyof Reward,
       label: 'Műveletek',
-      render: (value: string, item: Reward) => (
-        <div className="flex items-center gap-2">
-          <RewardFormModal
-            reward={item}
-            venues={venues}
-            onSubmit={(updatedReward) => handleUpdateReward(updatedReward, value)}
-            trigger={
-              <Button variant="ghost" size="sm" className="cgi-button-ghost">
-                <Edit className="h-4 w-4" />
-              </Button>
-            }
-          />
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="cgi-button-ghost text-red-400 hover:text-red-300"
-            onClick={() => handleDeleteReward(value)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      )
+      render: (value: string, item: Reward) => {
+        if (!canManageReward(item)) {
+          return (
+            <Badge variant="outline" className="gap-1.5 text-cgi-muted-foreground">
+              <LockKeyhole className="h-3.5 w-3.5" />
+              Csak megtekintés
+            </Badge>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-2">
+            <RewardFormModal
+              reward={item}
+              venues={venues}
+              onSubmit={(updatedReward) => handleUpdateReward(updatedReward, value)}
+              trigger={
+                <Button variant="ghost" size="sm" className="cgi-button-ghost">
+                  <Edit className="h-4 w-4" />
+                </Button>
+              }
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="cgi-button-ghost text-red-400 hover:text-red-300"
+              onClick={() => handleDeleteReward(value)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 
