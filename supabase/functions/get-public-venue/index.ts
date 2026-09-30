@@ -5,14 +5,109 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
   'Pragma': 'no-cache',
+}
+
+const BUDAPEST_TIME_ZONE = 'Europe/Budapest'
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type DayHours = { open?: string; close?: string }
+
+function getDayHours(openingHours: unknown, day: string): DayHours | undefined {
+  if (!openingHours || typeof openingHours !== 'object') return undefined
+  const byDay = (openingHours as Record<string, unknown>).byDay
+  if (!byDay || typeof byDay !== 'object') return undefined
+  const value = (byDay as Record<string, unknown>)[day]
+  if (!value || typeof value !== 'object') return undefined
+  const record = value as Record<string, unknown>
+  return {
+    open: typeof record.open === 'string' ? record.open : undefined,
+    close: typeof record.close === 'string' ? record.close : undefined,
+  }
+}
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+function parseTimeToMinutes(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function budapestClock(now = new Date()): { day: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: BUDAPEST_TIME_ZONE,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  const dayMap: Record<string, string> = {
+    Mon: '1', Tue: '2', Wed: '3', Thu: '4', Fri: '5', Sat: '6', Sun: '7',
+  }
+  return {
+    day: dayMap[values.weekday] ?? '1',
+    minutes: Number(values.hour) * 60 + Number(values.minute),
+  }
+}
+
+function computeOpenStatus(openingHours: unknown, currentDay: string, currentMinutes: number) {
+  const today = getDayHours(openingHours, currentDay)
+  const openStatus = {
+    is_open_now: false,
+    closes_at: null as string | null,
+    hours_today: today?.open && today?.close
+      ? { open: today.open as string, close: today.close as string }
+      : null,
+  }
+
+  const todayOpen = parseTimeToMinutes(today?.open)
+  const todayClose = parseTimeToMinutes(today?.close)
+  if (todayOpen != null && todayClose != null) {
+    const isOpenToday = todayOpen === todayClose
+      || (todayClose > todayOpen
+        ? currentMinutes >= todayOpen && currentMinutes <= todayClose
+        : currentMinutes >= todayOpen)
+    if (isOpenToday) {
+      openStatus.is_open_now = true
+      openStatus.closes_at = today.close
+      return openStatus
+    }
+  }
+
+  const previousDay = currentDay === '1' ? '7' : String(Number(currentDay) - 1)
+  const previous = getDayHours(openingHours, previousDay)
+  const previousOpen = parseTimeToMinutes(previous?.open)
+  const previousClose = parseTimeToMinutes(previous?.close)
+  if (
+    previousOpen != null
+    && previousClose != null
+    && previousClose < previousOpen
+    && currentMinutes <= previousClose
+  ) {
+    openStatus.is_open_now = true
+    openStatus.closes_at = previous.close
+  }
+
+  return openStatus
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   try {
@@ -26,7 +121,7 @@ serve(async (req) => {
     // Support both GET (query param) and POST (JSON body) styles for passing the venue ID
     let venueId = url.searchParams.get('id')
 
-    if (!venueId && (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH')) {
+    if (!venueId && req.method === 'POST') {
       try {
         const body = await req.json()
         venueId = body?.id || body?.venueId || body?.venue_id || null
@@ -35,14 +130,8 @@ serve(async (req) => {
       }
     }
 
-    if (!venueId) {
-      return new Response(
-        JSON.stringify({ error: 'Venue ID is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (!venueId || !UUID_RE.test(venueId)) {
+      return json({ error: 'A valid venue ID is required' }, 400)
     }
 
     console.log('[get-public-venue] Fetching venue', { method: req.method, venueId })
@@ -113,15 +202,9 @@ serve(async (req) => {
       console.warn('[get-public-venue] windows fetch warning', windowsErr)
     }
 
-    // Helper function to parse HH:MM to minutes
-    const parseTimeToMinutes = (timeStr: string): number => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-
     // Helper function to group consecutive days with same hours
-    const groupOpeningHours = (openingHours: any) => {
-      if (!openingHours?.byDay) return [];
+    const groupOpeningHours = (openingHours: unknown) => {
+      if (!openingHours || typeof openingHours !== 'object') return [];
       
       const DAYS = [
         { key: '1', label: 'Hétfő' },
@@ -137,7 +220,7 @@ serve(async (req) => {
       let currentGroup: { dayKeys: string[]; dayLabels: string[]; hours: string } | null = null;
 
       for (const day of DAYS) {
-        const dayHours = openingHours.byDay[day.key];
+        const dayHours = getDayHours(openingHours, day.key);
         const hoursText = dayHours?.open && dayHours?.close 
           ? `${dayHours.open} - ${dayHours.close}`
           : 'Zárva';
@@ -171,35 +254,10 @@ serve(async (req) => {
     };
 
     // Compute opening status and hours summary
-    const now = new Date();
-    const currentDay = ((now.getDay()) || 7).toString(); // Sunday = 7
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const { day: currentDay, minutes: currentMinutes } = budapestClock()
     
     const business_hours = venue.opening_hours || null;
-    let open_status = {
-      is_open_now: false,
-      closes_at: null as string | null,
-      hours_today: null as { open: string; close: string } | null
-    };
-
-    if (business_hours?.byDay?.[currentDay]) {
-      const todayHours = business_hours.byDay[currentDay];
-      if (todayHours.open && todayHours.close) {
-        const openMinutes = parseTimeToMinutes(todayHours.open);
-        const closeMinutes = parseTimeToMinutes(todayHours.close);
-        
-        open_status.hours_today = {
-          open: todayHours.open,
-          close: todayHours.close
-        };
-        
-        // Check if currently open
-        if (currentMinutes >= openMinutes && currentMinutes <= closeMinutes) {
-          open_status.is_open_now = true;
-          open_status.closes_at = todayHours.close;
-        }
-      }
-    }
+    const open_status = computeOpenStatus(business_hours, currentDay, currentMinutes)
 
     const hours_summary = groupOpeningHours(business_hours);
 
@@ -209,7 +267,7 @@ serve(async (req) => {
       business_hours, // Alias for opening_hours
       open_status,
       hours_summary,
-      timezone: 'Europe/Budapest',
+      timezone: BUDAPEST_TIME_ZONE,
       images: (images || []).map(img => ({
         id: img.id,
         url: img.url,
