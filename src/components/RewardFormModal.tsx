@@ -217,18 +217,20 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '', venue
             </div>
           </div>
 
-          {/* Global toggle first: it decides whether a venue is needed */}
-          <div className="flex items-center justify-between rounded-md border border-cgi-muted p-3">
-            <div>
-              <Label htmlFor="is_global" className="text-cgi-surface-foreground">Globális jutalom</Label>
-              <p className="text-xs text-cgi-muted-foreground">Minden helyszínen elérhető, nem kell helyszínt választani</p>
+          {/* Only CGI admins may publish a reward globally. */}
+          {isAdmin && (
+            <div className="flex items-center justify-between rounded-md border border-cgi-muted p-3">
+              <div>
+                <Label htmlFor="is_global" className="text-cgi-surface-foreground">Globális jutalom</Label>
+                <p className="text-xs text-cgi-muted-foreground">Minden helyszínen elérhető, nem kell helyszínt választani</p>
+              </div>
+              <Switch
+                id="is_global"
+                checked={formData.is_global}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_global: checked }))}
+              />
             </div>
-            <Switch
-              id="is_global"
-              checked={formData.is_global}
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_global: checked }))}
-            />
-          </div>
+          )}
 
           {/* Venue Selection */}
           {!formData.is_global && (
