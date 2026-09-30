@@ -315,13 +315,19 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '', venue
                   className="h-16 w-16 object-cover rounded-md"
                 />
               )}
-              <ImageUploadInput
-                onUploaded={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
-                buttonLabel={formData.image_url ? "Kép cseréje" : "Kép feltöltése"}
-                folder="rewards"
-                variant="outline"
-                size="sm"
-              />
+              {formData.is_global || formData.venue_id ? (
+                <ImageUploadInput
+                  onUploaded={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                  buttonLabel={formData.image_url ? "Kép cseréje" : "Kép feltöltése"}
+                  folder={formData.is_global ? "rewards" : formData.venue_id}
+                  variant="outline"
+                  size="sm"
+                />
+              ) : (
+                <p className="text-xs text-cgi-muted-foreground">
+                  Képfeltöltés előtt válassz helyszínt.
+                </p>
+              )}
             </div>
           </div>
 
