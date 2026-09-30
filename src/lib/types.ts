@@ -7,11 +7,13 @@ export interface User {
   role: 'cgi_admin' | 'venue_owner' | 'venue_staff' | 'brand_admin';
   name: string;
   venue_ids?: string[]; // venues this user can access
+  manageable_venue_ids?: string[]; // venues this user may configure as owner
 }
 
 export interface Session {
   user: User;
   venues: string[]; // venue IDs this user can access
+  manageableVenues: string[]; // venue IDs this user may configure
 }
 
 export interface Coordinates {

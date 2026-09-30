@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calendar, Filter, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sessionManager } from "@/auth/session";
 
 interface Venue {
   id: string;
@@ -40,10 +41,26 @@ export function RedemptionFilters({
 
   useEffect(() => {
     async function fetchVenues() {
-      const { data, error } = await supabase
+      const session = sessionManager.getCurrentSession();
+      const isAdmin = session?.user.role === 'cgi_admin';
+      const venueIds = session?.venues ?? [];
+
+      if (!isAdmin && venueIds.length === 0) {
+        setVenues([]);
+        setLoading(false);
+        return;
+      }
+
+      let query = supabase
         .from("venues")
         .select("id, name")
         .order("name");
+
+      if (!isAdmin) {
+        query = query.in('id', venueIds);
+      }
+
+      const { data, error } = await query;
       
       if (!error && data) {
         setVenues(data);

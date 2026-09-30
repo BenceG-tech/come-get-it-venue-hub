@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
+import { sessionManager } from '@/auth/session';
 
 const COLORS = ['#1fb1b7', '#0d9488'];
 
@@ -37,12 +38,17 @@ interface AnalyticsResponse {
 export default function Analytics() {
   const [selectedCell, setSelectedCell] = useState<{ day: string; hour: number; value: number } | null>(null);
   const isMobile = useIsMobile();
+  const session = sessionManager.getCurrentSession();
+  const isAdmin = session?.user.role === 'cgi_admin';
+  const venueId = isAdmin ? undefined : sessionManager.getManageableVenueIds()[0];
 
   const { data: analyticsData, isLoading, error } = useQuery<AnalyticsResponse>({
-    queryKey: ["venue-analytics"],
+    queryKey: ["venue-analytics", venueId ?? 'platform'],
+    enabled: isAdmin || Boolean(venueId),
     queryFn: async () => {
       const session = await supabase.auth.getSession();
       const response = await supabase.functions.invoke("get-user-analytics", {
+        body: { venue_id: venueId ?? null },
         headers: {
           Authorization: `Bearer ${session.data.session?.access_token}`,
         },

@@ -38,7 +38,8 @@ export default function Rewards() {
   const { toast } = useToast();
 
   const isAdmin = sessionManager.getRole() === 'cgi_admin';
-  const myVenueIds = sessionManager.getCurrentSession()?.venues ?? [];
+  const accessibleVenueIds = sessionManager.getCurrentSession()?.venues ?? [];
+  const manageableVenueIds = sessionManager.getManageableVenueIds();
 
   const fetchData = async () => {
     try {
@@ -53,11 +54,17 @@ export default function Rewards() {
       ]);
 
       const visibleVenues = (venueData as unknown as VenueVisibilityInfo[]).filter(
-        (v) => isAdmin || myVenueIds.includes(v.id)
+        (v) => isAdmin || accessibleVenueIds.includes(v.id)
       );
-      const allowedIds = new Set(visibleVenues.map((v) => v.id));
+      const allowedIds = new Set(
+        visibleVenues
+          .filter((venue) => isAdmin || manageableVenueIds.includes(venue.id))
+          .map((venue) => venue.id),
+      );
 
-      setVenues(visibleVenues);
+      setVenues(
+        visibleVenues.filter((venue) => isAdmin || manageableVenueIds.includes(venue.id)),
+      );
       setRewards(
         isAdmin
           ? rewardData
@@ -92,7 +99,7 @@ export default function Rewards() {
   );
 
   const canManageReward = (reward: Reward) =>
-    isAdmin || (!!reward.venue_id && myVenueIds.includes(reward.venue_id));
+    isAdmin || (!!reward.venue_id && sessionManager.canEditVenue(reward.venue_id));
 
   const handleCreateReward = async (newReward: Omit<Reward, 'id'>) => {
     try {

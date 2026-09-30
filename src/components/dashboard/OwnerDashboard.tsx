@@ -11,29 +11,36 @@ import { FirstGlassWidget } from "./FirstGlassWidget";
 import { SimplifiedROIWidget } from "./SimplifiedROIWidget";
 import { CSRWidget } from "./CSRWidget";
 import { FreeDrinkManager } from "@/components/venue/FreeDrinkManager";
+import { sessionManager } from "@/auth/session";
 
 export function OwnerDashboard() {
-  // Get user's primary venue
+  const venueIds = sessionManager.getManageableVenueIds();
+
+  // Resolve the primary venue from the database-derived access list. This also
+  // supports owners assigned through owner_profile_id without a membership row.
   const { data: userVenue, isLoading: venueLoading } = useQuery({
-    queryKey: ['user-primary-venue'],
+    queryKey: ['user-primary-venue', venueIds],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      
-      const { data: membership } = await supabase
-        .from('venue_memberships')
-        .select('venue_id, venues(id, name, integration_type, csr_enabled)')
-        .eq('profile_id', user.id)
+      if (venueIds.length === 0) return null;
+
+      const { data: venue, error } = await supabase
+        .from('venues')
+        .select('id, name, integration_type, csr_enabled')
+        .in('id', venueIds)
+        .order('name', { ascending: true })
         .limit(1)
-        .single();
-        
-      return membership?.venues as { 
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return venue as {
         id: string; 
         name: string; 
         integration_type: string | null;
         csr_enabled: boolean | null;
       } | null;
     },
+    enabled: venueIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
