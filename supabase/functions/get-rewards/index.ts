@@ -79,8 +79,13 @@ Deno.serve(async (req: Request) => {
   const venueIds = Array.from(
     new Set(
       inStock
-        .filter((r: Record<string, unknown>) => !r.is_global && typeof r.venue_id === 'string')
-        .map((r: Record<string, unknown>) => r.venue_id as string)
+        .filter((r: Record<string, unknown>) => !r.is_global)
+        .map((r: Record<string, unknown>) => {
+          if (typeof r.venue_id === 'string') return r.venue_id
+          if (typeof r.partner_id === 'string') return r.partner_id
+          return null
+        })
+        .filter((id): id is string => id !== null)
     )
   );
 
@@ -97,8 +102,10 @@ Deno.serve(async (req: Request) => {
 
   const rewards = inStock.filter((r: Record<string, unknown>) => {
     if (r.is_global) return true;
-    if (typeof r.venue_id !== 'string') return false;
-    return activeVenueIds.has(r.venue_id);
+    const attachedVenueId = typeof r.venue_id === 'string'
+      ? r.venue_id
+      : (typeof r.partner_id === 'string' ? r.partner_id : null);
+    return attachedVenueId ? activeVenueIds.has(attachedVenueId) : false;
   });
 
   return json({ success: true, rewards });
