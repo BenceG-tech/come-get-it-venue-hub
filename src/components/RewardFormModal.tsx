@@ -53,7 +53,7 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '', venue
   });
 
   const isAdmin = sessionManager.getRole() === 'cgi_admin';
-  const myVenueIds = sessionManager.getCurrentSession()?.venues ?? [];
+  const manageableVenueIds = sessionManager.getManageableVenueIds();
 
   useEffect(() => {
     if (venuesProp) {
@@ -63,9 +63,11 @@ export function RewardFormModal({ reward, onSubmit, trigger, venueId = '', venue
     const fetchVenues = async () => {
       try {
         const data = await supabaseProvider.getList<Venue>('venues');
-        // Owners / staff may only pick their membership venues (RLS is the backstop).
+        // Owners may only attach rewards to venues they can actually manage.
         setVenues(
-          (data as unknown as VenueVisibilityInfo[]).filter((v) => isAdmin || myVenueIds.includes(v.id))
+          (data as unknown as VenueVisibilityInfo[]).filter(
+            (venue) => isAdmin || manageableVenueIds.includes(venue.id),
+          )
         );
       } catch {
         console.error('Failed to fetch venues for reward form');

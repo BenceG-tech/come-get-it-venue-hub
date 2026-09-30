@@ -5,6 +5,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function dateKey(value: string) {
+  return value.split("T")[0];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -12,115 +23,148 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    // Verify admin access
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const token = (req.headers.get("Authorization") ?? "")
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+    if (!token) return jsonResponse({ error: "UNAUTHORIZED" }, 401);
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    const user = userData?.user;
+    if (authError || !user) return jsonResponse({ error: "UNAUTHORIZED" }, 401);
 
-    // Check admin status
-    const { data: profile } = await supabase
+    const body = await req.json().catch(() => ({}));
+    const requestedVenueId =
+      typeof body?.venue_id === "string" && body.venue_id.length > 0
+        ? body.venue_id
+        : null;
+
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("is_admin")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+    if (profileError) throw profileError;
 
-    if (!profile?.is_admin) {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const isAdmin = profile?.is_admin === true;
+    let venueId: string | null = requestedVenueId;
+
+    if (!isAdmin) {
+      if (!venueId) return jsonResponse({ error: "VENUE_ID_REQUIRED" }, 400);
+
+      const [membershipResult, ownedVenueResult] = await Promise.all([
+        supabase
+          .from("venue_memberships")
+          .select("venue_id, role")
+          .eq("profile_id", user.id)
+          .eq("venue_id", venueId)
+          .eq("role", "venue_owner")
+          .maybeSingle(),
+        supabase
+          .from("venues")
+          .select("id")
+          .eq("id", venueId)
+          .eq("owner_profile_id", user.id)
+          .maybeSingle(),
+      ]);
+
+      if (membershipResult.error) throw membershipResult.error;
+      if (ownedVenueResult.error) throw ownedVenueResult.error;
+      if (!membershipResult.data && !ownedVenueResult.data) {
+        return jsonResponse({ error: "FORBIDDEN" }, 403);
+      }
     }
 
     const url = new URL(req.url);
-    const days = parseInt(url.searchParams.get("days") || "30");
-
+    const requestedDays = Number(body?.days ?? url.searchParams.get("days") ?? 30);
+    const days = Number.isFinite(requestedDays)
+      ? Math.min(365, Math.max(14, Math.trunc(requestedDays)))
+      : 30;
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(startDate.getDate() - days);
-    const startDateStr = startDate.toISOString().split("T")[0];
+    const startDateIso = startDate.toISOString();
 
-    console.log(`Fetching analytics for last ${days} days from ${startDateStr}`);
+    let redemptionQuery = supabase
+      .from("redemptions")
+      .select("user_id, redeemed_at, venue_id")
+      .gte("redeemed_at", startDateIso)
+      .order("redeemed_at", { ascending: true });
+    if (venueId) redemptionQuery = redemptionQuery.eq("venue_id", venueId);
 
-    // 1. Daily Active Users (from user_activity_logs)
-    const { data: dauData, error: dauError } = await supabase
-      .from("user_activity_logs")
-      .select("user_id, created_at")
-      .gte("created_at", startDateStr);
+    const { data: redemptionRows, error: redemptionError } = await redemptionQuery;
+    if (redemptionError) throw redemptionError;
+    const redemptions = redemptionRows ?? [];
 
-    if (dauError) {
-      console.error("DAU query error:", dauError);
+    // Platform admins use app activity; venue partners only receive activity
+    // derived from redemptions at their own venue.
+    let activityRows: Array<{ user_id: string; created_at: string }> = [];
+    if (isAdmin && !venueId) {
+      const { data, error } = await supabase
+        .from("user_activity_logs")
+        .select("user_id, created_at")
+        .gte("created_at", startDateIso);
+      if (error) throw error;
+      activityRows = data ?? [];
+    } else {
+      activityRows = redemptions.map((row) => ({
+        user_id: row.user_id,
+        created_at: row.redeemed_at,
+      }));
     }
 
-    // Group by date for DAU
-    const dauByDate = new Map<string, Set<string>>();
-    (dauData || []).forEach((log) => {
-      const date = log.created_at?.split("T")[0];
-      if (date) {
-        if (!dauByDate.has(date)) dauByDate.set(date, new Set());
-        dauByDate.get(date)!.add(log.user_id);
-      }
-    });
+    const dailyUsers = new Map<string, Set<string>>();
+    const weeklyUsers = new Map<string, Set<string>>();
+    for (const activity of activityRows) {
+      const day = dateKey(activity.created_at);
+      if (!dailyUsers.has(day)) dailyUsers.set(day, new Set());
+      dailyUsers.get(day)!.add(activity.user_id);
 
-    const daily_active_users = Array.from(dauByDate.entries())
+      const date = new Date(activity.created_at);
+      const weekStart = new Date(date);
+      weekStart.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+      const week = dateKey(weekStart.toISOString());
+      if (!weeklyUsers.has(week)) weeklyUsers.set(week, new Set());
+      weeklyUsers.get(week)!.add(activity.user_id);
+    }
+
+    const daily_active_users = Array.from(dailyUsers.entries())
       .map(([date, users]) => ({ date, count: users.size }))
       .sort((a, b) => a.date.localeCompare(b.date));
-
-    // 2. Weekly Active Users
-    const wauByWeek = new Map<string, Set<string>>();
-    (dauData || []).forEach((log) => {
-      const date = new Date(log.created_at);
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay() + 1); // Monday
-      const weekKey = weekStart.toISOString().split("T")[0];
-      
-      if (!wauByWeek.has(weekKey)) wauByWeek.set(weekKey, new Set());
-      wauByWeek.get(weekKey)!.add(log.user_id);
-    });
-
-    const weekly_active_users = Array.from(wauByWeek.entries())
+    const weekly_active_users = Array.from(weeklyUsers.entries())
       .map(([week_start, users]) => ({ week_start, count: users.size }))
       .sort((a, b) => a.week_start.localeCompare(b.week_start));
 
-    // 3. Redemption Trends
-    const { data: redemptionData, error: redemptionError } = await supabase
-      .from("redemptions")
-      .select("user_id, redeemed_at, venue_id")
-      .gte("redeemed_at", startDateStr);
-
-    if (redemptionError) {
-      console.error("Redemption query error:", redemptionError);
-    }
-
     const redemptionsByDate = new Map<string, { count: number; users: Set<string> }>();
-    (redemptionData || []).forEach((r) => {
-      const date = r.redeemed_at?.split("T")[0];
-      if (date) {
-        if (!redemptionsByDate.has(date)) {
-          redemptionsByDate.set(date, { count: 0, users: new Set() });
-        }
-        const entry = redemptionsByDate.get(date)!;
-        entry.count++;
-        entry.users.add(r.user_id);
+    const venueRedemptions = new Map<string, { count: number; users: Set<string> }>();
+    const firstRedemptionByUser = new Map<string, string>();
+
+    for (const redemption of redemptions) {
+      const day = dateKey(redemption.redeemed_at);
+      if (!redemptionsByDate.has(day)) {
+        redemptionsByDate.set(day, { count: 0, users: new Set() });
       }
-    });
+      const dayEntry = redemptionsByDate.get(day)!;
+      dayEntry.count += 1;
+      dayEntry.users.add(redemption.user_id);
+
+      if (redemption.venue_id) {
+        if (!venueRedemptions.has(redemption.venue_id)) {
+          venueRedemptions.set(redemption.venue_id, { count: 0, users: new Set() });
+        }
+        const venueEntry = venueRedemptions.get(redemption.venue_id)!;
+        venueEntry.count += 1;
+        venueEntry.users.add(redemption.user_id);
+      }
+
+      const first = firstRedemptionByUser.get(redemption.user_id);
+      if (!first || redemption.redeemed_at < first) {
+        firstRedemptionByUser.set(redemption.user_id, redemption.redeemed_at);
+      }
+    }
 
     const redemption_trends = Array.from(redemptionsByDate.entries())
       .map(([date, data]) => ({
@@ -130,224 +174,177 @@ Deno.serve(async (req) => {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Calculate current week vs previous week redemption timeseries
     const oneWeekAgo = new Date(now);
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const twoWeeksAgo = new Date(now);
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
     const currentWeekRedemptions = redemption_trends
-      .filter(r => new Date(r.date) >= oneWeekAgo)
-      .map(r => ({ date: r.date, redemptions: r.count }));
-    
+      .filter((row) => new Date(row.date) >= oneWeekAgo)
+      .map((row) => ({ date: row.date, redemptions: row.count }));
     const previousWeekRedemptions = redemption_trends
-      .filter(r => new Date(r.date) >= twoWeeksAgo && new Date(r.date) < oneWeekAgo)
-      .map(r => ({ date: r.date, redemptions: r.count }));
-
-    // Calculate new vs returning users based on first redemption date
-    const userFirstRedemption = new Map<string, string>();
-    (redemptionData || []).forEach(r => {
-      const existing = userFirstRedemption.get(r.user_id);
-      if (!existing || r.redeemed_at < existing) {
-        userFirstRedemption.set(r.user_id, r.redeemed_at);
-      }
-    });
+      .filter((row) => new Date(row.date) >= twoWeeksAgo && new Date(row.date) < oneWeekAgo)
+      .map((row) => ({ date: row.date, redemptions: row.count }));
 
     let newUsers = 0;
     let returningUsers = 0;
     const usersCountedThisWeek = new Set<string>();
-    
-    (redemptionData || [])
-      .filter(r => new Date(r.redeemed_at) >= oneWeekAgo)
-      .forEach(r => {
-        if (usersCountedThisWeek.has(r.user_id)) return;
-        usersCountedThisWeek.add(r.user_id);
-        
-        const firstRedemptionDate = userFirstRedemption.get(r.user_id);
-        if (firstRedemptionDate && new Date(firstRedemptionDate) >= oneWeekAgo) {
-          newUsers++;
-        } else {
-          returningUsers++;
-        }
-      });
+    for (const redemption of redemptions) {
+      if (new Date(redemption.redeemed_at) < oneWeekAgo) continue;
+      if (usersCountedThisWeek.has(redemption.user_id)) continue;
+      usersCountedThisWeek.add(redemption.user_id);
+      const first = firstRedemptionByUser.get(redemption.user_id);
+      if (first && new Date(first) >= oneWeekAgo) newUsers += 1;
+      else returningUsers += 1;
+    }
 
-    // 4. Top Venues by Redemptions
-    const venueRedemptions = new Map<string, { count: number; users: Set<string> }>();
-    (redemptionData || []).forEach((r) => {
-      if (r.venue_id) {
-        if (!venueRedemptions.has(r.venue_id)) {
-          venueRedemptions.set(r.venue_id, { count: 0, users: new Set() });
-        }
-        const entry = venueRedemptions.get(r.venue_id)!;
-        entry.count++;
-        entry.users.add(r.user_id);
-      }
-    });
-
-    // Get venue names
     const venueIds = Array.from(venueRedemptions.keys());
-    const { data: venuesData } = await supabase
+    const { data: venueRows, error: venueError } = await supabase
       .from("venues")
       .select("id, name")
-      .in("id", venueIds.length > 0 ? venueIds : ["__none__"]);
-
-    const venueNames = new Map((venuesData || []).map((v) => [v.id, v.name]));
-
+      .in("id", venueIds.length > 0 ? venueIds : ["00000000-0000-0000-0000-000000000000"]);
+    if (venueError) throw venueError;
+    const venueNames = new Map((venueRows ?? []).map((row) => [row.id, row.name]));
     const top_venues = Array.from(venueRedemptions.entries())
-      .map(([venue_id, data]) => ({
-        venue_id,
-        venue_name: venueNames.get(venue_id) || "Ismeretlen helyszín",
+      .map(([id, data]) => ({
+        venue_id: id,
+        venue_name: venueNames.get(id) ?? "Ismeretlen helyszín",
         redemption_count: data.count,
         unique_users: data.users.size,
       }))
       .sort((a, b) => b.redemption_count - a.redemption_count)
       .slice(0, 5);
 
-    // 5. Hourly Activity Heatmap (7 days x 24 hours)
-    const hourlyActivity: number[][] = Array.from({ length: 7 }, () =>
-      Array(24).fill(0)
-    );
+    const hourly_activity: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    for (const activity of activityRows) {
+      const date = new Date(activity.created_at);
+      const day = (date.getDay() + 6) % 7;
+      hourly_activity[day][date.getHours()] += 1;
+    }
 
-    (dauData || []).forEach((log) => {
-      if (log.created_at) {
-        const date = new Date(log.created_at);
-        const dayOfWeek = (date.getDay() + 6) % 7; // Monday = 0
-        const hour = date.getHours();
-        hourlyActivity[dayOfWeek][hour]++;
+    // Signup cohorts are platform-level user data, so they are returned only
+    // to CGI admins requesting the platform scope. Venue analytics remain
+    // derived exclusively from redemptions at the authorized venue.
+    let retention_cohorts: Array<Record<string, string | number>> = [];
+    if (isAdmin && !venueId) {
+      const { data: profileRows, error: cohortError } = await supabase
+        .from("profiles")
+        .select("id, created_at")
+        .gte("created_at", startDateIso);
+      if (cohortError) throw cohortError;
+
+      const cohorts = new Map<string, Set<string>>();
+      for (const row of profileRows ?? []) {
+        if (!row.created_at) continue;
+        const createdAt = new Date(row.created_at);
+        const weekStart = new Date(createdAt);
+        weekStart.setUTCDate(createdAt.getUTCDate() - ((createdAt.getUTCDay() + 6) % 7));
+        const weekKey = dateKey(weekStart.toISOString());
+        if (!cohorts.has(weekKey)) cohorts.set(weekKey, new Set());
+        cohorts.get(weekKey)!.add(row.id);
       }
-    });
 
-    // 6. User Retention Cohorts (simplified - by signup week)
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("id, created_at")
-      .gte("created_at", startDateStr);
+      retention_cohorts = Array.from(cohorts.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-4)
+        .map(([cohortWeek, users]) => {
+          const result: Record<string, string | number> = {
+            cohort_week: cohortWeek,
+            cohort_size: users.size,
+            week_0: 100,
+          };
+          const cohortStart = new Date(`${cohortWeek}T00:00:00.000Z`);
 
-    // Group users by signup week
-    const cohorts = new Map<string, Set<string>>();
-    (profilesData || []).forEach((p) => {
-      const date = new Date(p.created_at);
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay() + 1);
-      const weekKey = weekStart.toISOString().split("T")[0];
-      
-      if (!cohorts.has(weekKey)) cohorts.set(weekKey, new Set());
-      cohorts.get(weekKey)!.add(p.id);
-    });
+          for (let weekIndex = 1; weekIndex <= 4; weekIndex += 1) {
+            const weekStart = new Date(cohortStart);
+            weekStart.setUTCDate(cohortStart.getUTCDate() + weekIndex * 7);
+            if (weekStart > now) break;
 
-    // Calculate retention for each cohort
-    const retention_cohorts = Array.from(cohorts.entries())
-      .slice(-4) // Last 4 weeks
-      .map(([cohort_week, users]) => {
-        const userIds = Array.from(users);
-        const cohortStart = new Date(cohort_week);
-        
-        // Calculate activity for each subsequent week
-        const weekRetention: Record<string, number> = { week_0: 100 };
-        
-        for (let w = 1; w <= 4; w++) {
-          const weekStart = new Date(cohortStart);
-          weekStart.setDate(weekStart.getDate() + w * 7);
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekEnd.getDate() + 7);
-          
-          if (weekStart > now) break;
-          
-          const activeInWeek = (dauData || []).filter((log) => {
-            if (!userIds.includes(log.user_id)) return false;
-            const logDate = new Date(log.created_at);
-            return logDate >= weekStart && logDate < weekEnd;
-          });
-          
-          const uniqueActive = new Set(activeInWeek.map((l) => l.user_id)).size;
-          weekRetention[`week_${w}`] = userIds.length > 0 
-            ? Math.round((uniqueActive / userIds.length) * 100) 
-            : 0;
-        }
-        
-        return { cohort_week, cohort_size: userIds.length, ...weekRetention };
-      });
+            const weekEnd = new Date(weekStart);
+            weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+            const activeUsers = new Set(
+              activityRows
+                .filter((activity) => {
+                  if (!users.has(activity.user_id)) return false;
+                  const activityDate = new Date(activity.created_at);
+                  return activityDate >= weekStart && activityDate < weekEnd;
+                })
+                .map((activity) => activity.user_id),
+            );
+            result[`week_${weekIndex}`] =
+              users.size > 0 ? Math.round((activeUsers.size / users.size) * 100) : 0;
+          }
 
-    // 7. Summary Stats
-    const { count: totalUsers } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true });
+          return result;
+        });
+    }
 
-    const today = now.toISOString().split("T")[0];
+    const distinctUsers = new Set(redemptions.map((row) => row.user_id));
+    let totalUsers = distinctUsers.size;
+    if (isAdmin && !venueId) {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true });
+      if (error) throw error;
+      totalUsers = count ?? 0;
+    }
+
+    const today = dateKey(now.toISOString());
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const activeToday = dauByDate.get(today)?.size || 0;
-    
     const active7Days = new Set(
-      (dauData || [])
-        .filter((l) => new Date(l.created_at) >= sevenDaysAgo)
-        .map((l) => l.user_id)
+      activityRows
+        .filter((row) => new Date(row.created_at) >= sevenDaysAgo)
+        .map((row) => row.user_id),
     ).size;
-    
     const active30Days = new Set(
-      (dauData || [])
-        .filter((l) => new Date(l.created_at) >= thirtyDaysAgo)
-        .map((l) => l.user_id)
+      activityRows
+        .filter((row) => new Date(row.created_at) >= thirtyDaysAgo)
+        .map((row) => row.user_id),
     ).size;
-
-    const totalRedemptions = (redemptionData || []).length;
-    const uniqueRedeemers = new Set((redemptionData || []).map((r) => r.user_id)).size;
 
     const summary = {
-      total_users: totalUsers || 0,
-      active_today: activeToday,
+      total_users: totalUsers,
+      active_today: dailyUsers.get(today)?.size ?? 0,
       active_7_days: active7Days,
       active_30_days: active30Days,
-      total_redemptions: totalRedemptions,
-      avg_sessions_per_user: active30Days > 0 
-        ? Math.round((dauData?.length || 0) / active30Days * 10) / 10 
-        : 0,
-      avg_redemptions_per_user: uniqueRedeemers > 0 
-        ? Math.round(totalRedemptions / uniqueRedeemers * 10) / 10 
-        : 0,
+      total_redemptions: redemptions.length,
+      avg_sessions_per_user:
+        active30Days > 0 ? Math.round((activityRows.length / active30Days) * 10) / 10 : 0,
+      avg_redemptions_per_user:
+        distinctUsers.size > 0
+          ? Math.round((redemptions.length / distinctUsers.size) * 10) / 10
+          : 0,
     };
 
-    console.log("Analytics computed successfully", {
-      dau_count: daily_active_users.length,
-      wau_count: weekly_active_users.length,
-      redemption_days: redemption_trends.length,
-      top_venues_count: top_venues.length,
-    });
+    console.log(
+      `[get-user-analytics] scope=${venueId ? "venue" : "platform"} days=${days} redemptions=${redemptions.length}`,
+    );
 
-    return new Response(
-      JSON.stringify({
-        daily_active_users,
-        weekly_active_users,
-        retention_cohorts,
-        redemption_trends,
-        top_venues,
-        hourly_activity: hourlyActivity,
-        summary,
-        // New fields for Analytics.tsx compatibility
-        redemption_timeseries: {
-          current_week: currentWeekRedemptions,
-          previous_week: previousWeekRedemptions,
-        },
-        user_activity: {
-          new_users: newUsers,
-          returning_users: returningUsers,
-        },
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return jsonResponse({
+      daily_active_users,
+      weekly_active_users,
+      retention_cohorts,
+      redemption_trends,
+      top_venues,
+      hourly_activity,
+      summary,
+      redemption_timeseries: {
+        current_week: currentWeekRedemptions,
+        previous_week: previousWeekRedemptions,
+      },
+      user_activity: {
+        new_users: newUsers,
+        returning_users: returningUsers,
+      },
+    });
   } catch (error) {
-    console.error("Analytics error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+    console.error(
+      "[get-user-analytics] error",
+      error instanceof Error ? error.message : "unknown",
     );
+    return jsonResponse({ error: "INTERNAL_ERROR" }, 500);
   }
 });

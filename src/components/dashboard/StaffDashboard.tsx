@@ -1,13 +1,14 @@
 import { KPICard } from "@/components/KPICard";
 import { ChartCard } from "@/components/ChartCard";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Receipt, Clock, Pause, Play, TrendingUp, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Receipt, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { useDashboardStats, formatCurrency, formatTime } from "@/hooks/useDashboardStats";
 import { UserLink, VenueLink, DrinkLink } from "@/components/ui/entity-links";
 import { RedemptionContextBadges } from "@/components/RedemptionContextBadges";
 import { MobileTooltip } from "@/components/ui/mobile-tooltip";
+import { sessionManager } from "@/auth/session";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RecentRedemption {
   id: string;
@@ -24,15 +25,25 @@ interface RecentRedemption {
 }
 
 export function StaffDashboard() {
-  const [isFreeDrinkPaused, setIsFreeDrinkPaused] = useState(false);
-  
-  // TODO: Get venue_id from session/context when available
-  const venueId = undefined;
+  const venueId = sessionManager.getCurrentSession()?.venues[0];
   const { data: stats, isLoading } = useDashboardStats('staff', venueId);
+  const { data: venueStatus, isLoading: venueStatusLoading } = useQuery({
+    queryKey: ['staff-venue-status', venueId],
+    queryFn: async () => {
+      if (!venueId) return null;
+      const { data, error } = await supabase
+        .from('venues')
+        .select('name, is_paused')
+        .eq('id', venueId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(venueId),
+    staleTime: 30_000,
+  });
 
-  const handleToggleFreeDrink = () => {
-    setIsFreeDrinkPaused(!isFreeDrinkPaused);
-  };
+  const isFreeDrinkPaused = venueStatus?.is_paused ?? false;
 
   const kpiData = {
     today_redemptions: stats?.today_redemptions ?? 0,
@@ -74,40 +85,31 @@ export function StaffDashboard() {
         />
       </div>
 
-      {/* Operational Controls */}
+      {/* Operational status (staff cannot change owner-level venue settings). */}
       <ChartCard 
-        title="Operatív vezérlők"
-        tooltip="Gyors műveletek a free drink kampány kezeléséhez. A szüneteltetés azonnal leállítja az új beváltásokat."
+        title="Operatív állapot"
+        tooltip="A helyszín aktuális állapota. A szüneteltetést a helyszín tulajdonosa kezeli."
       >
-        <div className="flex flex-col md:flex-row gap-4">
-          <Button
-            onClick={handleToggleFreeDrink}
-            className={`flex-1 h-16 text-lg font-medium ${
-              isFreeDrinkPaused 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-red-600 hover:bg-red-700 text-white'
-            }`}
-          >
-            {isFreeDrinkPaused ? (
-              <>
-                <Play className="h-6 w-6 mr-3" />
-                Free Drink Indítása
-              </>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-cgi-muted p-4">
+          <div>
+            <p className="font-medium text-cgi-surface-foreground">
+              {venueStatus?.name ?? 'Saját helyszín'}
+            </p>
+            <p className="text-sm text-cgi-muted-foreground">
+              Az állapot módosításához fordulj a helyszín tulajdonosához.
+            </p>
+          </div>
+          <div className="flex items-center">
+            {venueStatusLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-cgi-muted-foreground" />
             ) : (
-              <>
-                <Pause className="h-6 w-6 mr-3" />
-                Free Drink Szüneteltetése
-              </>
-            )}
-          </Button>
-          
-          <div className="flex-1 flex items-center justify-center">
             <Badge 
               variant={isFreeDrinkPaused ? "destructive" : "default"}
               className="text-lg px-4 py-2"
             >
               {isFreeDrinkPaused ? "SZÜNETELTETVE" : "AKTÍV"}
             </Badge>
+            )}
           </div>
         </div>
       </ChartCard>

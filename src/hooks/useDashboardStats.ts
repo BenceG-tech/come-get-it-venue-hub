@@ -55,6 +55,7 @@ export function useDashboardStats<R extends DashboardRole>(
 ) {
   return useQuery<StatsResult<R>>({
     queryKey: ['dashboard-stats', role, venueId],
+    enabled: role === 'admin' || role === 'brand' || Boolean(venueId),
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-dashboard-stats', {
         body: { role, venue_id: venueId }

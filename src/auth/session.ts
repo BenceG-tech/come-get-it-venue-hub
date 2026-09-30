@@ -71,6 +71,7 @@ class SessionStore {
     const session: Session = {
       user,
       venues: user.venue_ids || [],
+      manageableVenues: user.manageable_venue_ids || [],
     };
     this.currentSession = session;
     this.noAccess = false;
@@ -168,8 +169,12 @@ class SessionStore {
   canEditVenue(venueId: string): boolean {
     const session = this.currentSession;
     if (!session) return false;
-    if (session.user.role === 'venue_staff') return false;
-    return this.canAccessVenue(venueId);
+    if (session.user.role === 'cgi_admin') return true;
+    return session.manageableVenues.includes(venueId);
+  }
+
+  getManageableVenueIds(): string[] {
+    return this.currentSession?.manageableVenues ?? [];
   }
 
   hasRole(role: string | string[]): boolean {

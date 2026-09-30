@@ -40,6 +40,12 @@ export async function hydrateSessionFromSupabaseUser(supaUser: SupabaseUser) {
   }
 
   const ownedVenueIds = (ownedVenues ?? []).map((v) => v.id);
+  const ownerMembershipVenueIds = (memberships ?? [])
+    .filter((membership) => membership.role === "venue_owner")
+    .map((membership) => membership.venue_id);
+  const manageableVenueIds = Array.from(
+    new Set([...ownerMembershipVenueIds, ...ownedVenueIds]),
+  );
   // Union + dedupe membership venues and directly owned venues.
   const venueIds = Array.from(
     new Set([...(memberships ?? []).map((m) => m.venue_id), ...ownedVenueIds]),
@@ -64,6 +70,7 @@ export async function hydrateSessionFromSupabaseUser(supaUser: SupabaseUser) {
     role,
     name: profile?.name ?? (supaUser.email ?? "User"),
     venue_ids: venueIds,
+    manageable_venue_ids: manageableVenueIds,
   };
 
   sessionManager.setCurrentSession(user);

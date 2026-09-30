@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { hu } from "date-fns/locale";
 import { RouteGuard } from "@/components/RouteGuard";
+import { sessionManager } from "@/auth/session";
 
 const formatCurrency = (amount: number, currency: string = 'HUF'): string => {
   return new Intl.NumberFormat('hu-HU', {
@@ -128,6 +129,23 @@ export default function Transactions() {
 
   const loadData = async () => {
     try {
+      const session = sessionManager.getCurrentSession();
+      const isAdmin = session?.user.role === 'cgi_admin';
+      const venueIds = isAdmin ? [] : sessionManager.getManageableVenueIds();
+
+      let venuesQuery = supabase
+        .from('venues')
+        .select('id, name');
+
+      if (!isAdmin) {
+        if (venueIds.length === 0) {
+          setTransactions([]);
+          setVenues({});
+          return;
+        }
+        venuesQuery = venuesQuery.in('id', venueIds);
+      }
+
       // Load transactions and venues in parallel
       const [transactionsRes, venuesRes] = await Promise.all([
         supabase
@@ -135,9 +153,7 @@ export default function Transactions() {
           .select('*')
           .order('transaction_time', { ascending: false })
           .limit(100),
-        supabase
-          .from('venues')
-          .select('id, name')
+        venuesQuery
       ]);
 
       if (transactionsRes.error) throw transactionsRes.error;

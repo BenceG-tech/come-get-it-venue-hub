@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { DataProvider } from "./index";
 import { normalizeBusinessHours } from "@/lib/businessHours";
 import type { Database } from "@/integrations/supabase/types";
+import { sessionManager } from "@/auth/session";
 
 type TableName = keyof Database["public"]["Tables"];
 
@@ -27,6 +28,27 @@ function logSbError(where: string, err: any) {
     hint: (err as any)?.hint || meta?.hint,
     status: (err as any)?.status || meta?.status,
   });
+}
+
+function scopeListQueryToSession(query: any, resource: string) {
+  const session = sessionManager.getCurrentSession();
+  if (!session || session.user.role === 'cgi_admin') return query;
+
+  const venueIds = session.venues;
+
+  if (resource === 'venues') {
+    return venueIds.length > 0
+      ? query.in('id', venueIds)
+      : query.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
+
+  if (resource === 'rewards') {
+    return venueIds.length > 0
+      ? query.or(`is_global.eq.true,venue_id.in.(${venueIds.join(',')})`)
+      : query.eq('is_global', true);
+  }
+
+  return query;
 }
 
 // Allowed columns for the "venues" table so we don't send unsupported fields
@@ -330,6 +352,7 @@ export const supabaseProvider: DataProvider & {
     
     // Base select - use any to avoid deep type instantiation
     let query = (supabase.from(resource as any) as any).select("*");
+    query = scopeListQueryToSession(query, resource);
 
     // Filters
     if (filters) {
@@ -719,6 +742,7 @@ export const supabaseProvider: DataProvider & {
   async getCount(resource: string, filters?: ListFilters): Promise<number> {
     console.log("[supabaseProvider] getCount", resource, filters);
     let query = (supabase.from(resource as any) as any).select("*", { count: "exact", head: true });
+    query = scopeListQueryToSession(query, resource);
 
     if (filters) {
       if (filters.venue_id) {

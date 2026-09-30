@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [apiError, setApiError] = useState<string | null>(null);
   
   const session = sessionManager.getCurrentSession();
+  const realRole = sessionManager.getRole();
   const { startTour, hasCompletedTour } = useTour();
 
   // Listen for role changes
@@ -32,6 +33,12 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (realRole !== 'cgi_admin') {
+      setApiCount(session?.venues.length ?? 0);
+      setApiError(null);
+      return;
+    }
+
     const provider = getDataProvider() as any;
     if (typeof provider.getCount !== 'function') return;
 
@@ -45,7 +52,7 @@ export default function Dashboard() {
         setApiCount(null);
         setApiError(err?.message || String(err));
       });
-  }, []);
+  }, [realRole, session?.venues.length]);
 
   // Auto-start tour for first-time users
   useEffect(() => {
@@ -84,7 +91,9 @@ export default function Dashboard() {
       {/* API Status */}
       <Card className="cgi-card p-4 mb-4">
         <div className="flex items-center justify-between">
-          <div className="text-cgi-surface-foreground font-medium">API Status</div>
+          <div className="text-cgi-surface-foreground font-medium">
+            {realRole === 'cgi_admin' ? 'Rendszerkapcsolat' : 'Saját hozzáférés'}
+          </div>
           {apiError ? (
             <Badge variant="destructive" className="cgi-badge bg-cgi-error text-cgi-error-foreground">
               Hiba
@@ -96,7 +105,11 @@ export default function Dashboard() {
           )}
         </div>
         <div className="mt-2 text-sm text-cgi-muted-foreground">
-          {apiError ? `Hiba: ${apiError}` : `Venues száma: ${apiCount ?? '—'}`}
+          {apiError
+            ? `Hiba: ${apiError}`
+            : realRole === 'cgi_admin'
+              ? `Aktív kapcsolat · helyszínek: ${apiCount ?? '—'}`
+              : `Hozzárendelt helyszínek: ${apiCount ?? '—'}`}
         </div>
       </Card>
 
