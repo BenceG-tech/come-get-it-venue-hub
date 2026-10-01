@@ -30,6 +30,7 @@ import DataInsights from "./pages/DataInsights";
 import CommandCenter from "./pages/CommandCenter";
 import NotFound from "./pages/NotFound";
 import SaltEdgeTransactions from "./pages/SaltEdgeTransactions";
+import FreeDrinkImpact from "./pages/FreeDrinkImpact";
 import AuditLog from "./pages/AuditLog";
 import POSRedeem from "./pages/pos/POSRedeem";
 import POSHistory from "./pages/pos/POSHistory";
@@ -139,6 +140,12 @@ const App = () => {
             <Route path="/settings" element={
               <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
                 <Settings />
+              </RouteGuard>
+            } />
+
+            <Route path="/free-drink-impact" element={
+              <RouteGuard requiredRoles={['cgi_admin', 'venue_owner']} fallback="/dashboard">
+                <FreeDrinkImpact />
               </RouteGuard>
             } />
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -28,12 +28,13 @@ const navigation: NavItem[] = [
   { name: 'QR beváltás', href: '/pos/redeem', icon: ScanLine, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-pos-redeem', group: 'tx' },
   { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions', group: 'tx' },
   { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-transactions', group: 'tx' },
-  { name: 'Banki Tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'], tourId: 'nav-saltedge', group: 'tx' },
+  { name: 'Költés-tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'], tourId: 'nav-saltedge', group: 'tx' },
   // MARKETING
   { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards', group: 'marketing' },
   { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions', group: 'marketing' },
   { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing' },
   // ANALITIKA
+  { name: 'Ingyen ital hatása', href: '/free-drink-impact', icon: GlassWater, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-free-drink-impact', group: 'analytics' },
   { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'], tourId: 'nav-analytics', group: 'analytics' },
   { name: 'Adat Értékek', href: '/data-insights', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-data-insights', group: 'analytics' },
   { name: 'Jótékonysági Hatás', href: '/charity-impact', icon: Heart, roles: ['cgi_admin'], tourId: 'nav-charity', group: 'analytics' },
