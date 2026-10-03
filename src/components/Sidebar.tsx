@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater, Inbox } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater, Inbox, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -10,7 +10,7 @@ import { signOutSupabase } from "@/auth/supabaseAuth";
 
 type NavGroup = 'core' | 'tx' | 'marketing' | 'analytics' | 'admin';
 // The cgi_admin view is grouped into work areas; partner roles keep the groups above.
-type AdminGroup = 'ma' | 'helyek' | 'szamok' | 'admin';
+type AdminGroup = 'ma' | 'partnerek' | 'helyek' | 'szamok' | 'admin';
 
 interface NavItem {
   name: string;
@@ -26,7 +26,8 @@ interface NavItem {
 const navigation: NavItem[] = [
   // FŐ
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core', adminGroup: 'ma', adminName: 'Áttekintés' },
-  { name: 'Jelentkezők', href: '/applicants', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-applicants', group: 'admin', adminGroup: 'ma' },
+  { name: 'Jelentkezők', href: '/applicants', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-applicants', group: 'admin', adminGroup: 'partnerek' },
+  { name: 'Partnerszerzés', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek' },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core', adminGroup: 'helyek' },
   { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core', adminGroup: 'admin' },
   // TRANZAKCIÓK
@@ -61,12 +62,13 @@ const groupOrder: NavGroup[] = ['core', 'tx', 'marketing', 'analytics', 'admin']
 
 const adminGroupConfig: Record<AdminGroup, { label: string; color: string; bg: string; ring: string }> = {
   ma:     { label: 'Ma',     color: 'text-cgi-primary', bg: 'bg-cgi-primary/15', ring: 'border-cgi-primary' },
+  partnerek: { label: 'Partnerek', color: 'text-teal-300', bg: 'bg-teal-400/15', ring: 'border-teal-300' },
   helyek: { label: 'Helyek', color: 'text-amber-400',   bg: 'bg-amber-400/15',   ring: 'border-amber-400' },
   szamok: { label: 'Számok', color: 'text-emerald-400', bg: 'bg-emerald-400/15', ring: 'border-emerald-400' },
   admin:  { label: 'Admin',  color: 'text-slate-300',   bg: 'bg-slate-400/15',   ring: 'border-slate-400' },
 };
 
-const adminGroupOrder: AdminGroup[] = ['ma', 'helyek', 'szamok', 'admin'];
+const adminGroupOrder: AdminGroup[] = ['ma', 'partnerek', 'helyek', 'szamok', 'admin'];
 
 const roleLabels = {
   'cgi_admin': 'Admin Dashboard',

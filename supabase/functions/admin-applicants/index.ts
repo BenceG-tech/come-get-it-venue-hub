@@ -108,6 +108,43 @@ Deno.serve(async (req) => {
         patch.offer_requested_at = new Date().toISOString();
       }
 
+      if (action === "request_offer") {
+        // Partner applicants join the partner pipeline, where the offer generator picks them up.
+        const crmUrl = Deno.env.get("CRM_SUPABASE_URL");
+        const crmKey = Deno.env.get("CRM_SERVICE_ROLE_KEY");
+        if (!crmUrl || !crmKey) return json({ error: "crm_not_configured" }, 503);
+        const crm = createClient(crmUrl, crmKey, { auth: { persistSession: false } });
+        const { data: app, error: appError } = await crm
+          .from("venue_applications")
+          .select("id, name, email, phone, venue_name, venue_type, address_city")
+          .eq("id", external_id)
+          .single();
+        if (appError || !app) return json({ error: "Application not found" }, 404);
+
+        const { error: leadError } = await supabase.from("partner_leads").upsert(
+          {
+            id: `jelentkezo-${app.id}`,
+            name: app.venue_name || app.name || app.email || "Jelentkező",
+            venue_type: app.venue_type,
+            address: app.address_city,
+            email: app.email,
+            phone: app.phone,
+            source: "Partnerjelentkezés a weboldalon",
+            applicant_id: app.id,
+            stage: 4,
+            offer_request: {
+              requested_at: new Date().toISOString(),
+              drink: "",
+              slot: "14-16",
+              daily_cap: 5,
+            },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        );
+        if (leadError) throw leadError;
+      }
+
       const { data, error } = await supabase
         .from("applicant_reviews")
         .upsert(patch, { onConflict: "source,external_id" })
