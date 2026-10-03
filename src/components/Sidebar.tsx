@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater, Inbox, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -9,6 +9,8 @@ import { useCsrConfigured } from "@/hooks/useCsrConfigured";
 import { signOutSupabase } from "@/auth/supabaseAuth";
 
 type NavGroup = 'core' | 'tx' | 'marketing' | 'analytics' | 'admin';
+// The cgi_admin view is grouped into work areas; partner roles keep the groups above.
+type AdminGroup = 'ma' | 'partnerek' | 'helyek' | 'szamok' | 'admin';
 
 interface NavItem {
   name: string;
@@ -17,31 +19,35 @@ interface NavItem {
   roles: string[];
   tourId: string;
   group: NavGroup;
+  adminGroup?: AdminGroup;
+  adminName?: string;
 }
 
 const navigation: NavItem[] = [
   // FŐ
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core' },
-  { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core' },
-  { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core' },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core', adminGroup: 'ma', adminName: 'Áttekintés' },
+  { name: 'Jelentkezők', href: '/applicants', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-applicants', group: 'admin', adminGroup: 'partnerek' },
+  { name: 'Partnerszerzés', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek' },
+  { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core', adminGroup: 'helyek' },
+  { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core', adminGroup: 'admin' },
   // TRANZAKCIÓK
-  { name: 'QR beváltás', href: '/pos/redeem', icon: ScanLine, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-pos-redeem', group: 'tx' },
-  { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions', group: 'tx' },
+  { name: 'QR beváltás', href: '/pos/redeem', icon: ScanLine, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-pos-redeem', group: 'tx', adminGroup: 'helyek' },
+  { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions', group: 'tx', adminGroup: 'helyek' },
   { name: 'Tranzakciók', href: '/transactions', icon: CreditCard, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-transactions', group: 'tx' },
   { name: 'Költés-tranzakciók', href: '/saltedge-transactions', icon: Landmark, roles: ['cgi_admin'], tourId: 'nav-saltedge', group: 'tx' },
   // MARKETING
-  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards', group: 'marketing' },
-  { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions', group: 'marketing' },
-  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing' },
+  { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards', group: 'marketing', adminGroup: 'helyek' },
+  { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions', group: 'marketing', adminGroup: 'helyek' },
+  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing', adminGroup: 'helyek' },
   // ANALITIKA
-  { name: 'Ingyen ital hatása', href: '/free-drink-impact', icon: GlassWater, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-free-drink-impact', group: 'analytics' },
-  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'], tourId: 'nav-analytics', group: 'analytics' },
-  { name: 'Adat Értékek', href: '/data-insights', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-data-insights', group: 'analytics' },
-  { name: 'Jótékonysági Hatás', href: '/charity-impact', icon: Heart, roles: ['cgi_admin'], tourId: 'nav-charity', group: 'analytics' },
+  { name: 'Ingyen ital hatása', href: '/free-drink-impact', icon: GlassWater, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-free-drink-impact', group: 'analytics', adminGroup: 'szamok' },
+  { name: 'Analitika', href: '/analytics', icon: BarChart3, roles: ['cgi_admin', 'venue_owner', 'brand_admin'], tourId: 'nav-analytics', group: 'analytics', adminGroup: 'szamok' },
+  { name: 'Adat Értékek', href: '/data-insights', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-data-insights', group: 'analytics', adminGroup: 'szamok' },
+  { name: 'Jótékonysági Hatás', href: '/charity-impact', icon: Heart, roles: ['cgi_admin'], tourId: 'nav-charity', group: 'analytics', adminGroup: 'szamok' },
   // ADMIN
-  { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'], tourId: 'nav-brands', group: 'admin' },
-  { name: 'Audit Napló', href: '/audit-log', icon: FileText, roles: ['cgi_admin'], tourId: 'nav-audit-log', group: 'admin' },
-  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-settings', group: 'admin' },
+  { name: 'Márkák', href: '/brands', icon: Factory, roles: ['cgi_admin'], tourId: 'nav-brands', group: 'admin', adminGroup: 'helyek' },
+  { name: 'Audit Napló', href: '/audit-log', icon: FileText, roles: ['cgi_admin'], tourId: 'nav-audit-log', group: 'admin', adminGroup: 'admin', adminName: 'Audit napló' },
+  { name: 'Beállítások', href: '/settings', icon: Settings, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-settings', group: 'admin', adminGroup: 'admin' },
 ];
 
 const groupConfig: Record<NavGroup, { label: string; color: string; bg: string; ring: string }> = {
@@ -53,6 +59,16 @@ const groupConfig: Record<NavGroup, { label: string; color: string; bg: string; 
 };
 
 const groupOrder: NavGroup[] = ['core', 'tx', 'marketing', 'analytics', 'admin'];
+
+const adminGroupConfig: Record<AdminGroup, { label: string; color: string; bg: string; ring: string }> = {
+  ma:     { label: 'Ma',     color: 'text-cgi-primary', bg: 'bg-cgi-primary/15', ring: 'border-cgi-primary' },
+  partnerek: { label: 'Partnerek', color: 'text-teal-300', bg: 'bg-teal-400/15', ring: 'border-teal-300' },
+  helyek: { label: 'Helyek', color: 'text-amber-400',   bg: 'bg-amber-400/15',   ring: 'border-amber-400' },
+  szamok: { label: 'Számok', color: 'text-emerald-400', bg: 'bg-emerald-400/15', ring: 'border-emerald-400' },
+  admin:  { label: 'Admin',  color: 'text-slate-300',   bg: 'bg-slate-400/15',   ring: 'border-slate-400' },
+};
+
+const adminGroupOrder: AdminGroup[] = ['ma', 'partnerek', 'helyek', 'szamok', 'admin'];
 
 const roleLabels = {
   'cgi_admin': 'Admin Dashboard',
@@ -111,6 +127,21 @@ export function Sidebar() {
   if (!session || !effectiveRole) return null;
   const isAdmin = session.user.role === 'cgi_admin';
 
+  // Admin view: work areas, items without an adminGroup (Salt Edge pages) stay off the menu.
+  // Partner roles (and admin previews of them) keep the original groups unchanged.
+  const isAdminView = effectiveRole === 'cgi_admin';
+  const sections = isAdminView
+    ? adminGroupOrder.map(key => ({
+        key,
+        cfg: adminGroupConfig[key],
+        items: filteredNavigation.filter(i => i.adminGroup === key),
+      }))
+    : groupOrder.map(key => ({
+        key,
+        cfg: groupConfig[key],
+        items: filteredNavigation.filter(i => i.group === key),
+      }));
+
   return (
     <>
       {!isOpen && (
@@ -149,10 +180,7 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-3 overflow-y-auto">
-            {groupOrder.map((groupKey, gi) => {
-              const items = filteredNavigation.filter(i => i.group === groupKey);
-              if (items.length === 0) return null;
-              const cfg = groupConfig[groupKey];
+            {sections.filter(sec => sec.items.length > 0).map(({ key: groupKey, cfg, items }, gi) => {
               return (
                 <div key={groupKey} className={gi > 0 ? 'mt-3' : ''}>
                   <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${cfg.color}/80`}>
@@ -182,7 +210,7 @@ export function Sidebar() {
                           }`}>
                             <Icon className="h-4 w-4" />
                           </span>
-                          <span className="truncate">{item.name}</span>
+                          <span className="truncate">{isAdminView ? item.adminName ?? item.name : item.name}</span>
                         </Link>
                       );
                     })}
