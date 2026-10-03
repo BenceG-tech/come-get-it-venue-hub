@@ -1514,6 +1514,39 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_redemption_claims: {
+        Row: {
+          claimed_at: string
+          reward_id: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          reward_id: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          reward_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemption_claims_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "consumer_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemption_claims_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_redemptions: {
         Row: {
           created_at: string
@@ -1546,6 +1579,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reward_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "consumer_rewards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reward_redemptions_reward_id_fkey"
             columns: ["reward_id"]
@@ -1660,31 +1700,49 @@ export type Database = {
       }
       saltedge_connections: {
         Row: {
+          consent_expires_at: string | null
           created_at: string
           customer_id: string
           id: string
+          last_error: string | null
+          last_fetch_stats: Json | null
           last_synced_at: string | null
+          linked_at: string
+          provider_code: string | null
           provider_name: string | null
+          revoked_at: string | null
           se_connection_id: string
           status: string
           updated_at: string
         }
         Insert: {
+          consent_expires_at?: string | null
           created_at?: string
           customer_id: string
           id?: string
+          last_error?: string | null
+          last_fetch_stats?: Json | null
           last_synced_at?: string | null
+          linked_at?: string
+          provider_code?: string | null
           provider_name?: string | null
+          revoked_at?: string | null
           se_connection_id: string
           status: string
           updated_at?: string
         }
         Update: {
+          consent_expires_at?: string | null
           created_at?: string
           customer_id?: string
           id?: string
+          last_error?: string | null
+          last_fetch_stats?: Json | null
           last_synced_at?: string | null
+          linked_at?: string
+          provider_code?: string | null
           provider_name?: string | null
+          revoked_at?: string | null
           se_connection_id?: string
           status?: string
           updated_at?: string
@@ -1703,6 +1761,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          mode: string
           se_customer_id: string
           status: string
           updated_at: string
@@ -1711,6 +1770,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          mode?: string
           se_customer_id: string
           status?: string
           updated_at?: string
@@ -1719,6 +1779,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          mode?: string
           se_customer_id?: string
           status?: string
           updated_at?: string
@@ -1735,15 +1796,24 @@ export type Database = {
           currency: string
           description: string | null
           id: string
+          is_pending: boolean
+          is_refund: boolean
           made_on: string
+          match_confidence: number | null
+          match_method: string | null
           match_status: string | null
           matched_venue_id: string | null
           mcc: string | null
           merchant_code: string | null
           merchant_name: string | null
           points_awarded: number | null
+          points_status: string
+          posted_at: string | null
+          processed_at: string | null
           raw: Json | null
+          se_account_id: string | null
           se_transaction_id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -1754,15 +1824,24 @@ export type Database = {
           currency?: string
           description?: string | null
           id?: string
+          is_pending?: boolean
+          is_refund?: boolean
           made_on: string
+          match_confidence?: number | null
+          match_method?: string | null
           match_status?: string | null
           matched_venue_id?: string | null
           mcc?: string | null
           merchant_code?: string | null
           merchant_name?: string | null
           points_awarded?: number | null
+          points_status?: string
+          posted_at?: string | null
+          processed_at?: string | null
           raw?: Json | null
+          se_account_id?: string | null
           se_transaction_id: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -1773,15 +1852,24 @@ export type Database = {
           currency?: string
           description?: string | null
           id?: string
+          is_pending?: boolean
+          is_refund?: boolean
           made_on?: string
+          match_confidence?: number | null
+          match_method?: string | null
           match_status?: string | null
           matched_venue_id?: string | null
           mcc?: string | null
           merchant_code?: string | null
           merchant_name?: string | null
           points_awarded?: number | null
+          points_status?: string
+          posted_at?: string | null
+          processed_at?: string | null
           raw?: Json | null
+          se_account_id?: string | null
           se_transaction_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -1926,6 +2014,90 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_acquisition: {
+        Row: {
+          classified_at: string | null
+          code_claimed_at: string | null
+          created_at: string
+          first_redemption_at: string | null
+          first_redemption_id: string | null
+          first_redemption_venue_id: string | null
+          minutes_to_first_redemption: number | null
+          referral_code: string | null
+          signup_at: string | null
+          source: string | null
+          updated_at: string
+          user_id: string
+          venue_id: string | null
+        }
+        Insert: {
+          classified_at?: string | null
+          code_claimed_at?: string | null
+          created_at?: string
+          first_redemption_at?: string | null
+          first_redemption_id?: string | null
+          first_redemption_venue_id?: string | null
+          minutes_to_first_redemption?: number | null
+          referral_code?: string | null
+          signup_at?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id: string
+          venue_id?: string | null
+        }
+        Update: {
+          classified_at?: string | null
+          code_claimed_at?: string | null
+          created_at?: string
+          first_redemption_at?: string | null
+          first_redemption_id?: string | null
+          first_redemption_venue_id?: string | null
+          minutes_to_first_redemption?: number | null
+          referral_code?: string | null
+          signup_at?: string | null
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_acquisition_first_redemption_id_fkey"
+            columns: ["first_redemption_id"]
+            isOneToOne: false
+            referencedRelation: "redemptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_acquisition_first_redemption_venue_id_fkey"
+            columns: ["first_redemption_venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_acquisition_first_redemption_venue_id_fkey"
+            columns: ["first_redemption_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_acquisition_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_acquisition_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -2386,6 +2558,7 @@ export type Database = {
           price_tier: number | null
           rating: number | null
           redemption_radius_m: number | null
+          referral_code: string | null
           saltedge_connection_id: string | null
           tags: string[] | null
           updated_at: string
@@ -2424,6 +2597,7 @@ export type Database = {
           price_tier?: number | null
           rating?: number | null
           redemption_radius_m?: number | null
+          referral_code?: string | null
           saltedge_connection_id?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -2462,6 +2636,7 @@ export type Database = {
           price_tier?: number | null
           rating?: number | null
           redemption_radius_m?: number | null
+          referral_code?: string | null
           saltedge_connection_id?: string | null
           tags?: string[] | null
           updated_at?: string
@@ -2486,6 +2661,89 @@ export type Database = {
       }
     }
     Views: {
+      consumer_rewards: {
+        Row: {
+          active: boolean | null
+          category: string | null
+          current_redemptions: number | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          is_global: boolean | null
+          max_redemptions: number | null
+          name: string | null
+          partner_id: string | null
+          points_required: number | null
+          priority: number | null
+          terms_conditions: string | null
+          valid_until: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          category?: string | null
+          current_redemptions?: number | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_global?: boolean | null
+          max_redemptions?: number | null
+          name?: string | null
+          partner_id?: string | null
+          points_required?: number | null
+          priority?: number | null
+          terms_conditions?: string | null
+          valid_until?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          category?: string | null
+          current_redemptions?: number | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_global?: boolean | null
+          max_redemptions?: number | null
+          name?: string | null
+          partner_id?: string | null
+          points_required?: number | null
+          priority?: number | null
+          terms_conditions?: string | null
+          valid_until?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rewards_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rewards_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rewards_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rewards_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_brands_safe: {
         Row: {
           id: string | null
@@ -2575,6 +2833,8 @@ export type Database = {
       }
     }
     Functions: {
+      award_spend_points: { Args: { p_transaction_id: string }; Returns: Json }
+      claim_venue_referral_code: { Args: { p_code: string }; Returns: Json }
       cleanup_old_snapshots: { Args: never; Returns: undefined }
       consume_redemption_token_atomic: {
         Args: { p_staff_id: string; p_token_hash: string }
@@ -2604,6 +2864,37 @@ export type Database = {
         }[]
       }
       get_user_venue_ids: { Args: { user_id?: string }; Returns: string[] }
+      get_venue_acquisition_stats: {
+        Args: { p_from: string; p_to: string; p_venue_id?: string }
+        Returns: {
+          cgi_users: number
+          new_users: number
+          venue_code_users: number
+          venue_id: string
+          venue_name: string
+          venue_sourced_active_elsewhere: number
+          venue_walk_in_users: number
+        }[]
+      }
+      get_venue_free_drink_impact: {
+        Args: {
+          p_from: string
+          p_include_test?: boolean
+          p_to: string
+          p_venue_id?: string
+        }
+        Returns: {
+          avg_spend_huf: number
+          converted_redemptions: number
+          measurable_redemptions: number
+          new_guest_converted: number
+          redemptions: number
+          returned_30d: number
+          total_spend_huf: number
+          venue_id: string
+          venue_name: string
+        }[]
+      }
       is_admin: { Args: { user_id?: string }; Returns: boolean }
       is_venue_publicly_active: {
         Args: { _venue_id: string }
