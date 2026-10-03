@@ -26,4 +26,7 @@ CREATE POLICY "Admins manage applicant reviews"
   USING (public.is_admin(auth.uid()))
   WITH CHECK (public.is_admin(auth.uid()));
 
-REVOKE ALL ON public.applicant_reviews FROM anon;
+-- The browser never reads this table directly; the authenticated admin Edge
+-- Function owns all access. Keep the Data API grant surface minimal.
+REVOKE ALL ON public.applicant_reviews FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.applicant_reviews TO service_role;
