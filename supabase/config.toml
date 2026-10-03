@@ -82,6 +82,9 @@ backend = "postgres"
 [experimental.webhooks]
 enabled = false
 
+[functions.admin-applicants]
+verify_jwt = true
+
 [functions.add-user-tags]
 verify_jwt = true
 
