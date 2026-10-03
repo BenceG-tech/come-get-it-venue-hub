@@ -58,4 +58,9 @@ CREATE POLICY "Admins manage partner leads"
   USING (public.is_admin(auth.uid()))
   WITH CHECK (public.is_admin(auth.uid()));
 
-REVOKE ALL ON public.partner_leads FROM anon;
+-- The admin UI only lists and edits existing leads. Inserts are performed by
+-- the service-role Edge Function/import. RLS still limits browser access to
+-- authenticated admins.
+REVOKE ALL ON public.partner_leads FROM PUBLIC, anon, authenticated;
+GRANT SELECT, UPDATE ON public.partner_leads TO authenticated;
+GRANT ALL ON public.partner_leads TO service_role;
