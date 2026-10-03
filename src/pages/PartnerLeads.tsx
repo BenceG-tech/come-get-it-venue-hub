@@ -212,6 +212,7 @@ export default function PartnerLeads() {
               lead={selected}
               saving={save.isPending}
               onSave={(patch) => save.mutate({ id: selected.id, patch })}
+              onSaveAsync={(patch) => save.mutateAsync({ id: selected.id, patch })}
             />
           )}
         </SheetContent>
@@ -224,10 +225,12 @@ function LeadDetail({
   lead,
   saving,
   onSave,
+  onSaveAsync,
 }: {
   lead: PartnerLead;
   saving: boolean;
   onSave: (patch: Partial<PartnerLead>) => void;
+  onSaveAsync: (patch: Partial<PartnerLead>) => Promise<void>;
 }) {
   const [from, to] = proposalSlot(lead.proposal || {});
   const [drink, setDrink] = useState(lead.offer_request?.drink ?? "");
@@ -237,18 +240,22 @@ function LeadDetail({
   const [note, setNote] = useState(lead.note ?? "");
   const p = lead.proposal || {};
 
-  const requestOffer = () => {
+  const requestOffer = async () => {
     const a = Math.max(6, Math.min(23, slotFrom || 14));
     const b = Math.max(a + 1, Math.min(24, slotTo || a + 2));
-    onSave({
-      offer_request: {
-        requested_at: new Date().toISOString(),
-        drink,
-        slot: `${a}-${b}`,
-        daily_cap: Math.max(1, cap || 5),
-      },
-    });
-    toast.success("Ajánlatkérés rögzítve");
+    try {
+      await onSaveAsync({
+        offer_request: {
+          requested_at: new Date().toISOString(),
+          drink,
+          slot: `${a}-${b}`,
+          daily_cap: Math.max(1, cap || 5),
+        },
+      });
+      toast.success("Ajánlatkérés rögzítve");
+    } catch {
+      // The mutation's shared onError handler displays the actionable error.
+    }
   };
 
   const contacts: [string, string | null, string | null][] = [
