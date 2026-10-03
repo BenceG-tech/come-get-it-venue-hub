@@ -24,6 +24,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405);
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -43,7 +47,7 @@ Deno.serve(async (req) => {
       .single();
     if (!profile?.is_admin) return json({ error: "Admin access required" }, 403);
 
-    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const body = await req.json().catch(() => ({}));
     const action = body.action ?? "list";
 
     if (action === "list") {
