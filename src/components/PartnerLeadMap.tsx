@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,10 @@ import { STAGES, type PartnerLead } from "@/lib/partnerOutreach";
 const BUDAPEST_CENTER: [number, number] = [19.0558, 47.4979];
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const SOURCE_ID = "partner-leads";
+
+// MapLibre v6's ESM worker must be bundled explicitly by Vite. This keeps the
+// worker same-origin and compatible with Lovable's production CSP.
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 interface PartnerLeadMapProps {
   leads: PartnerLead[];
