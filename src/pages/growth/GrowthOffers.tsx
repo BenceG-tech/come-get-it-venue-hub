@@ -8,14 +8,14 @@ import { format } from "date-fns";
 import { Copy, ExternalLink } from "lucide-react";
 import { gdb, GrowthOffer, OFFER_STATUSES, offerPublicFileUrl, offerShareUrl } from "@/lib/growth";
 
-type Row = GrowthOffer & { growth_leads?: { name: string } | null };
+type Row = GrowthOffer & { partner_leads?: { id: string; name: string } | null };
 
 export default function GrowthOffers() {
   const qc = useQueryClient();
   const { data = [], isLoading } = useQuery({
     queryKey: ["growth_offers_joined"],
     queryFn: async () => {
-      const { data, error } = await gdb.from("growth_offers").select("*, growth_leads(name)").order("created_at", { ascending: false }).limit(2000);
+      const { data, error } = await gdb.from("growth_offers").select("*, partner_leads(id, name)").order("created_at", { ascending: false }).limit(2000);
       if (error) throw error;
       return data as Row[];
     },
@@ -58,7 +58,7 @@ export default function GrowthOffers() {
             <div className="p-4 flex-1 flex flex-col gap-2">
               <div>
                 <div className="font-semibold text-cgi-surface-foreground">{o.venue_name}</div>
-                {o.growth_leads?.name && o.growth_leads.name !== o.venue_name && <div className="text-xs text-cgi-muted-foreground">{o.growth_leads.name}</div>}
+                {o.partner_leads?.name && o.partner_leads.name !== o.venue_name && <div className="text-xs text-cgi-muted-foreground">{o.partner_leads.name}</div>}
               </div>
               {o.headline && <p className="text-sm text-cgi-surface-foreground/90">{o.headline}</p>}
               <p className="text-xs text-cgi-muted-foreground">{[o.drink, o.time_window, o.daily_cap ? `napi ${o.daily_cap} db` : null].filter(Boolean).join(" · ")}</p>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater, Inbox, Handshake, Target, Send, CalendarDays, Upload } from "lucide-react";
+import { LayoutDashboard, Receipt, CreditCard, Gift, BarChart3, Settings, Menu, Users, X, Building, Factory, LogOut, TrendingUp, ChevronDown, Landmark, Bell, HelpCircle, FileText, Heart, ScanLine, GlassWater, Inbox, Handshake, Send, CalendarDays, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sessionManager } from "@/auth/session";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -28,6 +28,7 @@ const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core', adminGroup: 'ma', adminName: 'Áttekintés' },
   { name: 'Jelentkezők', href: '/applicants', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-applicants', group: 'admin', adminGroup: 'partnerek' },
   { name: 'Partnerszerzés', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek' },
+  { name: 'Ajánlatok', href: '/growth/offers', icon: Send, roles: ['cgi_admin'], tourId: 'nav-growth-offers', group: 'growth', adminGroup: 'partnerek' },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core', adminGroup: 'helyek' },
   { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core', adminGroup: 'admin' },
   // TRANZAKCIÓK
@@ -40,9 +41,6 @@ const navigation: NavItem[] = [
   { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions', group: 'marketing', adminGroup: 'helyek' },
   { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing', adminGroup: 'helyek' },
   // NÖVEKEDÉS
-  { name: 'Jelentkezések', href: '/growth/signups', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-growth-signups', group: 'growth', adminGroup: 'novekedes' },
-  { name: 'Partnerszerzés', href: '/growth/leads', icon: Target, roles: ['cgi_admin'], tourId: 'nav-growth-leads', group: 'growth', adminGroup: 'novekedes' },
-  { name: 'Ajánlatok', href: '/growth/offers', icon: Send, roles: ['cgi_admin'], tourId: 'nav-growth-offers', group: 'growth', adminGroup: 'novekedes' },
   { name: 'Tartalom', href: '/growth/content', icon: CalendarDays, roles: ['cgi_admin'], tourId: 'nav-growth-content', group: 'growth', adminGroup: 'novekedes' },
   { name: 'Importálás', href: '/growth/import', icon: Upload, roles: ['cgi_admin'], tourId: 'nav-growth-import', group: 'growth', adminGroup: 'novekedes' },
   // ANALITIKA
