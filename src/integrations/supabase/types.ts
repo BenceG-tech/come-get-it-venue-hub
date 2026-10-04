@@ -138,6 +138,48 @@ export type Database = {
         }
         Relationships: []
       }
+      applicant_reviews: {
+        Row: {
+          created_at: string
+          external_id: string
+          id: string
+          note: string | null
+          offer_requested_at: string | null
+          offer_status: string | null
+          offer_url: string | null
+          source: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          external_id: string
+          id?: string
+          note?: string | null
+          offer_requested_at?: string | null
+          offer_status?: string | null
+          offer_url?: string | null
+          source: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          external_id?: string
+          id?: string
+          note?: string | null
+          offer_requested_at?: string | null
+          offer_status?: string | null
+          offer_url?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -612,6 +654,304 @@ export type Database = {
           },
         ]
       }
+      growth_content: {
+        Row: {
+          caption: string | null
+          channel: string | null
+          created_at: string
+          data: Json
+          id: string
+          kind: string
+          planned_at: string | null
+          status: string
+          storage_path: string | null
+          thumb_path: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          channel?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          planned_at?: string | null
+          status?: string
+          storage_path?: string | null
+          thumb_path?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          channel?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          planned_at?: string | null
+          status?: string
+          storage_path?: string | null
+          thumb_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      growth_leads: {
+        Row: {
+          address: string | null
+          created_at: string
+          data: Json
+          district: string | null
+          email: string | null
+          grade: string | null
+          id: string
+          instagram: string | null
+          name: string
+          offer_info: string | null
+          offer_url: string | null
+          phone: string | null
+          photo_url: string | null
+          rating: number | null
+          review_count: number | null
+          score: number | null
+          status: number
+          updated_at: string
+          venue_type: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          data?: Json
+          district?: string | null
+          email?: string | null
+          grade?: string | null
+          id: string
+          instagram?: string | null
+          name: string
+          offer_info?: string | null
+          offer_url?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          rating?: number | null
+          review_count?: number | null
+          score?: number | null
+          status?: number
+          updated_at?: string
+          venue_type?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          data?: Json
+          district?: string | null
+          email?: string | null
+          grade?: string | null
+          id?: string
+          instagram?: string | null
+          name?: string
+          offer_info?: string | null
+          offer_url?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          rating?: number | null
+          review_count?: number | null
+          score?: number | null
+          status?: number
+          updated_at?: string
+          venue_type?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      growth_offer_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          daily_cap: number | null
+          drink: string | null
+          error: string | null
+          id: string
+          lead_id: string | null
+          offer_id: string | null
+          requested_by: string | null
+          status: string
+          time_window: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          daily_cap?: number | null
+          drink?: string | null
+          error?: string | null
+          id?: string
+          lead_id?: string | null
+          offer_id?: string | null
+          requested_by?: string | null
+          status?: string
+          time_window?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          daily_cap?: number | null
+          drink?: string | null
+          error?: string | null
+          id?: string
+          lead_id?: string | null
+          offer_id?: string | null
+          requested_by?: string | null
+          status?: string
+          time_window?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "growth_offer_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "growth_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "growth_offer_requests_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "growth_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      growth_offers: {
+        Row: {
+          created_at: string
+          daily_cap: number | null
+          drink: string | null
+          headline: string | null
+          id: string
+          lead_id: string | null
+          legacy_artifact_url: string | null
+          media: Json
+          page: Json
+          sent_at: string | null
+          status: string
+          time_window: string | null
+          token: string
+          updated_at: string
+          venue_name: string
+        }
+        Insert: {
+          created_at?: string
+          daily_cap?: number | null
+          drink?: string | null
+          headline?: string | null
+          id?: string
+          lead_id?: string | null
+          legacy_artifact_url?: string | null
+          media?: Json
+          page?: Json
+          sent_at?: string | null
+          status?: string
+          time_window?: string | null
+          token?: string
+          updated_at?: string
+          venue_name: string
+        }
+        Update: {
+          created_at?: string
+          daily_cap?: number | null
+          drink?: string | null
+          headline?: string | null
+          id?: string
+          lead_id?: string | null
+          legacy_artifact_url?: string | null
+          media?: Json
+          page?: Json
+          sent_at?: string | null
+          status?: string
+          time_window?: string | null
+          token?: string
+          updated_at?: string
+          venue_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "growth_offers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "growth_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      growth_signups: {
+        Row: {
+          city: string | null
+          created_at: string
+          details: Json
+          email: string | null
+          id: string
+          kind: string
+          lead_id: string | null
+          name: string | null
+          note: string | null
+          phone: string | null
+          source_id: string
+          status: string
+          submitted_at: string
+          updated_at: string
+          venue_name: string | null
+          venue_type: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          details?: Json
+          email?: string | null
+          id?: string
+          kind: string
+          lead_id?: string | null
+          name?: string | null
+          note?: string | null
+          phone?: string | null
+          source_id: string
+          status?: string
+          submitted_at: string
+          updated_at?: string
+          venue_name?: string | null
+          venue_type?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          details?: Json
+          email?: string | null
+          id?: string
+          kind?: string
+          lead_id?: string | null
+          name?: string | null
+          note?: string | null
+          phone?: string | null
+          source_id?: string
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          venue_name?: string | null
+          venue_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "growth_signups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "growth_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linked_cards: {
         Row: {
           country_code: string | null
@@ -850,6 +1190,126 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      partner_leads: {
+        Row: {
+          address: string | null
+          applicant_id: string | null
+          created_at: string
+          description: string | null
+          district: string | null
+          drinks: string[] | null
+          email: string | null
+          facebook: string | null
+          gmaps_url: string | null
+          grade: string | null
+          id: string
+          instagram: string | null
+          instagram_handle: string | null
+          intro: string | null
+          lat: number | null
+          lon: number | null
+          media: Json | null
+          name: string
+          note: string | null
+          offer_info: string | null
+          offer_request: Json | null
+          offer_url: string | null
+          opening_hours: string | null
+          phone: string | null
+          photo_url: string | null
+          place_id: string | null
+          proposal: Json
+          quiet_hours: Json | null
+          rating: number | null
+          rating_count: number | null
+          score: number | null
+          source: string | null
+          stage: number
+          stage_log: Json
+          updated_at: string
+          venue_type: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          applicant_id?: string | null
+          created_at?: string
+          description?: string | null
+          district?: string | null
+          drinks?: string[] | null
+          email?: string | null
+          facebook?: string | null
+          gmaps_url?: string | null
+          grade?: string | null
+          id: string
+          instagram?: string | null
+          instagram_handle?: string | null
+          intro?: string | null
+          lat?: number | null
+          lon?: number | null
+          media?: Json | null
+          name: string
+          note?: string | null
+          offer_info?: string | null
+          offer_request?: Json | null
+          offer_url?: string | null
+          opening_hours?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          place_id?: string | null
+          proposal?: Json
+          quiet_hours?: Json | null
+          rating?: number | null
+          rating_count?: number | null
+          score?: number | null
+          source?: string | null
+          stage?: number
+          stage_log?: Json
+          updated_at?: string
+          venue_type?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          applicant_id?: string | null
+          created_at?: string
+          description?: string | null
+          district?: string | null
+          drinks?: string[] | null
+          email?: string | null
+          facebook?: string | null
+          gmaps_url?: string | null
+          grade?: string | null
+          id?: string
+          instagram?: string | null
+          instagram_handle?: string | null
+          intro?: string | null
+          lat?: number | null
+          lon?: number | null
+          media?: Json | null
+          name?: string
+          note?: string | null
+          offer_info?: string | null
+          offer_request?: Json | null
+          offer_url?: string | null
+          opening_hours?: string | null
+          phone?: string | null
+          photo_url?: string | null
+          place_id?: string | null
+          proposal?: Json
+          quiet_hours?: Json | null
+          rating?: number | null
+          rating_count?: number | null
+          score?: number | null
+          source?: string | null
+          stage?: number
+          stage_log?: Json
+          updated_at?: string
+          venue_type?: string | null
+          website?: string | null
+        }
+        Relationships: []
       }
       platform_settings: {
         Row: {
@@ -2895,6 +3355,8 @@ export type Database = {
           venue_name: string
         }[]
       }
+      growth_get_offer: { Args: { p_token: string }; Returns: Json }
+      growth_is_admin: { Args: never; Returns: boolean }
       is_admin: { Args: { user_id?: string }; Returns: boolean }
       is_venue_publicly_active: {
         Args: { _venue_id: string }
