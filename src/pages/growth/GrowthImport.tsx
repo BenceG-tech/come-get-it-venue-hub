@@ -94,13 +94,11 @@ async function processOffer(job: OfferJob, update: (p: Partial<OfferJob>) => voi
     const { data } = await gdb.from("growth_offers").select("id, token, media").eq("legacy_artifact_url", meta.legacy_artifact_url).maybeSingle();
     if (data) {
       // Finished (media set) → skip; partially uploaded → resume with same token.
-      if (Array.isArray(data.media) && data.media.length >= 0 && data.media !== null && (data.media as unknown[]).length > 0) {
+      if (Array.isArray(data.media) && data.media.length > 0) {
         update({ state: "kihagyva", progress: 100, message: "Már importálva" });
         return;
       }
-      if (Array.isArray(data.media) && (data.media as unknown[]).length === 0 && data.media) {
-        token = data.token; offerId = data.id;
-      } else { token = data.token; offerId = data.id; }
+      token = data.token; offerId = data.id;
     }
   }
 
