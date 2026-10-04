@@ -37,6 +37,12 @@ import PartnerLeads from "./pages/PartnerLeads";
 import POSRedeem from "./pages/pos/POSRedeem";
 import POSHistory from "./pages/pos/POSHistory";
 import { POSGuard } from "@/components/POSGuard";
+import GrowthSignups from "./pages/growth/GrowthSignups";
+import GrowthLeads from "./pages/growth/GrowthLeads";
+import GrowthOffers from "./pages/growth/GrowthOffers";
+import GrowthContentPage from "./pages/growth/GrowthContentPage";
+import GrowthImport from "./pages/growth/GrowthImport";
+import PublicOffer from "./pages/PublicOffer";
 
 const queryClient = new QueryClient();
 
@@ -202,6 +208,35 @@ const App = () => {
             <Route path="/audit-log" element={
               <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
                 <AuditLog />
+              </RouteGuard>
+            } />
+
+            {/* Public offer share page */}
+            <Route path="/a/:token" element={<PublicOffer />} />
+
+            <Route path="/growth/signups" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <GrowthSignups />
+              </RouteGuard>
+            } />
+            <Route path="/growth/leads" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <GrowthLeads />
+              </RouteGuard>
+            } />
+            <Route path="/growth/offers" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <GrowthOffers />
+              </RouteGuard>
+            } />
+            <Route path="/growth/content" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <GrowthContentPage />
+              </RouteGuard>
+            } />
+            <Route path="/growth/import" element={
+              <RouteGuard requiredRoles={['cgi_admin']} fallback="/dashboard">
+                <GrowthImport />
               </RouteGuard>
             } />
 
