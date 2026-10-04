@@ -30,7 +30,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AcquisitionSource } from "@/components/AcquisitionSource";
 import { supabase } from "@/integrations/supabase/client";
+import { formatAcquisitionSource } from "@/lib/acquisitionSource";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { hu } from "date-fns/locale";
@@ -144,9 +146,10 @@ export default function Applicants() {
   const partners = (data?.partners ?? []).filter((p) =>
     matches("venue_application", p.id, [p.venue_name, p.name, p.email, p.address_city].join(" "))
   );
-  const waitlist = (data?.waitlist ?? []).filter((w) =>
-    matches("waitlist", w.id, [w.email, w.source].join(" "))
-  );
+  const waitlist = (data?.waitlist ?? []).filter((w) => {
+    const source = formatAcquisitionSource(w.source);
+    return matches("waitlist", w.id, [w.email, source.label, source.detail, w.source].join(" "));
+  });
 
   const newCount = (source: Source, ids: string[]) =>
     ids.filter((id) => (reviewFor(source, id)?.status ?? "uj") === "uj").length;
@@ -299,6 +302,7 @@ export default function Applicants() {
                       <TableHead>Hely</TableHead>
                       <TableHead>Kapcsolattartó</TableHead>
                       <TableHead>Napi vendég</TableHead>
+                      <TableHead>Honnan érkezett?</TableHead>
                       <TableHead>Beérkezett</TableHead>
                       <TableHead>Állapot</TableHead>
                       <TableHead className="text-right">Teendő</TableHead>
@@ -308,12 +312,12 @@ export default function Applicants() {
                     {isLoading
                       ? Array.from({ length: 4 }).map((_, i) => (
                           <TableRow key={i}>
-                            <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                            <TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell>
                           </TableRow>
                         ))
                       : partners.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center text-cgi-muted-foreground py-8">
+                            <TableCell colSpan={7} className="text-center text-cgi-muted-foreground py-8">
                               Nincs találat
                             </TableCell>
                           </TableRow>
@@ -333,6 +337,9 @@ export default function Applicants() {
                               </div>
                             </TableCell>
                             <TableCell>{p.daily_customer_count || "–"}</TableCell>
+                            <TableCell>
+                              <AcquisitionSource value="venue_application" />
+                            </TableCell>
                             <TableCell className="whitespace-nowrap">{formatDate(p.created_at)}</TableCell>
                             <TableCell>{statusSelect("venue_application", p.id)}</TableCell>
                             <TableCell className="text-right whitespace-nowrap">
@@ -352,7 +359,7 @@ export default function Applicants() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>E-mail</TableHead>
-                      <TableHead>Forrás</TableHead>
+                      <TableHead>Honnan érkezett?</TableHead>
                       <TableHead>Beérkezett</TableHead>
                       <TableHead>Állapot</TableHead>
                       <TableHead className="text-right">Jegyzet</TableHead>
@@ -376,7 +383,9 @@ export default function Applicants() {
                             <TableCell>
                               <a href={`mailto:${w.email}`} className="hover:underline">{w.email}</a>
                             </TableCell>
-                            <TableCell>{w.source || "–"}</TableCell>
+                            <TableCell>
+                              <AcquisitionSource value={w.source} />
+                            </TableCell>
                             <TableCell className="whitespace-nowrap">{formatDate(w.created_at)}</TableCell>
                             <TableCell>{statusSelect("waitlist", w.id)}</TableCell>
                             <TableCell className="text-right">{noteButton("waitlist", w.id, w.email)}</TableCell>

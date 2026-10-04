@@ -36,6 +36,8 @@ export interface PartnerLead {
   phone: string | null;
   photo_url: string | null;
   gmaps_url: string | null;
+  lat: number | null;
+  lon: number | null;
   rating: number | null;
   rating_count: number | null;
   grade: "A" | "B" | "C" | "D" | null;

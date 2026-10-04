@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PageLayout } from "@/components/PageLayout";
@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, ExternalLink, RefreshCw, Search, Sparkles, Star } from "lucide-react";
+import { Copy, ExternalLink, List, Map as MapIcon, RefreshCw, Search, Sparkles, Star } from "lucide-react";
 import {
   DRINK_OPTIONS,
   STAGES,
@@ -29,6 +29,9 @@ import {
 
 // partner_leads is newer than the generated Database types.
 const db = supabase as unknown as SupabaseClient;
+const PartnerLeadMap = lazy(() =>
+  import("@/components/PartnerLeadMap").then((module) => ({ default: module.PartnerLeadMap }))
+);
 
 const gradeClasses: Record<string, string> = {
   A: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -54,6 +57,7 @@ export default function PartnerLeads() {
   const [district, setDistrict] = useState("all");
   const [onlyOffer, setOnlyOffer] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<"map" | "list">("map");
 
   const { data: leads = [], isLoading, error, refetch, isFetching } = useQuery<PartnerLead[]>({
     queryKey: ["partner-leads"],
@@ -165,42 +169,79 @@ export default function PartnerLeads() {
         </Card>
       ) : (
         <div className="grid gap-2">
-          <p className="text-sm text-cgi-muted-foreground">{filtered.length} hely</p>
-          {isLoading
-            ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
-            : filtered.length === 0 ? (
-                <Card className="p-8 cgi-card text-center text-cgi-muted-foreground">
-                  {leads.length === 0 ? "Még nincs lead. Az átköltöztetés után itt jelennek meg." : "Nincs találat"}
-                </Card>
-              ) : filtered.map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  onClick={() => setSelectedId(l.id)}
-                  className="cgi-card rounded-lg border border-transparent hover:border-cgi-primary/40 p-3 flex items-center gap-3 text-left"
-                >
-                  {l.photo_url ? (
-                    <img src={l.photo_url} alt="" className="h-12 w-12 rounded-md object-cover flex-none" loading="lazy" />
-                  ) : (
-                    <div className="h-12 w-12 rounded-md bg-cgi-muted flex-none" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-cgi-surface-foreground truncate">{l.name}</div>
-                    <div className="text-xs text-cgi-muted-foreground truncate">
-                      {[l.venue_type, l.district, l.proposal?.tetel, l.proposal?.idosav].filter(Boolean).join(" · ")}
-                    </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-cgi-muted-foreground">{filtered.length} hely</p>
+            <div className="flex rounded-lg border border-cgi-muted bg-cgi-surface p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={view === "map" ? "secondary" : "ghost"}
+                onClick={() => setView("map")}
+                className="h-8"
+              >
+                <MapIcon className="mr-1.5 h-4 w-4" /> Térkép
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={view === "list" ? "secondary" : "ghost"}
+                onClick={() => setView("list")}
+                className="h-8"
+              >
+                <List className="mr-1.5 h-4 w-4" /> Lista
+              </Button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            view === "map" ? (
+              <Skeleton className="h-[620px] w-full rounded-lg" />
+            ) : (
+              Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
+            )
+          ) : filtered.length === 0 ? (
+            <Card className="p-8 cgi-card text-center text-cgi-muted-foreground">
+              {leads.length === 0 ? "Még nincs lead. Az átköltöztetés után itt jelennek meg." : "Nincs találat"}
+            </Card>
+          ) : view === "map" ? (
+            <Suspense fallback={<Skeleton className="h-[620px] w-full rounded-lg" />}>
+              <PartnerLeadMap
+                leads={filtered}
+                totalFiltered={filtered.length}
+                onSelect={setSelectedId}
+              />
+            </Suspense>
+          ) : (
+            filtered.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setSelectedId(l.id)}
+                className="cgi-card rounded-lg border border-transparent hover:border-cgi-primary/40 p-3 flex items-center gap-3 text-left"
+              >
+                {l.photo_url ? (
+                  <img src={l.photo_url} alt="" className="h-12 w-12 rounded-md object-cover flex-none" loading="lazy" />
+                ) : (
+                  <div className="h-12 w-12 rounded-md bg-cgi-muted flex-none" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-cgi-surface-foreground truncate">{l.name}</div>
+                  <div className="text-xs text-cgi-muted-foreground truncate">
+                    {[l.venue_type, l.district, l.proposal?.tetel, l.proposal?.idosav].filter(Boolean).join(" · ")}
                   </div>
-                  {l.rating != null && (
-                    <span className="hidden sm:flex items-center gap-1 text-xs text-cgi-muted-foreground">
-                      <Star className="h-3 w-3" /> {l.rating}
-                    </span>
-                  )}
-                  {l.offer_url && <Badge variant="outline" className="hidden sm:inline-flex">Ajánlat kész</Badge>}
-                  {l.offer_request && <Badge variant="outline" className="hidden sm:inline-flex">Készül</Badge>}
-                  <Badge variant="outline" className={STAGES[l.stage]?.className}>{STAGES[l.stage]?.label}</Badge>
-                  {l.grade && <Badge variant="outline" className={gradeClasses[l.grade]}>{l.grade}</Badge>}
-                </button>
-              ))}
+                </div>
+                {l.rating != null && (
+                  <span className="hidden sm:flex items-center gap-1 text-xs text-cgi-muted-foreground">
+                    <Star className="h-3 w-3" /> {l.rating}
+                  </span>
+                )}
+                {l.offer_url && <Badge variant="outline" className="hidden sm:inline-flex">Ajánlat kész</Badge>}
+                {l.offer_request && <Badge variant="outline" className="hidden sm:inline-flex">Készül</Badge>}
+                <Badge variant="outline" className={STAGES[l.stage]?.className}>{STAGES[l.stage]?.label}</Badge>
+                {l.grade && <Badge variant="outline" className={gradeClasses[l.grade]}>{l.grade}</Badge>}
+              </button>
+            ))
+          )}
         </div>
       )}
 
