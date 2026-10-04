@@ -31,6 +31,7 @@ export function BulkNotificationModal({
 }: BulkNotificationModalProps) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -45,6 +46,7 @@ export function BulkNotificationModal({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            request_id: requestId,
             user_ids: userIds,
             title,
             body,
@@ -57,10 +59,13 @@ export function BulkNotificationModal({
         throw new Error(error.error || "Hiba történt");
       }
 
-      return response.json();
+      const result = await response.json();
+      if (!result.success || !result.sent_count) throw new Error(result.error || "Egy értesítést sem vett át a szolgáltató.");
+      return result;
     },
     onSuccess: async (data) => {
-      toast.success(`${data.sent_count} felhasználónak elküldve`);
+      if (data.skipped_count) toast.warning(`${data.sent_count} értesítést átvett a szolgáltató, ${data.skipped_count} címzettnél nem történt igazolt küldés.`);
+      else toast.success(`${data.sent_count} értesítést átvett a push szolgáltató.`);
       
       // Audit log
       await logAuditEvent({
@@ -75,6 +80,7 @@ export function BulkNotificationModal({
       });
 
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      setRequestId(crypto.randomUUID());
       setTitle("");
       setBody("");
       onOpenChange(false);

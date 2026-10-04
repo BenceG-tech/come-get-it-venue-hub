@@ -108,44 +108,44 @@ export function outreachTexts(lead: PartnerLead): [string, string][] {
   const j = lead.proposal || {};
   const link = venueLink(lead);
   const ker = lead.district ? " a " + kerShort(lead.district).replace(". ker.", ". kerületben") : " Budapesten";
-  const sav = j.idosav || "a leggyengébb idősávotokban";
+  const sav = j.idosav || "a csendesebb óráitokban";
   const tetel = j.tetel || "egy ital";
   const miert = lead.rating
-    ? "A " + lead.rating + "-es Google-értékelésetek alapján pont olyan hely vagytok, akit a vendégeink megérdemelnek"
+    ? "A Google-on kapott " + String(lead.rating).replace(".", ",") + " pontos értékelésetek alapján szívesen bemutatnánk a helyet az appunkban"
     : "Pont olyan helyeket keresünk, mint a " + nev;
   const teszt = j.b_tetel
-    ? "\n\nJavaslatunk egy kis ital-teszt: az első két héten " + tetel + ", a második kettőn " + j.b_tetel +
-      ". Így kiderül, melyikre jönnek jobban, és ti is látjátok a számokat."
+    ? "\n\nJavaslatunk egy rövid összehasonlító próba: az első két héten " + tetel + ", a következő két hétben " + j.b_tetel +
+      ". Így kiderül, melyik italt választják többen; az eredményeket ti is követhetitek."
     : "";
   const ajanlat =
-    "Javasolt pilot-ajánlat · " + nev +
-    "\n\nSzcenárió: " + (j.szcenario || "A · Csendes óra") +
+    "Javasolt próbaidőszak · " + nev +
+    "\n\nJavasolt megoldás: " + (j.szcenario || "A · Csendes óra") +
     "\nTétel: " + tetel + (j.b_tetel ? " (B-változat: " + j.b_tetel + ")" : "") +
     "\nIdősáv: " + sav +
-    "\nKeret: " + (j.keret || "napi 5 db indulásnak, igény szerint emelhető") +
+    "\nKeret: " + (j.keret || "kezdetben napi 5 ital, igény szerint emelhető") +
     "\nMiért ez a sáv: " + (j.miert || "–") +
-    (j.teszt ? "\nItal-teszt: " + j.teszt : "") +
-    "\n\nA pilot 4 hét, platformdíj nélkül, bármikor szüneteltethető. A kiadott tétel költségét a hely viseli, a napi keret erejéig. Heti riport a beváltásokról. Forgalmat nem garantálunk, mérünk.";
+    (j.teszt ? "\nItalok összehasonlítása: " + j.teszt : "") +
+    "\n\nA pilot 4 hét, platformdíj nélkül, bármikor szüneteltethető. A kiadott tétel költségét a hely viseli, a napi keret erejéig. Heti riport a beváltásokról. A vendégszám növekedését nem garantáljuk; a beváltások alakulását mérjük.";
   const quiet = lead.quiet_hours;
   return [
     ["E-mail · tárgy", nev + " × Come Get It · új vendégek " + sav],
     [
       "E-mail · szöveg",
-      "Kedves " + nev + " csapata!\n\nGátai Bence vagyok, a Come Get It alapítója. November 2-án indul Budapesten az appunk: a felhasználók QR-kóddal váltanak be egy ingyen italt a partnerhelyeken, abban az idősávban, amit a hely választ.\n\n" +
-        miert + ", de még nem ismeri mindenki. Ezért szeretnénk meghívni titeket a Founding Partner pilotba" + ker +
-        ".\n\nA javaslatunk: " + tetel + ", " + sav + ", napi 5 darabbal indulva. Ez pont a csendesebb sáv, amikor egy új vendég jól jön." +
+      "Kedves " + nev + " csapata!\n\nGátai Bence vagyok, a Come Get It alapítója. November 2-ra tervezzük az app budapesti indulását: a felhasználók QR-kóddal váltanak be egy ingyen italt a partnerhelyeken, abban az idősávban, amit a hely választ.\n\n" +
+        miert + ". Szeretnénk meghívni titeket az induló partnerprogramunkba" + ker +
+        ".\n\nA javaslatunk: " + tetel + ", " + sav + ", kezdetben napi 5 itallal. Ez pont a csendesebb sáv, amikor egy új vendég jól jön." +
         teszt +
         "\n\nA pilotban nincs platformdíj és hosszú távú kötelezettség, ti döntitek el, mit, mikor és hány embernek adtok, és bármikor szüneteltethetitek. Csatolok egy rövid mintát arról, hogyan jelennétek meg nálunk.\n\nBeférne a héten egy 15 perces beszélgetés? Akár be is ugrom hozzátok.\n\nÜdv,\nGátai Bence\nCome Get It · come-get-it.app\ngataibence@gmail.com",
     ],
     [
       "Instagram DM · első üzenet",
-      "Szia " + nev + " csapata! 👋 Bence vagyok a Come Get It-től. November 2-án indulunk Budapesten: a vendég nálatok megmutat egy QR-kódot, a pultos beolvassa, és megkapja az ingyen italát. Hogy mit, mikor és hány embernek, azt ti döntitek el.\n\nNektek " +
+      "Sziasztok! 👋 Bence vagyok a Come Get It-től. November 2-ra tervezzük a budapesti indulást: a vendég nálatok megmutat egy QR-kódot, a pultos beolvassa, és megkapja az ingyen italát. Hogy mit, mikor és hány embernek, azt ti döntitek el.\n\nNektek " +
         sav + " lenne a javaslatunk (" + tetel + ", napi 5 db). A pilotban nincs platformdíj. Csináltam egy gyors mintát, hogy néznétek ki nálunk 👇 Belefér egy 15 perces beszélgetés a héten?\n\n" + link,
     ],
     [
       "Follow-up · 3 nap múlva",
       "Szia! Csak hogy ne vesszen el az előző üzenet: ha " + sav.replace("hétköznap ", "") +
-        " között nálatok lassabb a forgalom, pont arra találtuk ki. A jelentkezés kb. 1 perc, utána együtt beállítjuk. Ha most nem aktuális, az is teljesen rendben, köszönjük! 🙌\n\n" + link,
+        " nálatok lassabb a forgalom, abban az időszakban próbálhatnánk ki az együttműködést. A jelentkezés kb. 1 perc, utána együtt beállítjuk. Ha most nem aktuális, az is teljesen rendben, köszönjük! 🙌\n\n" + link,
     ],
     [
       "Pultnál · személyes nyitómondat",

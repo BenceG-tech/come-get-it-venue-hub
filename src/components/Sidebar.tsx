@@ -10,7 +10,7 @@ import { signOutSupabase } from "@/auth/supabaseAuth";
 
 type NavGroup = 'core' | 'tx' | 'marketing' | 'growth' | 'analytics' | 'admin';
 // The cgi_admin view is grouped into work areas; partner roles keep the groups above.
-type AdminGroup = 'ma' | 'partnerek' | 'helyek' | 'novekedes' | 'szamok' | 'admin';
+type AdminGroup = 'ma' | 'ugyfelek' | 'partnerek' | 'helyek' | 'kommunikacio' | 'novekedes' | 'szamok' | 'admin';
 
 interface NavItem {
   name: string;
@@ -27,10 +27,10 @@ const navigation: NavItem[] = [
   // FŐ
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core', adminGroup: 'ma', adminName: 'Áttekintés' },
   { name: 'Jelentkezők', href: '/applicants', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-applicants', group: 'admin', adminGroup: 'partnerek' },
-  { name: 'Partnerszerzés', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek' },
+  { name: 'Partnerszerzés', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek', adminName: 'Értékesítés' },
   { name: 'Ajánlatok', href: '/growth/offers', icon: Send, roles: ['cgi_admin'], tourId: 'nav-growth-offers', group: 'growth', adminGroup: 'partnerek' },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core', adminGroup: 'helyek' },
-  { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core', adminGroup: 'admin' },
+  { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core', adminGroup: 'ugyfelek' },
   // TRANZAKCIÓK
   { name: 'QR beváltás', href: '/pos/redeem', icon: ScanLine, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-pos-redeem', group: 'tx', adminGroup: 'helyek' },
   { name: 'Beváltások', href: '/redemptions', icon: Receipt, roles: ['cgi_admin', 'venue_owner', 'venue_staff'], tourId: 'nav-redemptions', group: 'tx', adminGroup: 'helyek' },
@@ -39,7 +39,7 @@ const navigation: NavItem[] = [
   // MARKETING
   { name: 'Jutalmak', href: '/rewards', icon: Gift, roles: ['cgi_admin', 'venue_owner'], tourId: 'nav-rewards', group: 'marketing', adminGroup: 'helyek' },
   { name: 'Promóciók', href: '/promotions', icon: TrendingUp, roles: ['cgi_admin'], tourId: 'nav-promotions', group: 'marketing', adminGroup: 'helyek' },
-  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing', adminGroup: 'helyek' },
+  { name: 'Értesítések', href: '/notifications', icon: Bell, roles: ['cgi_admin'], tourId: 'nav-notifications', group: 'marketing', adminGroup: 'kommunikacio' },
   // NÖVEKEDÉS
   { name: 'Tartalom', href: '/growth/content', icon: CalendarDays, roles: ['cgi_admin'], tourId: 'nav-growth-content', group: 'growth', adminGroup: 'novekedes' },
   { name: 'Importálás', href: '/growth/import', icon: Upload, roles: ['cgi_admin'], tourId: 'nav-growth-import', group: 'growth', adminGroup: 'novekedes' },
@@ -67,14 +67,16 @@ const groupOrder: NavGroup[] = ['core', 'tx', 'marketing', 'growth', 'analytics'
 
 const adminGroupConfig: Record<AdminGroup, { label: string; color: string; bg: string; ring: string }> = {
   ma:     { label: 'Ma',     color: 'text-cgi-primary', bg: 'bg-cgi-primary/15', ring: 'border-cgi-primary' },
-  partnerek: { label: 'Partnerek', color: 'text-teal-300', bg: 'bg-teal-400/15', ring: 'border-teal-300' },
+  ugyfelek: { label: 'Ügyfelek', color: 'text-cgi-primary', bg: 'bg-cgi-primary/15', ring: 'border-cgi-primary' },
+  partnerek: { label: 'Partnerszerzés', color: 'text-teal-300', bg: 'bg-teal-400/15', ring: 'border-teal-300' },
   helyek: { label: 'Helyek', color: 'text-amber-400',   bg: 'bg-amber-400/15',   ring: 'border-amber-400' },
+  kommunikacio: { label: 'Kommunikáció', color: 'text-purple-300', bg: 'bg-purple-400/15', ring: 'border-purple-300' },
   novekedes: { label: 'Növekedés', color: 'text-cyan-400', bg: 'bg-cyan-400/15', ring: 'border-cyan-400' },
   szamok: { label: 'Számok', color: 'text-emerald-400', bg: 'bg-emerald-400/15', ring: 'border-emerald-400' },
   admin:  { label: 'Admin',  color: 'text-slate-300',   bg: 'bg-slate-400/15',   ring: 'border-slate-400' },
 };
 
-const adminGroupOrder: AdminGroup[] = ['ma', 'partnerek', 'helyek', 'novekedes', 'szamok', 'admin'];
+const adminGroupOrder: AdminGroup[] = ['ma', 'ugyfelek', 'helyek', 'partnerek', 'kommunikacio', 'novekedes', 'szamok', 'admin'];
 
 const roleLabels = {
   'cgi_admin': 'Admin Dashboard',
@@ -162,7 +164,7 @@ export function Sidebar() {
         </Button>
       )}
 
-      <div className={`fixed inset-y-0 left-0 z-40 w-[84vw] max-w-xs lg:w-64 bg-cgi-surface border-r border-cgi-muted transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0`}>
+      <div className={`fixed inset-y-0 left-0 z-40 w-[84vw] max-w-xs lg:w-64 lg:shrink-0 lg:h-screen bg-cgi-surface border-r border-cgi-muted transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:sticky lg:top-0`}>
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="relative flex h-16 items-center gap-2 px-4 lg:px-6 border-b border-cgi-muted" data-tour="sidebar-header">
@@ -171,7 +173,7 @@ export function Sidebar() {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold text-cgi-surface-foreground truncate">Come Get It</h1>
-              <p className="text-xs text-cgi-muted-foreground truncate">Partner Dashboard</p>
+              <p className="text-xs text-cgi-muted-foreground truncate">{isAdminView ? 'Adminisztráció' : 'Partnerfelület'}</p>
             </div>
             <Button
               variant="ghost"

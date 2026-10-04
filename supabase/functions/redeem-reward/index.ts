@@ -43,6 +43,35 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  // Read back an existing receipt before any mutation. The user is always taken from
+  // the verified JWT, never from the request body. Reopening cannot spend points.
+  const previousRedemption = async () => {
+    const { data: receipt, error: receiptError } = await admin.from('reward_redemptions')
+      .select('id, notes, redeemed_at').eq('user_id', userData.user!.id).eq('reward_id', rewardId)
+      .order('redeemed_at', { ascending: false }).limit(1).maybeSingle();
+    if (receiptError) throw receiptError;
+    if (!receipt) return null;
+    const [balance, reward] = await Promise.all([
+      admin.from('user_points').select('balance').eq('user_id', userData.user!.id).maybeSingle(),
+      admin.from('rewards').select('name').eq('id', rewardId).maybeSingle(),
+    ]);
+    if (balance.error || reward.error) throw balance.error || reward.error;
+    return {
+      success: true, already_redeemed: true, redemption_id: receipt.id,
+      reward_name: reward.data?.name ?? 'Jutalom', points_spent: 0,
+      new_balance: balance.data?.balance ?? 0,
+      redemption_code: typeof receipt.notes === 'string'
+        ? receipt.notes.match(/^Redemption code: (CGI-[A-F0-9]{8})$/)?.[1] ?? null : null,
+      redeemed_at: receipt.redeemed_at,
+    };
+  };
+  let previous;
+  try { previous = await previousRedemption(); }
+  catch { return json({ error: 'REDEMPTION_STATUS_UNAVAILABLE' }, 503); }
+  if (body.action === 'status') return json({ success: true, redemption: previous });
+  if (body.action != null && body.action !== 'redeem') return json({ error: 'INVALID_ACTION' }, 400);
+  if (previous) return json(previous);
+
   const code = redemptionCode();
   const { data, error } = await admin.rpc('redeem_reward_atomic', {
     p_user_id: userData.user.id,
@@ -52,12 +81,19 @@ Deno.serve(async (req: Request) => {
 
   if (error) {
     const message = error.message || 'REDEMPTION_FAILED';
+    // A concurrent request may have completed after our first read. Return that
+    // receipt instead of a generic failure, without repeating the points mutation.
+    try {
+      const completed = await previousRedemption();
+      if (completed) return json(completed);
+    } catch { /* Preserve the original business error below. */ }
     if (message.includes('INSUFFICIENT_POINTS')) return json({ error: 'INSUFFICIENT_POINTS' }, 409);
     if (message.includes('REWARD_NOT_FOUND')) return json({ error: 'REWARD_NOT_FOUND' }, 404);
     if (message.includes('REWARD_INACTIVE')) return json({ error: 'REWARD_INACTIVE' }, 409);
     if (message.includes('REWARD_VENUE_INACTIVE')) return json({ error: 'REWARD_VENUE_INACTIVE' }, 409);
     if (message.includes('REWARD_EXPIRED')) return json({ error: 'REWARD_EXPIRED' }, 409);
     if (message.includes('REWARD_LIMIT_REACHED')) return json({ error: 'REWARD_LIMIT_REACHED' }, 409);
+    if (message.includes('REWARD_ALREADY_REDEEMED')) return json({ error: 'REWARD_ALREADY_REDEEMED' }, 409);
     console.error('[redeem-reward] Atomic redemption failed', error);
     return json({ error: 'REDEMPTION_FAILED' }, 500);
   }

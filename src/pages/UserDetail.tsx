@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,14 +29,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, formatDistanceToNow } from "date-fns";
 import { hu } from "date-fns/locale";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  UserScorecard,
-  UserOverviewSummary,
   UserWeeklyTrends,
   UserDrinkPreferences,
   UserActivityHeatmap,
@@ -44,15 +36,7 @@ import {
   UserPointsFlow,
   UserVenueAffinity,
   AINotificationSuggestions,
-  UserBehaviorStory,
-  BehaviorPatternBadges,
-  UserRevenueImpact,
-  EnhancedRedemptionCard,
   SystemRulesPanel,
-  // QuickOverviewCard removed — consolidated into UserOverviewSummary
-  UserComparison,
-  ChurnWarningPanel,
-  UserPredictions
 } from "@/components/user";
 import { ManualNotificationModal } from "@/components/user/ManualNotificationModal";
 import { VenueLink } from "@/components/ui/entity-links";
@@ -228,9 +212,11 @@ const eventTypeLabels: Record<string, string> = {
 export default function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = typeof location.state?.from === "string" && /^\/users(?:\?|$)/.test(location.state.from) ? location.state.from : "/users";
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const activeTab = ["overview", "insights", "activity", "redemptions", "communication"].includes(requestedTab || "")
+  const activeTab = ["overview", "insights", "activity", "redemptions", "points", "communication"].includes(requestedTab || "")
     ? requestedTab!
     : "overview";
   
@@ -278,7 +264,7 @@ export default function UserDetail() {
     return `${minutes}p ${secs}mp`;
   };
 
-  // Handler functions for ChurnWarningPanel and UserBehaviorStory
+  // Keep communication shortcuts available from the overview and sticky header.
   const handleNavigateToAI = () => {
     setActiveTab("communication");
   };
@@ -310,7 +296,7 @@ export default function UserDetail() {
       <PageLayout>
         <div className="text-center py-12">
           <p className="text-cgi-error mb-4">Hiba történt a felhasználó betöltése közben</p>
-          <Button onClick={() => navigate("/users")} variant="outline">
+          <Button onClick={() => navigate(from)} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Vissza a listához
           </Button>
@@ -319,14 +305,14 @@ export default function UserDetail() {
     );
   }
 
-  const { user, points, scores, stats, weekly_trends, hourly_heatmap, drink_preferences, venue_affinity, points_flow, recent_activity, free_drink_redemptions, reward_redemptions, notification_history, platform_comparison } = data;
+  const { user, points, scores, stats, weekly_trends, hourly_heatmap, drink_preferences, venue_affinity, points_flow, recent_activity, free_drink_redemptions, reward_redemptions, notification_history } = data;
 
   return (
     <PageLayout>
       <div className="space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm text-cgi-muted-foreground">
-          <button onClick={() => navigate("/users")} className="hover:text-cgi-surface-foreground transition-colors">
+          <button onClick={() => navigate(from)} className="hover:text-cgi-surface-foreground transition-colors">
             Felhasználók
           </button>
           <span>›</span>
@@ -340,7 +326,7 @@ export default function UserDetail() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/users")}
+                onClick={() => navigate(from)}
                 className="cgi-button-ghost shrink-0"
                 aria-label="Vissza a felhasználókhoz"
               >
@@ -359,6 +345,7 @@ export default function UserDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="outline" onClick={handleNavigateToAI} className="gap-2"><Sparkles className="h-4 w-4" /><span className="hidden sm:inline">AI-javaslatok</span></Button>
               <Button
                 size="sm"
                 onClick={() => setShowNotificationModal(true)}
@@ -427,14 +414,14 @@ export default function UserDetail() {
           </CardContent>
         </Card>
 
-        {/* Scorecard — high level KPI strip */}
-        <UserScorecard
-          engagementScore={scores.engagement_score}
-          churnRisk={scores.churn_risk}
-          ltv={scores.ltv}
-          preferenceProfile={scores.preference_profile}
-        />
-
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Pontegyenleg", value: points.balance.toLocaleString("hu-HU"), tab: "points", detail: "Ponttörténet megnyitása" },
+            { label: "Összes beváltás", value: String(stats.total_free_drink_redemptions + stats.total_reward_redemptions), tab: "redemptions", detail: `${stats.total_free_drink_redemptions} ital · ${stats.total_reward_redemptions} jutalom` },
+            { label: "Appmegnyitás · 7 nap", value: String(stats.app_opens_last_7_days), tab: "activity", detail: "Rögzített aktivitás megnyitása" },
+            { label: "Beváltás · 30 nap", value: String(stats.redemptions_last_30_days), tab: "redemptions", detail: "Beváltási előzmények" },
+          ].map((metric) => <button key={metric.label} onClick={() => setActiveTab(metric.tab)} className="cgi-card rounded-lg border border-cgi-muted/40 px-4 py-3 text-left hover:border-cgi-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cgi-primary"><p className="text-xs text-cgi-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</p><p className="mt-1 text-xs text-cgi-muted-foreground">{metric.detail}</p></button>)}
+        </div>
 
         {/* Tabs — five focused groups, each directly linkable */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -444,7 +431,7 @@ export default function UserDetail() {
               <TrendingUp className="h-4 w-4 mr-2" />Áttekintés
             </TabsTrigger>
             <TabsTrigger value="insights" className="data-[state=active]:bg-cgi-primary">
-              <Sparkles className="h-4 w-4 mr-2" />Elemzések
+              <MapPin className="h-4 w-4 mr-2" />Preferenciák
             </TabsTrigger>
             <TabsTrigger value="activity" className="data-[state=active]:bg-cgi-primary">
               <Activity className="h-4 w-4 mr-2" />Aktivitás
@@ -452,6 +439,7 @@ export default function UserDetail() {
             <TabsTrigger value="redemptions" className="data-[state=active]:bg-cgi-primary">
               <Wine className="h-4 w-4 mr-2" />Beváltások
             </TabsTrigger>
+            <TabsTrigger value="points" className="data-[state=active]:bg-cgi-primary"><Coins className="h-4 w-4 mr-2" />Pontok</TabsTrigger>
             <TabsTrigger value="communication" className="data-[state=active]:bg-cgi-primary">
               <Bell className="h-4 w-4 mr-2" />Kommunikáció
             </TabsTrigger>
@@ -460,104 +448,23 @@ export default function UserDetail() {
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="space-y-4">
-            {(scores.churn_risk === "medium" || scores.churn_risk === "high") && (
-              <ChurnWarningPanel
-                churnRisk={scores.churn_risk}
-                churnFactors={scores.churn_factors || []}
-                daysSinceLastActivity={stats.days_since_last_activity}
-                onSendOffer={handleNavigateToAI}
-                onSendEmail={handleOpenManualNotification}
-                onSendPush={handleNavigateToNotifications}
-              />
-            )}
-
-            <UserOverviewSummary
-              daysSinceRegistration={stats.days_since_registration}
-              totalRedemptions={stats.total_free_drink_redemptions + stats.total_reward_redemptions}
-              totalSpend={points.total_spend || 0}
-              roi={points.total_spend && stats.total_free_drink_redemptions > 0
-                ? points.total_spend / (stats.total_free_drink_redemptions * 1500)
-                : 0}
-              favoriteVenue={stats.favorite_venue}
-              favoriteDrink={stats.favorite_drink}
-              engagementScore={scores.engagement_score}
-              churnRisk={scores.churn_risk}
-              ltv={scores.ltv}
-              likelyDay={data.predictions?.likely_day?.day_name || null}
-              likelyHour={data.predictions?.likely_hour?.hour ?? null}
-            />
-
+            <Card className="cgi-card p-5">
+              <div className="flex flex-wrap justify-between gap-4"><div><h3 className="font-semibold">Következő lépés</h3><p className="mt-2 text-sm text-cgi-muted-foreground">{stats.total_free_drink_redemptions + stats.total_reward_redemptions === 0 ? "Még nincs rögzített beváltás. Nézd meg, milyen aktuális ajánlatot javasolhatunk az első látogatáshoz." : stats.days_since_last_activity != null && stats.days_since_last_activity >= 14 ? `${stats.days_since_last_activity} napja nem volt rögzített aktivitás. Ellenőrizd a korábbi látogatásokat és a kommunikációt.` : "Nézd át a legutóbbi aktivitást, vagy készíts személyre szabott értesítési javaslatot."}</p></div><Button onClick={handleNavigateToAI} className="shrink-0"><Sparkles className="mr-2 h-4 w-4" />AI-javaslatok</Button></div>
+            </Card>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="cgi-card p-5"><h3 className="mb-3 font-semibold">Gyakran választott hely és ital</h3><p className="text-xs text-cgi-muted-foreground mb-3">Korábbi beváltások alapján</p>{stats.favorite_venue ? <VenueLink venueId={stats.favorite_venue.venue_id} venueName={stats.favorite_venue.venue_name} /> : <p className="text-sm text-cgi-muted-foreground">Még nincs látogatott helyszín.</p>}<p className="mt-3 text-sm">{stats.favorite_drink ? `${stats.favorite_drink.drink_name} · ${stats.favorite_drink.count} beváltás` : "Még nincs rögzített italpreferencia."}</p><Button variant="link" className="px-0 mt-2" onClick={() => setActiveTab("insights")}>Összes preferencia →</Button></Card>
+              <Card className="cgi-card p-5"><div className="mb-3 flex justify-between gap-2"><h3 className="font-semibold">Legutóbbi események</h3><Button variant="link" className="h-auto p-0" onClick={() => setActiveTab("activity")}>Összes</Button></div>{recent_activity.length === 0 ? <p className="text-sm text-cgi-muted-foreground">Nincs rögzített aktivitás.</p> : <div className="space-y-3">{recent_activity.slice(0, 4).map((activity, index) => <div key={`${activity.created_at}-${index}`} className="flex justify-between gap-3 text-sm"><span>{eventTypeLabels[activity.event_type] || activity.event_type}</span><time className="shrink-0 text-xs text-cgi-muted-foreground">{format(new Date(activity.created_at), "MM.dd HH:mm", { locale: hu })}</time></div>)}</div>}</Card>
+            </div>
           </TabsContent>
 
-          {/* INSIGHTS — important analysis is one click away instead of buried below the overview */}
           <TabsContent value="insights" className="space-y-4">
-            <Accordion type="multiple" defaultValue={["revenue"]} className="space-y-2">
-              <AccordionItem value="revenue" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-cgi-primary" />
-                    <span className="font-medium">Bevétel Hatás</span>
-                    {scores.roi && scores.roi > 0 && (
-                      <Badge className="ml-2 bg-cgi-success/20 text-cgi-success text-xs">
-                        {scores.roi.toFixed(1)}x ROI
-                      </Badge>
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4 pt-2">
-                  <UserRevenueImpact userId={userId!} />
-                </AccordionContent>
-              </AccordionItem>
-
-              {platform_comparison && (
-                <AccordionItem value="comparison" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
-                  <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-cgi-secondary" />
-                      <span className="font-medium">Platform Összehasonlítás</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4 pt-2">
-                    <UserComparison
-                      userRedemptionsPerMonth={platform_comparison.user_redemptions_per_month}
-                      userSpendPerRedemption={platform_comparison.user_spend_per_redemption}
-                      userVenuesVisited={platform_comparison.user_venues_visited}
-                      userRoi={platform_comparison.user_roi}
-                      platformAvg={platform_comparison.platform_avg}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-
-              <AccordionItem value="predictions" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-cgi-secondary" />
-                    <span className="font-medium">AI Előrejelzések</span>
-                    {data.predictions?.confidence && (
-                      <Badge className="ml-2 bg-cgi-muted text-cgi-muted-foreground text-xs">
-                        {data.predictions.confidence === "high" ? "Magas" :
-                         data.predictions.confidence === "medium" ? "Közepes" : "Alacsony"} bizalom
-                      </Badge>
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4 pt-2">
-                  <UserPredictions predictions={data.predictions || null} />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            <p className="text-sm text-cgi-muted-foreground">Megfigyelt aktivitás és beváltások alapján. Ezek a korábbi választásokat mutatják.</p>
+            <UserVenueAffinity venues={venue_affinity} />
+            <UserDrinkPreferences preferences={drink_preferences} />
           </TabsContent>
 
           {/* ACTIVITY (merged: behavior + activity + heatmap + trends + drinks) */}
           <TabsContent value="activity" className="space-y-4">
-            <UserBehaviorStory
-              userId={userId!}
-              userName={user.name}
-              onGenerateNotification={handleNavigateToAI}
-              onManualNotification={handleOpenManualNotification}
-            />
-            <BehaviorPatternBadges userId={userId!} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <UserWeeklyTrends data={weekly_trends} />
               <UserDrinkPreferences preferences={drink_preferences} />
@@ -598,7 +505,6 @@ export default function UserDetail() {
               <TabsList className="bg-cgi-muted/30">
                 <TabsTrigger value="drinks" className="data-[state=active]:bg-cgi-primary"><Wine className="h-4 w-4 mr-2" />Italok & Jutalmak</TabsTrigger>
                 <TabsTrigger value="venues" className="data-[state=active]:bg-cgi-primary"><MapPin className="h-4 w-4 mr-2" />Helyszínek</TabsTrigger>
-                <TabsTrigger value="points" className="data-[state=active]:bg-cgi-primary"><Coins className="h-4 w-4 mr-2" />Pontok</TabsTrigger>
               </TabsList>
               <TabsContent value="drinks">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -637,6 +543,10 @@ export default function UserDetail() {
               <TabsContent value="venues">
                 <UserVenueAffinity venues={venue_affinity} />
               </TabsContent>
+
+            </Tabs>
+          </TabsContent>
+
               <TabsContent value="points">
                 <UserPointsFlow
                   earningsByType={points_flow.earnings_by_type}
@@ -647,8 +557,6 @@ export default function UserDetail() {
                   lifetimeSpent={points.lifetime_spent}
                 />
               </TabsContent>
-            </Tabs>
-          </TabsContent>
 
           {/* COMMUNICATION (merged: AI + notifications) */}
           <TabsContent value="communication" className="space-y-4">

@@ -1,543 +1,73 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NotificationTemplate } from '@/lib/types';
-import { getDataProvider } from '@/lib/dataProvider/providerFactory';
+import { supabase } from '@/integrations/supabase/client';
+import { notificationClient } from '@/lib/notificationClient';
 import { useToast } from '@/hooks/use-toast';
-import { sessionManager } from '@/auth/session';
-import { Slider } from '@/components/ui/slider';
+import { DEFAULT_LIMITS, DEFAULT_QUIET_HOURS, budapestInputToIso, explicitAudience, isQuietTime, localInput, validateMessage } from '../../supabase/functions/_shared/notification-policy';
 
-interface NotificationFormModalProps {
-  open: boolean;
-  onClose: () => void;
-  template: NotificationTemplate | null;
-  onSave: () => void;
-}
-
-export function NotificationFormModal({ open, onClose, template, onSave }: NotificationFormModalProps) {
-  const { toast } = useToast();
-  const provider = getDataProvider();
-  const session = sessionManager.getCurrentSession();
-
-  const [formData, setFormData] = useState<Partial<NotificationTemplate>>({
-    title_hu: '',
-    body_hu: '',
-    title_en: '',
-    body_en: '',
-    icon: '🔔',
-    deep_link: '',
-    targeting: {
-      geofence: { enabled: false, radius_meters: 500 },
-      user_segment: 'all',
-      platform: 'all'
+export function NotificationFormModal({ open, onClose, template, onSave }: { open: boolean; onClose: () => void; template: NotificationTemplate | null; onSave: () => void }) {
+  const [title, setTitle] = useState(''), [body, setBody] = useState(''), [recipients, setRecipients] = useState(''), [time, setTime] = useState(''), [link, setLink] = useState('/(tabs)/home');
+  const [saving, setSaving] = useState(false);
+  const [recipientSearch, setRecipientSearch] = useState('');
+  const selectedIds = recipients.split(/[\s,;]+/).filter(Boolean);
+  const users = useQuery({ queryKey: ['notification-recipient-picker', recipientSearch], enabled: open,
+    queryFn: async ({ signal }) => {
+      let query = supabase.from('profiles').select('id,name').eq('is_admin', false).order('name').limit(30).abortSignal(signal);
+      if (recipientSearch.trim()) query = query.ilike('name', `%${recipientSearch.trim().replace(/[%_]/g, '')}%`);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
     },
-    send_mode: 'immediate',
-    frequency_limit: {
-      per_user_hours: 6,
-      max_per_day: 2
-    },
-    quiet_hours: {
-      enabled: true,
-      start: '22:00',
-      end: '08:00'
-    },
-    category: 'free_drink',
-    priority: 'medium',
-    is_active: true
   });
-
+  const { toast } = useToast();
   useEffect(() => {
-    if (template) {
-      setFormData(template);
-    } else {
-      // Reset form for new template
-      setFormData({
-        title_hu: '',
-        body_hu: '',
-        title_en: '',
-        body_en: '',
-        icon: '🔔',
-        deep_link: '',
-        targeting: {
-          geofence: { enabled: false, radius_meters: 500 },
-          user_segment: 'all',
-          platform: 'all'
-        },
-        send_mode: 'immediate',
-        frequency_limit: {
-          per_user_hours: 6,
-          max_per_day: 2
-        },
-        quiet_hours: {
-          enabled: true,
-          start: '22:00',
-          end: '08:00'
-        },
-        category: 'free_drink',
-        priority: 'medium',
-        is_active: true
-      });
-    }
+    if (!open) return;
+    setRecipientSearch('');
+    setTitle(template?.title_hu || ''); setBody(template?.body_hu || '');
+    const targeting = template?.targeting as { user_ids?: string[] } | undefined;
+    setRecipients(targeting?.user_ids?.join('\n') || '');
+    setTime(template?.scheduled_at ? localInput(template.scheduled_at) : '');
+    setLink(template?.deep_link || '/(tabs)/home');
   }, [template, open]);
-
-  const insertVariable = (variable: string) => {
-    setFormData(prev => ({
-      ...prev,
-      body_hu: (prev.body_hu || '') + ` {${variable}}`
-    }));
-  };
-
-  const handleSave = async () => {
-    if (!formData.title_hu || !formData.body_hu) {
-      toast({
-        title: 'Hiányzó adatok',
-        description: 'Kérjük, töltse ki a kötelező mezőket!',
-        variant: 'destructive'
-      });
-      return;
-    }
-
+  async function save(schedule: boolean) {
+    setSaving(true);
     try {
-      const dataToSave = {
-        ...formData,
-        created_by: session?.user.id || 'admin',
-        created_at: template?.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      if (template) {
-        await provider.update('notification_templates', template.id, dataToSave);
-        toast({ title: 'Értesítés frissítve!' });
-      } else {
-        await provider.create('notification_templates', dataToSave);
-        toast({ title: 'Értesítés létrehozva!' });
+      validateMessage(title, body, link);
+      const ids = recipients.split(/[\s,;]+/).filter(Boolean);
+      if (schedule) explicitAudience({ user_ids: ids });
+      const date = time ? budapestInputToIso(time) : null;
+      if (schedule && (!date || Date.parse(date) < Date.now() + 60000 || Date.parse(date) > Date.now() + 7 * 86400000 || isQuietTime(new Date(date)))) throw new Error('Válassz jövőbeli időpontot 7 napon belül, 08:00 és 22:00 között.');
+      if (schedule) {
+        const { data, error } = await supabase.functions.invoke('suggest-user-notification', { body: { action: 'readiness' } });
+        if (error || !data?.ready) throw new Error('Az ütemező még nincs bekapcsolva. Piszkozatként elmentheted az üzenetet.');
       }
-      onSave();
-    } catch (err) {
-      toast({
-        title: 'Hiba',
-        description: 'Nem sikerült menteni az értesítést',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {template ? 'Értesítés szerkesztése' : 'Új értesítés'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <Tabs defaultValue="content" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="content">Tartalom</TabsTrigger>
-            <TabsTrigger value="targeting">Célzás</TabsTrigger>
-            <TabsTrigger value="timing">Időzítés</TabsTrigger>
-            <TabsTrigger value="settings">Beállítások</TabsTrigger>
-            <TabsTrigger value="preview">Előnézet</TabsTrigger>
-          </TabsList>
-
-          {/* TARTALOM TAB */}
-          <TabsContent value="content" className="space-y-4">
-            <div>
-              <Label htmlFor="title_hu">Cím (HU) *</Label>
-              <Input
-                id="title_hu"
-                value={formData.title_hu}
-                onChange={(e) => setFormData({ ...formData, title_hu: e.target.value })}
-                placeholder="pl. Ingyen sör a közelben! 🍺"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="body_hu">Szöveg (HU) *</Label>
-              <Textarea
-                id="body_hu"
-                value={formData.body_hu}
-                onChange={(e) => setFormData({ ...formData, body_hu: e.target.value })}
-                placeholder="pl. A {venue_name} kínálja! Gyere be {start_time}-ig!"
-                rows={3}
-              />
-              <div className="flex gap-2 mt-2 flex-wrap">
-                <Button type="button" size="sm" variant="outline" onClick={() => insertVariable('venue_name')}>
-                  +venue_name
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => insertVariable('drink_name')}>
-                  +drink_name
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => insertVariable('start_time')}>
-                  +start_time
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => insertVariable('end_time')}>
-                  +end_time
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => insertVariable('distance_m')}>
-                  +distance_m
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="title_en">Cím (EN)</Label>
-              <Input
-                id="title_en"
-                value={formData.title_en || ''}
-                onChange={(e) => setFormData({ ...formData, title_en: e.target.value })}
-                placeholder="e.g. Free beer nearby! 🍺"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="body_en">Szöveg (EN)</Label>
-              <Textarea
-                id="body_en"
-                value={formData.body_en || ''}
-                onChange={(e) => setFormData({ ...formData, body_en: e.target.value })}
-                placeholder="e.g. At {venue_name}! Come before {start_time}!"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="icon">Ikon emoji</Label>
-              <Input
-                id="icon"
-                value={formData.icon || ''}
-                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                placeholder="🔔"
-                maxLength={2}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="deep_link">Deep link</Label>
-              <Input
-                id="deep_link"
-                value={formData.deep_link || ''}
-                onChange={(e) => setFormData({ ...formData, deep_link: e.target.value })}
-                placeholder="rork://venue/{venue_id}"
-              />
-            </div>
-          </TabsContent>
-
-          {/* CÉLZÁS TAB */}
-          <TabsContent value="targeting" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="geofence">Geofence célzás</Label>
-                <p className="text-xs text-muted-foreground">
-                  Csak a megadott sugarú körön belül
-                </p>
-              </div>
-              <Switch
-                id="geofence"
-                checked={formData.targeting?.geofence?.enabled || false}
-                onCheckedChange={(checked) =>
-                  setFormData({
-                    ...formData,
-                    targeting: {
-                      ...formData.targeting!,
-                      geofence: { ...formData.targeting?.geofence!, enabled: checked }
-                    }
-                  })
-                }
-              />
-            </div>
-
-            {formData.targeting?.geofence?.enabled && (
-              <div>
-                <Label>Sugár (méter): {formData.targeting?.geofence?.radius_meters || 500}m</Label>
-                <Slider
-                  value={[formData.targeting?.geofence?.radius_meters || 500]}
-                  onValueChange={([value]) =>
-                    setFormData({
-                      ...formData,
-                      targeting: {
-                        ...formData.targeting!,
-                        geofence: { ...formData.targeting?.geofence!, radius_meters: value }
-                      }
-                    })
-                  }
-                  min={100}
-                  max={5000}
-                  step={100}
-                />
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="user_segment">Felhasználói szegmens</Label>
-              <Select
-                value={formData.targeting?.user_segment || 'all'}
-                onValueChange={(value: 'new' | 'returning' | 'all') =>
-                  setFormData({
-                    ...formData,
-                    targeting: { ...formData.targeting!, user_segment: value }
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Minden felhasználó</SelectItem>
-                  <SelectItem value="new">Új felhasználók</SelectItem>
-                  <SelectItem value="returning">Visszatérő felhasználók</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="platform">Platform</Label>
-              <Select
-                value={formData.targeting?.platform || 'all'}
-                onValueChange={(value: 'ios' | 'android' | 'all') =>
-                  setFormData({
-                    ...formData,
-                    targeting: { ...formData.targeting!, platform: value }
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Minden platform</SelectItem>
-                  <SelectItem value="ios">iOS</SelectItem>
-                  <SelectItem value="android">Android</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </TabsContent>
-
-          {/* IDŐZÍTÉS TAB */}
-          <TabsContent value="timing" className="space-y-4">
-            <div>
-              <Label htmlFor="send_mode">Küldési mód</Label>
-              <Select
-                value={formData.send_mode}
-                onValueChange={(value: 'immediate' | 'scheduled' | 'event') =>
-                  setFormData({ ...formData, send_mode: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="immediate">Azonnali</SelectItem>
-                  <SelectItem value="scheduled">Ütemezett</SelectItem>
-                  <SelectItem value="event">Esemény alapú</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.send_mode === 'scheduled' && (
-              <div>
-                <Label htmlFor="scheduled_at">Ütemezett időpont</Label>
-                <Input
-                  id="scheduled_at"
-                  type="datetime-local"
-                  value={formData.scheduled_at || ''}
-                  onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                />
-              </div>
-            )}
-
-            {formData.send_mode === 'event' && (
-              <div>
-                <Label htmlFor="event_type">Esemény típusa</Label>
-                <Select
-                  value={formData.event_type || ''}
-                  onValueChange={(value) => setFormData({ ...formData, event_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Válassz eseményt" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free_drink_start_15m">Free drink indulás előtt 15p</SelectItem>
-                    <SelectItem value="free_drink_live">Free drink él most</SelectItem>
-                    <SelectItem value="free_drink_last_30m">Free drink utolsó 30 perc</SelectItem>
-                    <SelectItem value="points_earned">Pontjóváírás</SelectItem>
-                    <SelectItem value="reward_available">Reward elérhető</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* BEÁLLÍTÁSOK TAB */}
-          <TabsContent value="settings" className="space-y-4">
-            <div>
-              <Label htmlFor="category">Kategória</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value: any) => setFormData({ ...formData, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free_drink">Ingyen ital</SelectItem>
-                  <SelectItem value="points">Pontok</SelectItem>
-                  <SelectItem value="reward">Jutalom</SelectItem>
-                  <SelectItem value="venue_status">Venue státusz</SelectItem>
-                  <SelectItem value="promo">Promóció</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="priority">Prioritás</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(value: any) => setFormData({ ...formData, priority: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Alacsony</SelectItem>
-                  <SelectItem value="medium">Közepes</SelectItem>
-                  <SelectItem value="high">Magas</SelectItem>
-                  <SelectItem value="critical">Kritikus</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Max értesítés naponta</Label>
-              <Input
-                type="number"
-                value={formData.frequency_limit?.max_per_day || 2}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    frequency_limit: {
-                      ...formData.frequency_limit!,
-                      max_per_day: parseInt(e.target.value)
-                    }
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Label>Felhasználónkénti limit (óra)</Label>
-              <Input
-                type="number"
-                value={formData.frequency_limit?.per_user_hours || 6}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    frequency_limit: {
-                      ...formData.frequency_limit!,
-                      per_user_hours: parseInt(e.target.value)
-                    }
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="quiet_hours">Csendes órák</Label>
-                <p className="text-xs text-muted-foreground">
-                  Ne küldj értesítést ebben az időszakban
-                </p>
-              </div>
-              <Switch
-                id="quiet_hours"
-                checked={formData.quiet_hours?.enabled || false}
-                onCheckedChange={(checked) =>
-                  setFormData({
-                    ...formData,
-                    quiet_hours: { ...formData.quiet_hours!, enabled: checked }
-                  })
-                }
-              />
-            </div>
-
-            {formData.quiet_hours?.enabled && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Kezdés</Label>
-                  <Input
-                    type="time"
-                    value={formData.quiet_hours?.start || '22:00'}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        quiet_hours: { ...formData.quiet_hours!, start: e.target.value }
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Vége</Label>
-                  <Input
-                    type="time"
-                    value={formData.quiet_hours?.end || '08:00'}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        quiet_hours: { ...formData.quiet_hours!, end: e.target.value }
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="is_active">Aktív</Label>
-              <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-            </div>
-          </TabsContent>
-
-          {/* ELŐNÉZET TAB */}
-          <TabsContent value="preview" className="space-y-4">
-            <div className="text-center text-muted-foreground py-8">
-              <p className="mb-4">📱 Előnézet</p>
-              <div className="max-w-sm mx-auto bg-card border rounded-lg p-4 shadow-lg">
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl">{formData.icon || '🔔'}</div>
-                  <div className="flex-1 text-left">
-                    <div className="font-semibold text-sm">{formData.title_hu || 'Cím'}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {formData.body_hu || 'Értesítés szövege'}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  most • Rork App
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={onClose}>
-            Mégse
-          </Button>
-          <Button onClick={handleSave}>
-            {template ? 'Mentés' : 'Létrehozás'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Jelentkezz be újra.');
+      const record = { title_hu: title.trim(), body_hu: body.trim(), deep_link: link, targeting: { user_ids: ids, platform: 'all' },
+        scheduled_at: schedule ? date : null, send_mode: schedule ? 'scheduled' : 'immediate', is_active: schedule,
+        quiet_hours: DEFAULT_QUIET_HOURS, frequency_limit: DEFAULT_LIMITS, category: template?.category || 'venue_status',
+        priority: template?.priority || 'medium', dispatch_status: 'pending' as const, dispatch_approved_at: schedule ? new Date().toISOString() : null, ttl_hours: 24 };
+      if (template) {
+        const { data, error } = await notificationClient.from('notification_templates').update(record).eq('id', template.id).is('sent_at', null).is('dispatch_started_at', null).eq('dispatch_status', 'pending').select('id');
+        if (error || !data?.length) throw new Error('A kampány már feldolgozás alatt áll, vagy a biztonsági migráció még nincs telepítve. Frissítsd a listát.');
+      } else {
+        const { error } = await notificationClient.from('notification_templates').insert({ ...record, created_by: user.id });
+        if (error) throw error;
+      }
+      toast({ title: schedule ? 'Értesítés ütemezve' : 'Piszkozat mentve' }); onSave();
+    } catch (error) { toast({ title: 'Nem sikerült menteni', description: error instanceof Error ? error.message : 'Próbáld újra.', variant: 'destructive' }); }
+    finally { setSaving(false); }
+  }
+  return <Dialog open={open} onOpenChange={value => !value && !saving && onClose()}><DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>{template ? 'Értesítés szerkesztése' : 'Saját értesítés'}</DialogTitle><DialogDescription>Először ellenőrizd az üzenetet és a címzetteket, majd mentsd vagy ütemezd.</DialogDescription></DialogHeader>
+    <div className="grid gap-6 md:grid-cols-2"><div className="space-y-4"><div><Label htmlFor="notification-title">Cím</Label><Input id="notification-title" maxLength={80} value={title} onChange={e => setTitle(e.target.value)} /></div><div><Label htmlFor="notification-body">Üzenet</Label><Textarea id="notification-body" maxLength={240} rows={5} value={body} onChange={e => setBody(e.target.value)} /><p className="text-xs text-cgi-muted-foreground text-right">{body.length}/240 karakter</p></div><div><Label htmlFor="notification-link">Megnyitott oldal</Label><select id="notification-link" className="cgi-input w-full h-10 rounded-md border px-3 bg-background" value={link} onChange={e => setLink(e.target.value)}><option value="/(tabs)/home">Helyek térképe</option><option value="/(tabs)/rewards">Jutalmak</option></select></div></div>
+      <div className="space-y-4"><div><Label htmlFor="notification-recipients">Címzettek · {selectedIds.length} kiválasztva</Label><Input id="notification-recipients" value={recipientSearch} onChange={e => setRecipientSearch(e.target.value)} placeholder="Keresés név alapján" /><div className="max-h-36 overflow-y-auto rounded-md border mt-2 p-2 space-y-1">{users.isPending ? <p className="text-sm">Felhasználók betöltése…</p> : users.isError ? <p role="alert" className="text-sm">Nem sikerült betölteni a címzetteket.</p> : users.data?.length ? users.data.map(user => <label key={user.id} className="flex items-center gap-2 p-1 text-sm"><input type="checkbox" checked={selectedIds.includes(user.id)} disabled={!selectedIds.includes(user.id) && selectedIds.length >= 100} onChange={e => setRecipients((e.target.checked ? [...selectedIds, user.id] : selectedIds.filter(id => id !== user.id)).join('\n'))} />{user.name || 'Névtelen felhasználó'}</label>) : <p className="text-sm">Nincs találat.</p>}</div><p className="text-xs text-cgi-muted-foreground mt-1">Legfeljebb 100 címzett. Csak a marketingértesítéseket engedélyező eszközökre küldünk.</p></div><div><Label htmlFor="notification-schedule">Küldés időpontja · Budapest</Label><Input id="notification-schedule" type="datetime-local" value={time} onChange={e => setTime(e.target.value)} /></div><p className="text-xs text-cgi-muted-foreground">Maximum 2 értesítés 24 órán belül, legalább 6 óra különbséggel. 22:00–08:00 között nincs küldés. A mentés önmagában nem küld értesítést.</p></div></div>
+    <div className="rounded-xl border p-4 bg-cgi-muted/10"><p className="text-xs text-cgi-muted-foreground mb-2">COME GET IT · PUSH ELŐNÉZET</p><p className="font-semibold">{title || 'Az értesítés címe'}</p><p className="text-sm mt-1">{body || 'Az üzenet szövege itt jelenik meg.'}</p></div>
+    <div className="flex justify-end gap-2"><Button variant="outline" disabled={saving} onClick={() => save(false)}>Piszkozat mentése</Button><Button disabled={saving} onClick={() => save(true)}>{saving ? 'Mentés…' : 'Jóváhagyás és ütemezés'}</Button></div>
+  </DialogContent></Dialog>;
 }
