@@ -56,6 +56,7 @@ import {
 } from "@/components/user";
 import { ManualNotificationModal } from "@/components/user/ManualNotificationModal";
 import { VenueLink } from "@/components/ui/entity-links";
+import { AcquisitionSource } from "@/components/AcquisitionSource";
 import {
   exportUserProfileToCSV,
   exportUserRedemptionsToCSV,
@@ -403,9 +404,7 @@ export default function UserDetail() {
                   </p>
                 )}
               </div>
-              <Badge className="bg-cgi-secondary/20 text-cgi-secondary border-cgi-secondary/30">
-                {user.signup_source || "mobile_app"}
-              </Badge>
+              <AcquisitionSource value={user.signup_source} />
             </div>
           </CardContent>
         </Card>

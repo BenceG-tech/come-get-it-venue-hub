@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ManualNotificationModal } from "./ManualNotificationModal";
 import { SingleBonusPointsModal } from "./SingleBonusPointsModal";
+import { AcquisitionSource } from "@/components/AcquisitionSource";
 
 
 interface UserQuickViewProps {
@@ -200,6 +201,7 @@ export function UserQuickView({ userId, open, onOpenChange }: UserQuickViewProps
                   {data.stats.days_since_registration} napja
                 </span>
               </div>
+              <AcquisitionSource value={data.user.signup_source} showDetail={false} className="mt-2" />
             </div>
           </div>
 
@@ -417,4 +419,3 @@ function KpiTile({
     </div>
   );
 }
-
