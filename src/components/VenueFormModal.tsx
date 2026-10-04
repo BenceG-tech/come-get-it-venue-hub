@@ -6,13 +6,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { TagInput } from './TagInput';
 import { EnhancedDrinkSelector, EnhancedDrinkSelectorRef } from './EnhancedDrinkSelector';
 import { Venue, FreeDrinkWindow, RedemptionCap, VenueImage, VenueIntegrationType } from '@/lib/types';
-import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign, Star, Maximize2, Pencil, ImageIcon, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, HelpCircle, GripVertical, DollarSign, Star, Maximize2, Pencil, ImageIcon, ChevronDown, ArrowUp, ArrowDown, Building2, MapPin, Wine, Images, Plug, CircleCheck } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -382,12 +383,44 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const imageCount = formData.images?.length || 0;
 
   const tabItems = [
-    { value: 'basic', label: 'Általános' },
-    { value: 'location', label: 'Helyszín & Nyitva' },
-    { value: 'drinks', label: 'Italok & Limitek' },
-    { value: 'images', label: `Képek${imageCount > 0 ? ` (${imageCount})` : ''}` },
-    { value: 'integration', label: 'Integráció' },
+    {
+      value: 'basic',
+      label: 'Általános',
+      description: 'Név, leírás, kategória és elérhetőség',
+      icon: Building2,
+      complete: Boolean(formData.name?.trim()),
+    },
+    {
+      value: 'location',
+      label: 'Helyszín & nyitva',
+      description: 'Cím, térképpont és nyitvatartás',
+      icon: MapPin,
+      complete: Boolean(formData.address?.trim()),
+    },
+    {
+      value: 'drinks',
+      label: 'Italok & limitek',
+      description: 'Kínálat, idősávok és beváltási korlátok',
+      icon: Wine,
+      complete: Boolean(formData.drinks?.length),
+    },
+    {
+      value: 'images',
+      label: `Képek${imageCount > 0 ? ` (${imageCount})` : ''}`,
+      description: 'Borítókép és galéria sorrendje',
+      icon: Images,
+      complete: imageCount > 0,
+    },
+    {
+      value: 'integration',
+      label: 'Integráció',
+      description: 'Külső rendszerek és banki kapcsolat',
+      icon: Plug,
+      complete: formData.integration_type !== 'none',
+    },
   ];
+  const activeTabMeta = tabItems.find((tab) => tab.value === activeTab) || tabItems[0];
+  const ActiveTabIcon = activeTabMeta.icon;
 
   const formContent = (
     <form onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
@@ -400,22 +433,39 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
               </SelectTrigger>
               <SelectContent className="bg-cgi-surface border-cgi-muted">
                 {tabItems.map(t => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.complete ? '✓ ' : ''}{t.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           ) : (
             <TabsList className="w-full overflow-x-auto no-scrollbar whitespace-nowrap justify-start gap-1 bg-cgi-muted h-auto min-h-[40px] p-1">
-              {tabItems.map(t => (
-                <TabsTrigger key={t.value} value={t.value} className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 px-3 py-2 text-sm">
-                  {t.label}
-                </TabsTrigger>
-              ))}
+              {tabItems.map(t => {
+                const Icon = t.icon;
+                return (
+                  <TabsTrigger key={t.value} value={t.value} className="text-cgi-surface-foreground whitespace-nowrap flex-shrink-0 gap-2 px-3 py-2 text-sm">
+                    <Icon className="h-4 w-4" />
+                    {t.label}
+                    {t.complete && <CircleCheck className="h-3.5 w-3.5 text-cgi-success" aria-label="Kitöltve" />}
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-3">
+        <div className="flex-1 overflow-y-auto pt-3 pr-1">
+        <div className="mb-4 rounded-lg border border-cgi-muted/40 bg-cgi-muted/15 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <ActiveTabIcon className="h-4 w-4 text-cgi-primary" />
+            <p className="font-medium text-cgi-surface-foreground">{activeTabMeta.label}</p>
+            {activeTabMeta.complete && (
+              <Badge className="ml-auto border-cgi-success/30 bg-cgi-success/10 text-cgi-success">Kitöltve</Badge>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-cgi-muted-foreground">{activeTabMeta.description}</p>
+        </div>
 
         {/* ÁLTALÁNOS */}
         <TabsContent value="basic" className="space-y-4 mt-0">
@@ -948,7 +998,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] bg-cgi-surface border-cgi-muted h-[90vh] flex flex-col p-6">
+      <DialogContent className="sm:max-w-[1080px] bg-cgi-surface border-cgi-muted h-[92vh] flex flex-col p-6">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-cgi-surface-foreground">
             {venue ? 'Helyszín szerkesztése' : 'Új helyszín'}
