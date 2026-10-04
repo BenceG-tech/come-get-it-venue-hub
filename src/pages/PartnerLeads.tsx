@@ -334,14 +334,33 @@ function LeadDetail({
         </h3>
         {lead.offer_url && (
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm">
-              <a href={lead.offer_url} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4 mr-1" /> Ajánlat-oldal megnyitása
+            {lead.offer_url.startsWith(`${window.location.origin}/a/`) ? (
+              <>
+                <Button asChild size="sm">
+                  <a href={lead.offer_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Ajánlat-oldal megnyitása
+                  </a>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => copyText(lead.offer_url!)}>
+                  <Copy className="h-4 w-4 mr-1" /> Link másolása
+                </Button>
+              </>
+            ) : /claude\.ai|artifact/i.test(lead.offer_url) ? (
+              <a href={lead.offer_url} target="_blank" rel="noreferrer" className="text-xs text-cgi-muted-foreground hover:underline inline-flex items-center gap-1">
+                <ExternalLink className="h-3 w-3" /> Régi link
               </a>
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copyText(lead.offer_url!)}>
-              <Copy className="h-4 w-4 mr-1" /> Link másolása
-            </Button>
+            ) : (
+              <>
+                <Button asChild size="sm">
+                  <a href={lead.offer_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Ajánlat-oldal megnyitása
+                  </a>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => copyText(lead.offer_url!)}>
+                  <Copy className="h-4 w-4 mr-1" /> Link másolása
+                </Button>
+              </>
+            )}
             {lead.offer_info && <span className="text-xs text-cgi-muted-foreground">{lead.offer_info}</span>}
           </div>
         )}
