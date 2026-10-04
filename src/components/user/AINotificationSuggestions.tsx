@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { assertPushDelivered } from "@/lib/pushDelivery";
 import {
   Dialog,
   DialogContent,
@@ -84,19 +85,21 @@ export function AINotificationSuggestions({ userId, userName, onSend }: AINotifi
       });
 
       if (response.error) throw response.error;
-      return response.data;
+      return assertPushDelivered(response.data);
     },
-    onSuccess: () => {
+    onSuccess: (_data, suggestion) => {
       toast({
         title: "Értesítés elküldve",
-        description: "Az értesítés sikeresen el lett küldve a felhasználónak."
+        description: "A push szolgáltató átvette az értesítést."
       });
       queryClient.invalidateQueries({ queryKey: ["user-stats-extended", userId] });
+      setEditingSuggestion(null);
+      onSend?.(suggestion);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
-        title: "Hiba",
-        description: "Az értesítés küldése sikertelen.",
+        title: "Az értesítés nem lett elküldve",
+        description: error.message || "Az értesítés küldése sikertelen.",
         variant: "destructive"
       });
     }
@@ -104,14 +107,12 @@ export function AINotificationSuggestions({ userId, userName, onSend }: AINotifi
 
   const handleSend = (suggestion: Suggestion) => {
     sendMutation.mutate(suggestion);
-    if (onSend) onSend(suggestion);
   };
 
   const handleEditSave = () => {
     if (editingSuggestion) {
       const modified = { ...editingSuggestion, body_hu: editedBody };
       handleSend(modified);
-      setEditingSuggestion(null);
     }
   };
 

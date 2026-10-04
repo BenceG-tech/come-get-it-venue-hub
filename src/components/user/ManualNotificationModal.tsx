@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { assertPushDelivered } from "@/lib/pushDelivery";
 
 interface ManualNotificationModalProps {
   userId: string;
@@ -44,11 +45,11 @@ export function ManualNotificationModal({
       });
       
       if (error) throw error;
-      return data;
+      return assertPushDelivered(data);
     },
     onSuccess: () => {
       toast.success("Értesítés elküldve", {
-        description: `${userName} sikeresen értesítve lett.`,
+        description: `A push szolgáltató átvette ${userName} értesítését.`,
       });
       queryClient.invalidateQueries({ queryKey: ["user-stats-extended", userId] });
       setTitle("");

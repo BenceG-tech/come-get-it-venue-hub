@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,37 +7,30 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { CapProgressBar } from '@/components/CapProgressBar';
 import { TagInput } from '@/components/TagInput';
-import { DrinkSelector } from '@/components/DrinkSelector';
-import { TimeRangeInput } from '@/components/TimeRangeInput';
 import { VenueFormModal } from '@/components/VenueFormModal';
-import { ChartCard } from '@/components/ChartCard';
 import { KPICard } from '@/components/KPICard';
 import { VenueImageGallery } from '@/components/VenueImageGallery';
 import ScheduleGrid from '@/components/ScheduleGrid';
 import BusinessHoursEditor from '@/components/BusinessHoursEditor';
 import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManager';
 import { PriceTierBadge } from '@/components/PriceTierBadge';
-import { Building, Clock, Users, TrendingUp, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, Info, CreditCard } from 'lucide-react';
+import { Building, Clock, Wine, CalendarClock, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
 import { 
   getActiveFreeDrinkStatus, 
   getNextActiveWindow, 
-  calculateCapUsage,
-  formatCurrency,
   isVenueOpenNow,
   getClosingTimeToday
 } from '@/lib/businessLogic';
-import { Venue, FreeDrinkWindow, BusinessHours } from '@/lib/types';
+import { Venue, BusinessHours } from '@/lib/types';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useToast } from '@/hooks/use-toast';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function VenueDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -70,14 +63,17 @@ export default function VenueDetail() {
   const closesAt = useMemo(() => venue ? getClosingTimeToday(venue, now) : null, [venue, now]);
   const activeFreeDrinkStatus = useMemo(() => venue ? getActiveFreeDrinkStatus(venue, now) : { isActive: false }, [venue, now]);
   const nextWindow = useMemo(() => venue ? getNextActiveWindow(venue, now) : null, [venue, now]);
-  const mockRedemptionCount = 50; // This should come from actual data
-  const capUsage = useMemo(() => venue ? calculateCapUsage(venue, mockRedemptionCount) : { used: 0, limit: 0, pct: 0 }, [venue, mockRedemptionCount]);
+  const requestedTab = searchParams.get('tab');
+  const activeTab = ['free-drinks', 'business-hours', 'analytics', 'settings'].includes(requestedTab || '')
+    ? requestedTab!
+    : 'free-drinks';
 
-  // Add null check for venue.images to prevent the error
-  const coverImage = useMemo(() => {
-    if (!venue?.images?.length) return null;
-    return venue.images.find(i => i.isCover) || venue.images[0];
-  }, [venue?.images]);
+  const handleTabChange = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'free-drinks') next.delete('tab');
+    else next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const handlePauseToggle = async () => {
     if (!venue) return;
@@ -149,19 +145,62 @@ export default function VenueDetail() {
 
   return (
     <PageLayout>
-      <div className="mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/venues')}
-          className="text-cgi-surface-foreground"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Vissza a helyszínekhez
-        </Button>
+      <div className="sticky top-0 z-20 -mx-4 mb-6 border-b border-cgi-muted/50 bg-cgi-surface/95 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/venues')}
+              className="shrink-0 text-cgi-surface-foreground"
+              aria-label="Vissza a helyszínekhez"
+            >
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Helyszínek</span>
+            </Button>
+            <div className="min-w-0 border-l border-cgi-muted/50 pl-3">
+              <p className="truncate font-semibold text-cgi-surface-foreground">{venue.name}</p>
+              <p className={`text-xs ${isPaused ? 'text-amber-400' : 'text-cgi-success'}`}>
+                {isPaused ? 'Szüneteltetve' : 'Aktív helyszín'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}>
+              <VenueFormModal
+                venue={venue}
+                onSave={handleVenueSave}
+                trigger={
+                  <Button
+                    size="sm"
+                    className="cgi-button-primary"
+                    data-tour="edit-button"
+                    aria-label="Helyszín szerkesztése"
+                  >
+                    <Edit className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Szerkesztés</span>
+                  </Button>
+                }
+              />
+            </FeatureGate>
+            <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}>
+              <Button
+                size="sm"
+                variant={isPaused ? 'default' : 'destructive'}
+                className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
+                onClick={handlePauseToggle}
+                aria-label={isPaused ? 'Helyszín folytatása' : 'Helyszín szüneteltetése'}
+              >
+                {isPaused ? <Play className="h-4 w-4 sm:mr-2" /> : <Pause className="h-4 w-4 sm:mr-2" />}
+                <span className="hidden lg:inline">{isPaused ? 'Folytatás' : 'Szüneteltetés'}</span>
+              </Button>
+            </FeatureGate>
+          </div>
+        </div>
       </div>
 
-      <div className="mb-8 flex flex-col lg:flex-row items-start justify-between gap-4" data-tour="venue-header">
+      <div className="mb-8" data-tour="venue-header">
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-cgi-surface-foreground mb-2 flex items-center gap-3 flex-wrap">
             <span>{venue.name}</span>
@@ -219,45 +258,6 @@ export default function VenueDetail() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start gap-4 w-full lg:w-auto">
-          <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}>
-            <VenueFormModal 
-              venue={venue} 
-              onSave={handleVenueSave}
-              trigger={
-                <Button className="cgi-button-primary" data-tour="edit-button">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Szerkesztés
-                </Button>
-              }
-            />
-          </FeatureGate>
-          
-          <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={
-            <Button variant="outline" size="sm" className="cgi-button-secondary" disabled>
-              <Pause className="h-4 w-4 mr-2" />
-              Szüneteltetés
-            </Button>
-          }>
-            <Button 
-              variant={isPaused ? 'default' : 'destructive'} 
-              className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
-              onClick={handlePauseToggle}
-            >
-              {isPaused ? (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Folytatás
-                </>
-              ) : (
-                <>
-                  <Pause className="h-4 w-4 mr-2" />
-                  Szüneteltetés
-                </>
-              )}
-            </Button>
-          </FeatureGate>
-        </div>
       </div>
 
       <div className="space-y-6">
@@ -286,37 +286,20 @@ export default function VenueDetail() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="kpi-cards">
           <KPICard 
-            title="Mai forgalom" 
-            value={formatCurrency(123456)} 
-            icon={TrendingUp}
+            title="Helyszín státusza"
+            value={isPaused ? 'Szünetel' : openNow ? 'Nyitva' : 'Zárva'}
+            icon={Building}
           />
           <KPICard 
-            title="Mai ingyenes italok" 
-            value="89" 
-            icon={Users}
+            title="Ingyenes italok"
+            value={String(venue.drinks?.filter((drink) => drink.is_free_drink).length || 0)}
+            icon={Wine}
           />
-          <div className="relative">
-            <KPICard 
-              title="Aktív vendégek" 
-              value="42" 
-              icon={Building}
-            />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className="absolute top-2 right-2 text-cgi-muted-foreground hover:text-cgi-surface-foreground"
-                    aria-label="Mit jelent az Aktív vendégek?"
-                  >
-                    <Info className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="bg-cgi-surface border-cgi-muted text-cgi-surface-foreground max-w-xs">
-                  Az elmúlt órában aktivitást mutató vendégek becsült száma (pl. beváltások, vásárlások vagy interakciók alapján).
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+          <KPICard
+            title="Beváltási időablakok"
+            value={String(venue.freeDrinkWindows?.length || 0)}
+            icon={CalendarClock}
+          />
           <KPICard 
             title="Következő akció" 
             value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}
@@ -324,7 +307,8 @@ export default function VenueDetail() {
           />
         </div>
 
-        <Tabs defaultValue="free-drinks" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <div className="sticky top-[68px] z-10 -mx-4 px-4 py-2 bg-cgi-surface/95 backdrop-blur-sm border-b border-cgi-muted/40">
           <TabsList className="w-full overflow-x-auto no-scrollbar flex justify-start gap-1 cgi-tabs-list h-auto min-h-[44px] p-1">
             <TabsTrigger value="free-drinks" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm" data-tour="free-drinks-tab">
               Ingyenes italok
@@ -339,6 +323,7 @@ export default function VenueDetail() {
               Beállítások
             </TabsTrigger>
           </TabsList>
+          </div>
 
           {/* Free Drinks Tab */}
           <TabsContent value="free-drinks" className="space-y-4">

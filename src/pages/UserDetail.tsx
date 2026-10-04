@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -228,10 +228,21 @@ const eventTypeLabels: Record<string, string> = {
 export default function UserDetail() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = ["overview", "insights", "activity", "redemptions", "communication"].includes(requestedTab || "")
+    ? requestedTab!
+    : "overview";
   
-  // State for tab control and modal
-  const [activeTab, setActiveTab] = useState("overview");
+  // State for the modal; the active section lives in the URL for direct links and browser navigation.
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+
+  const setActiveTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "overview") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const { data, isLoading, error } = useQuery<ExtendedUserStats>({
     queryKey: ["user-stats-extended", userId],
@@ -326,7 +337,13 @@ export default function UserDetail() {
         <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-cgi-surface/95 backdrop-blur-sm border-b border-cgi-muted">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/users")} className="cgi-button-ghost shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/users")}
+                className="cgi-button-ghost shrink-0"
+                aria-label="Vissza a felhasználókhoz"
+              >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Vissza</span>
               </Button>
@@ -346,6 +363,7 @@ export default function UserDetail() {
                 size="sm"
                 onClick={() => setShowNotificationModal(true)}
                 className="bg-cgi-primary hover:bg-cgi-primary/90 text-cgi-surface gap-2"
+                aria-label="Push értesítés küldése"
               >
                 <Bell className="h-4 w-4" />
                 <span className="hidden sm:inline">Push küldése</span>
@@ -418,11 +436,15 @@ export default function UserDetail() {
         />
 
 
-        {/* Tabs — 4 consolidated groups */}
+        {/* Tabs — five focused groups, each directly linkable */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-cgi-muted/30 flex-wrap h-auto gap-1 w-full md:w-auto overflow-x-auto">
+          <div className="sticky top-[68px] z-10 -mx-4 px-4 py-2 bg-cgi-surface/95 backdrop-blur-sm border-b border-cgi-muted/40">
+          <TabsList className="bg-cgi-muted/30 h-auto gap-1 w-full overflow-x-auto justify-start no-scrollbar">
             <TabsTrigger value="overview" className="data-[state=active]:bg-cgi-primary">
               <TrendingUp className="h-4 w-4 mr-2" />Áttekintés
+            </TabsTrigger>
+            <TabsTrigger value="insights" className="data-[state=active]:bg-cgi-primary">
+              <Sparkles className="h-4 w-4 mr-2" />Elemzések
             </TabsTrigger>
             <TabsTrigger value="activity" className="data-[state=active]:bg-cgi-primary">
               <Activity className="h-4 w-4 mr-2" />Aktivitás
@@ -434,6 +456,7 @@ export default function UserDetail() {
               <Bell className="h-4 w-4 mr-2" />Kommunikáció
             </TabsTrigger>
           </TabsList>
+          </div>
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="space-y-4">
@@ -464,6 +487,10 @@ export default function UserDetail() {
               likelyHour={data.predictions?.likely_hour?.hour ?? null}
             />
 
+          </TabsContent>
+
+          {/* INSIGHTS — important analysis is one click away instead of buried below the overview */}
+          <TabsContent value="insights" className="space-y-4">
             <Accordion type="multiple" defaultValue={["revenue"]} className="space-y-2">
               <AccordionItem value="revenue" className="border border-cgi-muted/30 rounded-lg overflow-hidden">
                 <AccordionTrigger className="px-4 py-3 bg-cgi-muted/10 hover:bg-cgi-muted/20">
