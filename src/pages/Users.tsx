@@ -24,7 +24,7 @@ import {
   Clock,
   BarChart3,
   ListFilter,
-  // Eye icon removed — entire row click opens QuickView
+  Eye,
   RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -567,7 +567,16 @@ export default function Users() {
                         return (
                           <div
                             key={user.id}
-                            onClick={() => setQuickViewUserId(user.id)}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`${user.name} részletes profiljának megnyitása`}
+                            onClick={() => openUserDetail(user)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                openUserDetail(user);
+                              }
+                            }}
                             className={`p-3 md:p-4 rounded-lg transition-colors group cursor-pointer ${
                               isSelected
                                 ? "bg-cgi-primary/10 border border-cgi-primary/30"
@@ -633,19 +642,19 @@ export default function Users() {
                                 </p>
                               </div>
 
-                              {/* Open detail button */}
+                              {/* Optional quick preview; the row itself opens the full profile. */}
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="shrink-0 gap-1 text-cgi-muted-foreground hover:text-cgi-primary hover:bg-cgi-primary/10"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openUserDetail(user);
+                                  setQuickViewUserId(user.id);
                                 }}
-                                title="Részletes profil megnyitása"
+                                title="Gyorsnézet megnyitása"
                               >
-                                <span className="hidden sm:inline">Megnyitás</span>
-                                <ChevronRight className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
+                                <span className="hidden sm:inline">Gyorsnézet</span>
                               </Button>
                             </div>
                           </div>
