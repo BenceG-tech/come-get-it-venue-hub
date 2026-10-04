@@ -17,9 +17,9 @@ import { MerchantMatchRulesManager } from '@/components/MerchantMatchRulesManage
 import { PriceTierBadge } from '@/components/PriceTierBadge';
 import { Building, Clock, Wine, CalendarClock, Settings, Edit, Pause, Play, MapPin, Phone, Globe, ArrowLeft, CreditCard } from 'lucide-react';
 import { getDataProvider } from '@/lib/dataProvider/providerFactory';
-import { 
-  getActiveFreeDrinkStatus, 
-  getNextActiveWindow, 
+import {
+  getActiveFreeDrinkStatus,
+  getNextActiveWindow,
   isVenueOpenNow,
   getClosingTimeToday
 } from '@/lib/businessLogic';
@@ -34,6 +34,7 @@ export default function VenueDetail() {
   const [venue, setVenue] = useState<Venue | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [pauseSaving, setPauseSaving] = useState(false);
   const { toast } = useToast();
 
   const dataProvider = getDataProvider();
@@ -58,25 +59,32 @@ export default function VenueDetail() {
   }, [id]);
 
   // Business logic calculations with proper null checks
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const refresh = () => setNow(new Date());
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
   const openNow = useMemo(() => venue ? isVenueOpenNow(venue, now) : false, [venue, now]);
   const closesAt = useMemo(() => venue ? getClosingTimeToday(venue, now) : null, [venue, now]);
   const activeFreeDrinkStatus = useMemo(() => venue ? getActiveFreeDrinkStatus(venue, now) : { isActive: false }, [venue, now]);
   const nextWindow = useMemo(() => venue ? getNextActiveWindow(venue, now) : null, [venue, now]);
   const requestedTab = searchParams.get('tab');
-  const activeTab = ['free-drinks', 'business-hours', 'analytics', 'settings'].includes(requestedTab || '')
+  const activeTab = ['overview', 'free-drinks', 'business-hours', 'analytics', 'settings'].includes(requestedTab || '')
     ? requestedTab!
-    : 'free-drinks';
+    : 'overview';
 
   const handleTabChange = (tab: string) => {
     const next = new URLSearchParams(searchParams);
-    if (tab === 'free-drinks') next.delete('tab');
+    if (tab === 'overview') next.delete('tab');
     else next.set('tab', tab);
     setSearchParams(next, { replace: true });
   };
 
   const handlePauseToggle = async () => {
-    if (!venue) return;
+    if (!venue || pauseSaving) return;
+    setPauseSaving(true);
 
     const updatedVenue = { ...venue, is_paused: !isPaused };
 
@@ -87,23 +95,20 @@ export default function VenueDetail() {
     } catch (error: any) {
       console.error("Failed to update venue pause status:", error);
       toast({ title: "Hiba", description: String(error?.message || error), variant: "destructive" as any });
-    }
+    } finally { setPauseSaving(false); }
   };
 
   const handleVenueSave = async (updates: Partial<Venue>) => {
     if (!venue) return;
 
     try {
-      const saved = await dataProvider.update<Venue>('venues', venue.id, updates);
-      
-      // Re-fetch the venue to ensure we have the latest data from the server
-      const refreshedVenue = await dataProvider.getOne<Venue>('venues', venue.id);
+      const refreshedVenue = await dataProvider.update<Venue>('venues', venue.id, updates);
       setVenue(refreshedVenue);
-      
-      toast({ 
-        title: 'Siker', 
-        description: refreshedVenue.drinks?.length ? 
-          `Változások elmentve. ${refreshedVenue.drinks.length} ital mentve.` : 
+
+      toast({
+        title: 'Siker',
+        description: refreshedVenue.drinks?.length ?
+          `Változások elmentve. ${refreshedVenue.drinks.length} ital mentve.` :
           'Változások elmentve.'
       });
       return refreshedVenue;
@@ -116,7 +121,7 @@ export default function VenueDetail() {
 
   const handleBusinessHoursSave = async (businessHours: BusinessHours) => {
     if (!venue) return;
-    
+
     try {
       const updates = { business_hours: businessHours };
       await dataProvider.update<Venue>('venues', venue.id, updates);
@@ -130,7 +135,7 @@ export default function VenueDetail() {
   if (isLoading) {
     return (
       <PageLayout>
-        <div className="text-cgi-surface-foreground">Loading...</div>
+        <div className="text-cgi-surface-foreground">Helyszín betöltése…</div>
       </PageLayout>
     );
   }
@@ -138,7 +143,7 @@ export default function VenueDetail() {
   if (!venue) {
     return (
       <PageLayout>
-        <div className="text-cgi-surface-foreground">Venue not found</div>
+        <div className="text-cgi-surface-foreground">A helyszín nem található.</div>
       </PageLayout>
     );
   }
@@ -190,6 +195,7 @@ export default function VenueDetail() {
                 variant={isPaused ? 'default' : 'destructive'}
                 className={isPaused ? 'cgi-button-primary' : 'cgi-button-error'}
                 onClick={handlePauseToggle}
+                disabled={pauseSaving}
                 aria-label={isPaused ? 'Helyszín folytatása' : 'Helyszín szüneteltetése'}
               >
                 {isPaused ? <Play className="h-4 w-4 sm:mr-2" /> : <Pause className="h-4 w-4 sm:mr-2" />}
@@ -210,7 +216,7 @@ export default function VenueDetail() {
             {venue.address}
             {venue.description && <>&nbsp;•&nbsp;{venue.description}</>}
           </p>
-          
+
           {/* Open/Closed Status */}
           <div className="mt-1 text-sm text-cgi-muted-foreground">
             {openNow ? (
@@ -242,7 +248,7 @@ export default function VenueDetail() {
               <a
                 className="text-sm underline text-cgi-secondary flex items-center gap-1"
                 href={`https://www.google.com/maps/dir/?api=1&destination=${venue.coordinates.lat},${venue.coordinates.lng}`}
-                target="_blank" 
+                target="_blank"
                 rel="noreferrer"
               >
                 <MapPin className="h-4 w-4" />
@@ -261,36 +267,13 @@ export default function VenueDetail() {
       </div>
 
       <div className="space-y-6">
-        {/* Image Gallery */}
-        {(() => {
-          const hasDbImages = Array.isArray(venue.images) && venue.images.length > 0;
-          const syntheticImages = !hasDbImages && (venue.hero_image_url || venue.image_url)
-            ? [
-                {
-                  id: 'cover',
-                  url: (venue.hero_image_url || venue.image_url) as string,
-                  label: 'Borítókép',
-                  isCover: true,
-                },
-              ]
-            : [];
-          const galleryImages = hasDbImages ? (venue.images as NonNullable<Venue['images']>) : syntheticImages;
-          
-          return galleryImages.length > 0 ? (
-            <VenueImageGallery 
-              images={galleryImages} 
-              venueName={venue.name} 
-            />
-          ) : null;
-        })()}
-
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="kpi-cards">
-          <KPICard 
+          <KPICard
             title="Helyszín státusza"
             value={isPaused ? 'Szünetel' : openNow ? 'Nyitva' : 'Zárva'}
             icon={Building}
           />
-          <KPICard 
+          <KPICard
             title="Ingyenes italok"
             value={String(venue.drinks?.filter((drink) => drink.is_free_drink).length || 0)}
             icon={Wine}
@@ -300,8 +283,8 @@ export default function VenueDetail() {
             value={String(venue.freeDrinkWindows?.length || 0)}
             icon={CalendarClock}
           />
-          <KPICard 
-            title="Következő akció" 
+          <KPICard
+            title="Következő akció"
             value={nextWindow ? `${nextWindow.start} - ${nextWindow.end}` : 'Nincs ütemezett akció'}
             icon={Clock}
           />
@@ -310,6 +293,7 @@ export default function VenueDetail() {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="sticky top-[68px] z-10 -mx-4 px-4 py-2 bg-cgi-surface/95 backdrop-blur-sm border-b border-cgi-muted/40">
           <TabsList className="w-full overflow-x-auto no-scrollbar flex justify-start gap-1 cgi-tabs-list h-auto min-h-[44px] p-1">
+            <TabsTrigger value="overview" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm">Áttekintés</TabsTrigger>
             <TabsTrigger value="free-drinks" className="cgi-tabs-trigger flex-shrink-0 px-3 py-2 text-sm" data-tour="free-drinks-tab">
               Ingyenes italok
             </TabsTrigger>
@@ -325,6 +309,52 @@ export default function VenueDetail() {
           </TabsList>
           </div>
 
+          <TabsContent value="overview" className="space-y-5">
+            <Card className="cgi-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div><p className="text-xs font-medium uppercase tracking-wide text-cgi-muted-foreground">Működés most</p>
+                  <h2 className="mt-2 text-xl font-semibold">{isPaused ? 'A helyszín szünetel' : !openNow ? 'A helyszín jelenleg zárva van' : activeFreeDrinkStatus.isActive ? 'Nyitva, aktív ajánlati idősávval' : 'Nyitva, aktív ajánlati idősáv nélkül'}</h2>
+                  <p className="mt-2 text-sm text-cgi-muted-foreground">A nyitvatartás és a beállított időablakok alapján. Az egyéni beváltási jogosultságot az app ellenőrzi.</p>
+                </div>
+                <Button variant="outline" onClick={() => handleTabChange('free-drinks')}>Kínálat és időzítés</Button>
+              </div>
+            </Card>
+            <div className="grid gap-3 md:grid-cols-2">
+              {[
+                { tab: 'basic' as const, title: 'Alapadatok', description: venue.description ? 'Név, leírás, elérhetőségek és címkék' : 'Egészítsd ki a helyszín bemutatkozását.' },
+                { tab: 'drinks' as const, title: 'Italok és ajánlatok', description: `${venue.drinks?.length || 0} ital · ${venue.freeDrinkWindows?.length || 0} beállított időablak` },
+                { tab: 'location' as const, title: 'Cím és nyitvatartás', description: venue.address || 'Hiányzó cím – szükséges a helyszín megtalálásához.' },
+                { tab: 'images' as const, title: 'Képek és megjelenés', description: `${venue.images?.length || 0} galériakép · borítókép és sorrend` },
+              ].map((section) => <Card key={section.tab} className="cgi-card p-4 flex items-center justify-between gap-3">
+                <div><h3 className="font-medium">{section.title}</h3><p className="mt-1 text-xs text-cgi-muted-foreground">{section.description}</p></div>
+                <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}><VenueFormModal venue={venue} onSave={handleVenueSave} initialTab={section.tab} trigger={<Button variant="outline" size="sm" aria-label={`${section.title} szerkesztése`}><Edit className="mr-1 h-4 w-4" />Szerkesztés</Button>} /></FeatureGate>
+              </Card>)}
+            </div>
+        {/* Gallery is secondary to day-to-day operations. */}
+        {(() => {
+          const hasDbImages = Array.isArray(venue.images) && venue.images.length > 0;
+          const syntheticImages = !hasDbImages && (venue.hero_image_url || venue.image_url)
+            ? [
+                {
+                  id: 'cover',
+                  url: (venue.hero_image_url || venue.image_url) as string,
+                  label: 'Borítókép',
+                  isCover: true,
+                },
+              ]
+            : [];
+          const galleryImages = hasDbImages ? (venue.images as NonNullable<Venue['images']>) : syntheticImages;
+
+          return galleryImages.length > 0 ? (
+            <VenueImageGallery
+              images={galleryImages}
+              venueName={venue.name}
+            />
+          ) : null;
+        })()}
+
+          </TabsContent>
+
           {/* Free Drinks Tab */}
           <TabsContent value="free-drinks" className="space-y-4">
             <Card className="cgi-card p-6">
@@ -332,7 +362,7 @@ export default function VenueDetail() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-cgi-surface-foreground">
-                      Ingyenes italok ({venue.drinks?.filter(d => d.is_free_drink).length || 0})
+                      Kínálat és időzítés
                     </h3>
                     <p className="text-sm text-cgi-muted-foreground mt-1">
                       Aktuális státusz: {activeFreeDrinkStatus.isActive ? (
@@ -342,6 +372,7 @@ export default function VenueDetail() {
                       )}
                     </p>
                   </div>
+                  <FeatureGate requiredRoles={['cgi_admin', 'venue_owner']} fallback={<div />}><VenueFormModal venue={venue} onSave={handleVenueSave} initialTab="drinks" trigger={<Button size="sm"><Edit className="mr-1 h-4 w-4" />Kínálat szerkesztése</Button>} /></FeatureGate>
                 </div>
 
                 {/* Current Free Drinks List */}
@@ -353,8 +384,8 @@ export default function VenueDetail() {
                         <Card key={drink.id} className="cgi-card p-4">
                           <div className="flex gap-4">
                             {drink.image_url && (
-                              <img 
-                                src={drink.image_url} 
+                              <img
+                                src={drink.image_url}
                                 alt={drink.drinkName}
                                 className="w-20 h-20 object-cover rounded-lg"
                                 onError={(e) => {
@@ -404,7 +435,7 @@ export default function VenueDetail() {
                     <Card className="cgi-card p-4">
                       <ScheduleGrid windows={venue.freeDrinkWindows} />
                     </Card>
-                    
+
                     {/* Time Windows Details */}
                     <div className="space-y-2">
                       <h5 className="text-sm font-medium text-cgi-surface-foreground">Időablakok részletei</h5>
@@ -464,8 +495,9 @@ export default function VenueDetail() {
                 Forgalmi statisztika
               </h3>
               <p className="text-sm text-cgi-muted-foreground">
-                Az elemzések hamarosan elérhetők lesznek.
+                A helyszín beváltásait és forgalmát a közös elemzési oldalakon követheted.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigate('/redemptions')}>Összes beváltás megnyitása</Button><Button variant="outline" onClick={() => navigate('/analytics')}>Elemzések megnyitása</Button></div>
             </Card>
           </TabsContent>
 
@@ -475,7 +507,7 @@ export default function VenueDetail() {
               <h3 className="text-lg font-semibold text-cgi-surface-foreground mb-6">
                 Helyszín beállítások
               </h3>
-              
+
               <div className="space-y-6">
                 {/* Pause Control */}
                 <div className="flex items-center justify-between pb-4 border-b border-cgi-border">
@@ -485,7 +517,7 @@ export default function VenueDetail() {
                       {isPaused ? 'A helyszín jelenleg szünetel' : 'A helyszín jelenleg aktív'}
                     </p>
                   </div>
-                  <Switch checked={!isPaused} onCheckedChange={() => handlePauseToggle()} />
+                  <Switch checked={!isPaused} disabled={pauseSaving} onCheckedChange={() => handlePauseToggle()} />
                 </div>
 
                 {/* Merchant Rules */}
@@ -494,8 +526,8 @@ export default function VenueDetail() {
                     <CreditCard className="h-4 w-4" />
                     Banki egyeztetési szabályok
                   </Label>
-                  <MerchantMatchRulesManager 
-                    venue={venue} 
+                  <MerchantMatchRulesManager
+                    venue={venue}
                     onUpdate={async () => {
                       try {
                         const refreshedVenue = await dataProvider.getOne<Venue>('venues', venue.id);
@@ -503,7 +535,7 @@ export default function VenueDetail() {
                       } catch (error) {
                         console.error('Failed to refresh venue:', error);
                       }
-                    }} 
+                    }}
                   />
                 </div>
 

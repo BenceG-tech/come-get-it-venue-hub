@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -99,23 +99,25 @@ const PAGE_SIZE = 50;
 export default function Users() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"analytics" | "users">("users");
+  const [params, setParams] = useSearchParams();
+  const search = params.get("q") || "";
+  const statusFilter = ["active", "inactive", "new"].includes(params.get("status") || "") ? params.get("status")! : "all";
+  const activeTab = params.get("tab") === "analytics" ? "analytics" : "users";
+  const page = Math.max(0, Number.parseInt(params.get("page") || "0", 10) || 0);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [quickViewUserId, setQuickViewUserId] = useState<string | null>(null);
-  
-  // Selection state
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
-  
-  // Pagination state
-  const [page, setPage] = useState(0);
+  const updateParams = (updates: Record<string, string>) => setParams((previous) => {
+    const next = new URLSearchParams(previous);
+    Object.entries(updates).forEach(([key, value]) => { if (!value || value === "all") next.delete(key); else next.set(key, value); });
+    return next;
+  }, { replace: true });
+  const setSearch = (value: string) => updateParams({ q: value, page: "", tab: "" });
+  const setStatusFilter = (value: string) => updateParams({ status: value, page: "" });
+  const setActiveTab = (value: string) => updateParams({ tab: value === "users" ? "" : value });
+  const setPage = (value: number) => updateParams({ page: value ? String(value) : "" });
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(0);
-    setSelectedUserIds(new Set());
-  }, [debouncedSearch, statusFilter]);
+  useEffect(() => { setSelectedUserIds(new Set()); }, [debouncedSearch, statusFilter, page]);
 
   // Debounce search
   useEffect(() => {
@@ -123,17 +125,9 @@ export default function Users() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // If user starts searching from analytics tab, switch to users
-  useEffect(() => {
-    if (search.length > 0 && activeTab !== "users") {
-      setActiveTab("users");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
-
   const openUserDetail = (u: { id: string; name: string; avatar_url: string | null }) => {
     pushRecentUser({ id: u.id, name: u.name, avatar_url: u.avatar_url });
-    navigate(`/users/${u.id}`);
+    navigate(`/users/${u.id}`, { state: { from: `/users?${params.toString()}` } });
   };
 
   // Fetch users list
@@ -256,16 +250,6 @@ export default function Users() {
       .slice(0, 2);
   };
 
-  const summary = analyticsData?.summary || {
-    total_users: data?.total || 0,
-    active_today: 0,
-    active_7_days: data?.users?.filter((u) => u.status === "active").length || 0,
-    active_30_days: 0,
-    total_redemptions: data?.users?.reduce((sum, u) => sum + u.total_redemptions, 0) || 0,
-    avg_sessions_per_user: 0,
-    avg_redemptions_per_user: 0,
-  };
-
   // Pagination
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
   const startIndex = page * PAGE_SIZE + 1;
@@ -285,7 +269,7 @@ export default function Users() {
                 Felhasználók
               </h1>
               <p className="text-sm text-cgi-muted-foreground">
-                Regisztrált felhasználók kezelése és monitorozása
+                Keresés, ügyféladatok, beváltások és kommunikáció.
               </p>
             </div>
           </div>
@@ -295,7 +279,7 @@ export default function Users() {
             <ExportDropdown
               options={[
                 {
-                  label: "Összes felhasználó (CSV)",
+                  label: "Aktuális oldal felhasználói (CSV)",
                   onClick: () => exportUsersToCSV(data.users)
                 }
               ]}
@@ -304,81 +288,14 @@ export default function Users() {
           )}
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="cgi-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-1">
-                    <p className="text-sm text-cgi-muted-foreground">
-                      Összes felhasználó
-                    </p>
-                    <InfoTooltip content="Az összes regisztrált felhasználó száma a rendszerben." />
-                  </div>
-                  <p className="text-2xl font-bold text-cgi-surface-foreground">
-                    {summary.total_users}
-                  </p>
-                </div>
-                <UsersIcon className="h-8 w-8 text-cgi-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cgi-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-1">
-                    <p className="text-sm text-cgi-muted-foreground">
-                      Aktív (7 nap)
-                    </p>
-                    <InfoTooltip content="Felhasználók, akik az elmúlt 7 napban legalább egyszer aktívak voltak (bejelentkezés, beváltás, stb.)." />
-                  </div>
-                  <p className="text-2xl font-bold text-cgi-success">
-                    {summary.active_7_days}
-                  </p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-cgi-success opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cgi-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-1">
-                    <p className="text-sm text-cgi-muted-foreground">Ma aktív</p>
-                    <InfoTooltip content="Felhasználók, akik ma legalább egyszer használták az alkalmazást." />
-                  </div>
-                  <p className="text-2xl font-bold text-cgi-primary">
-                    {summary.active_today}
-                  </p>
-                </div>
-                <Calendar className="h-8 w-8 text-cgi-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cgi-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-1">
-                    <p className="text-sm text-cgi-muted-foreground">
-                      Összes beváltás
-                    </p>
-                    <InfoTooltip content="A felhasználók által elvégzett összes ingyen ital beváltás száma." />
-                  </div>
-                  <p className="text-2xl font-bold text-cgi-secondary">
-                    {summary.total_redemptions}
-                  </p>
-                </div>
-                <Gift className="h-8 w-8 text-cgi-secondary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Counts explicitly describe their scope; unloaded analytics are never shown as zero. */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            ["Találatok", data?.total, "A keresésnek és státusznak megfelelő felhasználók"],
+            ["Ezen az oldalon", data?.users.length, "A most betöltött felhasználók száma"],
+            ["Aktív a listában", data?.users.filter((user) => user.status === "active").length, "Aktív státuszú felhasználók ezen az oldalon"],
+            ["Beváltások a listában", data?.users.reduce((sum, user) => sum + user.total_redemptions, 0), "A most látható felhasználók összes beváltása"],
+          ].map(([label, value, description]) => <Card key={label} className="cgi-card px-4 py-3"><div className="flex items-center gap-1"><p className="text-xs text-cgi-muted-foreground">{label}</p><InfoTooltip content={String(description)} /></div><p className="mt-1 text-2xl font-semibold tabular-nums">{value == null ? "—" : Number(value).toLocaleString("hu-HU")}</p></Card>)}
         </div>
 
         {/* Sticky global search + status filter (always visible) */}
@@ -388,7 +305,8 @@ export default function Users() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cgi-muted-foreground" />
                 <Input
-                  placeholder="Keresés név vagy email alapján..."
+                  aria-label="Felhasználó keresése"
+                  placeholder="Keresés név vagy e-mail alapján…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10 cgi-input"
@@ -673,7 +591,7 @@ export default function Users() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setPage((p) => Math.max(0, p - 1))}
+                            onClick={() => setPage(Math.max(0, page - 1))}
                             disabled={page === 0}
                             className="gap-1"
                           >
@@ -686,7 +604,7 @@ export default function Users() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                            onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                             disabled={page >= totalPages - 1}
                             className="gap-1"
                           >

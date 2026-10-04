@@ -1,4 +1,6 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PageLayout } from "@/components/PageLayout";
@@ -18,7 +20,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, ExternalLink, List, Map as MapIcon, RefreshCw, Search, Sparkles, Star } from "lucide-react";
+import { Copy, ExternalLink, List, Map as MapIcon, RefreshCw, Search, Sparkles, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   DRINK_OPTIONS,
   STAGES,
@@ -40,6 +42,21 @@ const gradeClasses: Record<string, string> = {
   D: "bg-slate-500/15 text-slate-300 border-slate-500/30",
 };
 
+function nextStep(lead: PartnerLead) {
+  if (lead.stage === 6) return "Partnerkapcsolat gondozása";
+  if (lead.stage === 7) return "Új megkeresés később";
+  if (lead.stage === 5) return "Egyeztetett hívás lebonyolítása";
+  if (lead.stage === 4) return "Válasz és következő lépés egyeztetése";
+  if (lead.stage === 2 || lead.stage === 3) return "Visszajelzés követése";
+  return lead.offer_url ? "Ajánlat ellenőrzése és megosztása" : "Megkeresés előkészítése";
+}
+
+function needsFollowUp(lead: PartnerLead) {
+  if (lead.stage !== 2 && lead.stage !== 3) return false;
+  const lastChange = lead.stage_log?.slice(-1)[0]?.at;
+  return Boolean(lastChange && Date.now() - new Date(lastChange).getTime() >= 3 * 86400000);
+}
+
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -51,13 +68,31 @@ async function copyText(text: string) {
 
 export default function PartnerLeads() {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [stage, setStage] = useState<number | "all">("all");
-  const [grade, setGrade] = useState("all");
-  const [district, setDistrict] = useState("all");
-  const [onlyOffer, setOnlyOffer] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<"map" | "list">("map");
+  const [hasUnsavedNote, setHasUnsavedNote] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const setFilter = (key: string, value: string) => setParams((previous) => {
+    const next = new URLSearchParams(previous);
+    if (!value || value === "all") next.delete(key); else next.set(key, value);
+    if (!["lead", "view", "page"].includes(key)) next.delete("page");
+    return next;
+  }, { replace: true });
+  const search = params.get("q") || "";
+  const rawStage = params.get("stage");
+  const stage: number | "all" = rawStage !== null && /^\d$/.test(rawStage) && Number(rawStage) < STAGES.length ? Number(rawStage) : "all";
+  const grade = params.get("grade") || "all";
+  const district = params.get("district") || "all";
+  const onlyOffer = params.get("offer") === "yes";
+  const selectedId = params.get("lead");
+  const view = params.get("view") === "map" ? "map" : "list";
+  const workFilter = params.get("work") || "all";
+  const sort = params.get("sort") || "score";
+  const setSearch = (value: string) => setFilter("q", value);
+  const setStage = (value: number | "all") => setFilter("stage", String(value));
+  const setGrade = (value: string) => setFilter("grade", value);
+  const setDistrict = (value: string) => setFilter("district", value);
+  const setOnlyOffer = (value: boolean) => setFilter("offer", value ? "yes" : "");
+  const setSelectedId = (value: string | null) => setFilter("lead", value || "");
+  const setView = (value: string) => setFilter("view", value === "list" ? "" : value);
 
   const { data: leads = [], isLoading, error, refetch, isFetching } = useQuery<PartnerLead[]>({
     queryKey: ["partner-leads"],
@@ -94,27 +129,48 @@ export default function PartnerLeads() {
     if (grade !== "all" && l.grade !== grade) return false;
     if (district !== "all" && l.district !== district) return false;
     if (onlyOffer && !l.offer_url) return false;
+    if (workFilter === "followup" && !needsFollowUp(l)) return false;
+    if (workFilter === "reply" && l.stage !== 4) return false;
+    if (workFilter === "prepare" && l.stage > 1) return false;
     if (!search) return true;
-    return [l.name, l.address, l.instagram_handle, l.venue_type].join(" ").toLowerCase().includes(search.toLowerCase());
+    return [l.name, l.address, l.instagram_handle, l.venue_type, l.email, l.phone].join(" ").toLowerCase().includes(search.toLowerCase());
   });
 
+  filtered.sort((a, b) => sort === "name" ? a.name.localeCompare(b.name, "hu")
+    : sort === "recent" ? (new Date(b.updated_at).getTime() || 0) - (new Date(a.updated_at).getTime() || 0)
+    : (b.score || 0) - (a.score || 0));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 50));
+  const page = Math.min(pageCount - 1, Math.max(0, Number.parseInt(params.get("page") || "0", 10) || 0));
+  const visibleLeads = filtered.slice(page * 50, (page + 1) * 50);
   const selected = leads.find((l) => l.id === selectedId) ?? null;
 
   return (
     <PageLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-cgi-surface-foreground">Partnerszerzés</h1>
+          <h1 className="text-3xl font-bold text-cgi-surface-foreground">Értékesítés</h1>
           <p className="text-cgi-muted-foreground mt-1">
-            Megkeresendő helyek osztályzattal, személyre szabott ajánlattal és kész szövegekkel
+            Partnerjelöltek, kész ajánlatok és a következő lépés egy helyen.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link to="/applicants">Jelentkezők</Link></Button>
+        <Button asChild variant="outline"><Link to="/growth/offers">Ajánlatok</Link></Button>
         <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
           Frissítés
         </Button>
+        </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2" aria-label="Értékesítési munkalisták">
+        {[
+          ["all", "Minden partner", leads.length],
+          ["prepare", "Előkészítés", leads.filter((lead) => lead.stage < 2).length],
+          ["reply", "Válasz érkezett", leads.filter((lead) => lead.stage === 4).length],
+          ["followup", "3+ napja várunk", leads.filter(needsFollowUp).length],
+        ].map(([key, label, count]) => <Button key={key} size="sm" variant={workFilter === key ? "default" : "outline"} onClick={() => setFilter("work", String(key))} aria-pressed={workFilter === key}>{label}<span className="ml-2 tabular-nums">{isLoading ? "…" : count}</span></Button>)}
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
         {STAGES.map((s, i) => {
           const count = leads.filter((l) => l.stage === i).length;
@@ -137,7 +193,8 @@ export default function PartnerLeads() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cgi-muted-foreground" />
           <Input
-            placeholder="Keresés név, cím vagy Instagram szerint"
+            aria-label="Partner keresése"
+            placeholder="Név, cím, e-mail vagy Instagram…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -170,7 +227,10 @@ export default function PartnerLeads() {
       ) : (
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-cgi-muted-foreground">{filtered.length} hely</p>
+            <div className="flex items-center gap-2"><p className="text-sm text-cgi-muted-foreground">{isLoading ? "Betöltés…" : `${filtered.length} partner${leads.length >= 2000 ? " · legfeljebb 2000 betöltött partner közül" : ""}`}</p>
+            {(search || stage !== "all" || grade !== "all" || district !== "all" || onlyOffer || workFilter !== "all") && <Button size="sm" variant="ghost" onClick={() => setParams(view === "map" ? { view: "map" } : {})}>Szűrők törlése</Button>}</div>
+            <div className="flex flex-wrap gap-2">
+            <Select value={sort} onValueChange={(value) => setFilter("sort", value)}><SelectTrigger className="w-40 h-10" aria-label="Partnerlista rendezése"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="score">Pontszám szerint</SelectItem><SelectItem value="name">Név szerint</SelectItem><SelectItem value="recent">Frissítés szerint</SelectItem></SelectContent></Select>
             <div className="flex rounded-lg border border-cgi-muted bg-cgi-surface p-1">
               <Button
                 type="button"
@@ -190,6 +250,7 @@ export default function PartnerLeads() {
               >
                 <List className="mr-1.5 h-4 w-4" /> Lista
               </Button>
+            </div>
             </div>
           </div>
 
@@ -212,7 +273,7 @@ export default function PartnerLeads() {
               />
             </Suspense>
           ) : (
-            filtered.map((l) => (
+            visibleLeads.map((l) => (
               <button
                 key={l.id}
                 type="button"
@@ -230,28 +291,36 @@ export default function PartnerLeads() {
                     {[l.venue_type, l.district, l.proposal?.tetel, l.proposal?.idosav].filter(Boolean).join(" · ")}
                   </div>
                 </div>
+                <div className="hidden xl:block w-52 shrink-0 text-xs text-cgi-muted-foreground"><span className="block text-cgi-surface-foreground">{nextStep(l)}</span>{needsFollowUp(l) && <span className="text-amber-300">Legalább 3 napja ebben a státuszban</span>}</div>
                 {l.rating != null && (
                   <span className="hidden sm:flex items-center gap-1 text-xs text-cgi-muted-foreground">
                     <Star className="h-3 w-3" /> {l.rating}
                   </span>
                 )}
                 {l.offer_url && <Badge variant="outline" className="hidden sm:inline-flex">Ajánlat kész</Badge>}
-                {l.offer_request && <Badge variant="outline" className="hidden sm:inline-flex">Készül</Badge>}
+                {l.offer_request && <Badge variant="outline" className="hidden sm:inline-flex">Kérés rögzítve</Badge>}
                 <Badge variant="outline" className={STAGES[l.stage]?.className}>{STAGES[l.stage]?.label}</Badge>
                 {l.grade && <Badge variant="outline" className={gradeClasses[l.grade]}>{l.grade}</Badge>}
               </button>
             ))
           )}
+          {!isLoading && view === "list" && pageCount > 1 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-cgi-muted/40 pt-4 mt-2"><p className="text-xs text-cgi-muted-foreground">{page * 50 + 1}–{Math.min((page + 1) * 50, filtered.length)} / {filtered.length} partner</p><div className="flex items-center gap-2"><Button size="sm" variant="outline" disabled={page === 0} onClick={() => setFilter("page", String(page - 1))}><ChevronLeft className="mr-1 h-4 w-4" />Előző</Button><span className="text-xs tabular-nums">{page + 1} / {pageCount}</span><Button size="sm" variant="outline" disabled={page + 1 >= pageCount} onClick={() => setFilter("page", String(page + 1))}>Következő<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
         </div>
       )}
 
-      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelectedId(null)}>
+      <Sheet open={!!selected} onOpenChange={(open) => {
+        if (open || save.isPending) return;
+        if (hasUnsavedNote && !window.confirm('A jegyzet módosításai nincsenek mentve. Bezárod az adatlapot?')) return;
+        setSelectedId(null);
+        setHasUnsavedNote(false);
+      }}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
           {selected && (
             <LeadDetail
               key={selected.id}
               lead={selected}
               saving={save.isPending}
+              onDirtyChange={setHasUnsavedNote}
               onSave={(patch) => save.mutate({ id: selected.id, patch })}
               onSaveAsync={(patch) => save.mutateAsync({ id: selected.id, patch })}
             />
@@ -267,7 +336,9 @@ function LeadDetail({
   saving,
   onSave,
   onSaveAsync,
+  onDirtyChange,
 }: {
+  onDirtyChange: (dirty: boolean) => void;
   lead: PartnerLead;
   saving: boolean;
   onSave: (patch: Partial<PartnerLead>) => void;
@@ -280,6 +351,11 @@ function LeadDetail({
   const [cap, setCap] = useState(lead.offer_request?.daily_cap ?? 5);
   const [note, setNote] = useState(lead.note ?? "");
   const p = lead.proposal || {};
+  const [detailTab, setDetailTab] = useState("overview");
+  useEffect(() => { onDirtyChange(note !== (lead.note ?? "")); }, [note, lead.note, onDirtyChange]);
+  const saveNote = async () => {
+    try { await onSaveAsync({ note }); toast.success("Jegyzet mentve"); } catch { /* shared mutation handles error */ }
+  };
 
   const requestOffer = async () => {
     const a = Math.max(6, Math.min(23, slotFrom || 14));
@@ -317,7 +393,11 @@ function LeadDetail({
         </p>
       </SheetHeader>
 
-      {lead.photo_url && <img src={lead.photo_url} alt="" className="w-full rounded-lg object-cover max-h-56" />}
+      <Card className="border-cgi-primary/30 bg-cgi-primary/5 p-4">
+        <p className="text-xs text-cgi-muted-foreground">Következő lépés · a jelenlegi státusz alapján</p>
+        <p className="mt-1 font-medium">{nextStep(lead)}</p>
+        {needsFollowUp(lead) && <p className="mt-1 text-xs text-amber-300">A rögzített státusz legalább 3 napja nem változott.</p>}
+      </Card>
 
       <section className="grid gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-cgi-muted-foreground">Hol tartunk</h3>
@@ -329,9 +409,9 @@ function LeadDetail({
               variant="outline"
               disabled={saving}
               className={lead.stage === i ? s.className + " bg-white/5" : "text-cgi-muted-foreground"}
-              onClick={() =>
-                onSave({ stage: i, stage_log: [...(lead.stage_log || []), { stage: i, at: new Date().toISOString() }] })
-              }
+              onClick={() => {
+                if (lead.stage !== i) onSave({ stage: i, stage_log: [...(lead.stage_log || []), { stage: i, at: new Date().toISOString() }] });
+              }}
             >
               {s.label}
             </Button>
@@ -339,6 +419,9 @@ function LeadDetail({
         </div>
       </section>
 
+      <Tabs value={detailTab} onValueChange={setDetailTab}>
+      <TabsList className="w-full grid grid-cols-3 sticky top-0 z-10"><TabsTrigger value="overview">Partner</TabsTrigger><TabsTrigger value="offer">Ajánlat</TabsTrigger><TabsTrigger value="outreach">Megkeresés</TabsTrigger></TabsList>
+      <TabsContent value="overview" className="space-y-5 pt-2">
       <section className="grid gap-1 text-sm">
         {contacts.filter(([, label]) => label).map(([key, label, href]) => (
           <div key={key} className="flex gap-3">
@@ -369,6 +452,14 @@ function LeadDetail({
         </dl>
       </Card>
 
+      <section className="grid gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-cgi-muted-foreground">Belső jegyzet és következő teendő</h3>
+        <Textarea aria-label="Partner belső jegyzete" rows={4} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Kapcsolattartó, egyeztetés, visszahívás időpontja…" />
+        <Button size="sm" className="justify-self-end" disabled={saving || note === (lead.note ?? "")} onClick={saveNote}>{saving ? "Mentés…" : "Jegyzet mentése"}</Button>
+      </section>
+      {(lead.stage_log || []).length > 0 && <section className="space-y-2"><h3 className="text-xs font-semibold uppercase text-cgi-muted-foreground">Státuszelőzmények</h3>{[...(lead.stage_log || [])].reverse().slice(0, 8).map((entry, index) => <div key={`${entry.at}-${index}`} className="flex justify-between gap-2 text-xs"><span>{STAGES[entry.stage]?.label || "Ismeretlen státusz"}</span><time className="text-cgi-muted-foreground">{new Date(entry.at).toLocaleString("hu-HU")}</time></div>)}</section>}
+      </TabsContent>
+      <TabsContent value="offer" className="space-y-4 pt-2">
       <Card className="cgi-card p-4 grid gap-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-cgi-muted-foreground">
           {lead.offer_url ? "Ajánlat-oldal" : "Személyre szabott ajánlat + videó + képek"}
@@ -432,16 +523,19 @@ function LeadDetail({
         </div>
         {lead.offer_request ? (
           <p className="text-sm text-amber-300">
-            Kérve: {new Date(lead.offer_request.requested_at).toLocaleString("hu-HU")}. Az ajánlat-oldal, a Reel és a képek készülnek.
+            Kérve: {new Date(lead.offer_request.requested_at).toLocaleString("hu-HU")}. Az igény rögzítve. Az elkészült anyagok az ajánlat linkjén jelennek meg.
           </p>
         ) : (
           <Button className="justify-self-start" onClick={requestOffer} disabled={saving}>
             <Sparkles className="h-4 w-4 mr-1" />
-            {lead.offer_url ? "Újragenerálás" : "Ajánlat + posztcsomag generálása"}
+            {lead.offer_url ? "Új ajánlatkérés rögzítése" : "Ajánlatkérés rögzítése"}
           </Button>
         )}
       </Card>
 
+      </TabsContent>
+      <TabsContent value="outreach" className="space-y-4 pt-2">
+      <p className="text-xs text-cgi-muted-foreground">Ellenőrizd a szöveget, majd másold a választott csatornába. A küldés után frissítsd a státuszt.</p>
       <section className="grid gap-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-cgi-muted-foreground">Megkeresés · kész szövegek</h3>
         {outreachTexts(lead).map(([title, body]) => (
@@ -457,16 +551,8 @@ function LeadDetail({
         ))}
       </section>
 
-      <section className="grid gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-cgi-muted-foreground">Jegyzet</h3>
-        <Textarea
-          rows={3}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={() => note !== (lead.note ?? "") && onSave({ note })}
-          placeholder="Kivel beszéltél, mit mondott, mikor hívd vissza…"
-        />
-      </section>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

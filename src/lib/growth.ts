@@ -163,13 +163,13 @@ export function outreachTemplates(lead: GrowthLead) {
   const tetel = lead.data?.javaslat?.tetel || "egy ital";
   const idosav = lead.data?.javaslat?.idosav || "a csendesebb idősávban";
   const name = lead.name;
-  const email = `Tárgy: Új vendégek a ${name}-ba – ingyenes béta
+  const email = `Tárgy: ${name} × Come Get It – új vendégek a csendesebb órákban
 
 Szia!
 
 A Come Get It csapatától írok. Budapesten olyan helyeket keresünk, ahová szívesen elhoznánk új vendégeket a csendesebb órákban.
 
-Az ötletünk a ${name} számára: ${idosav} között napi 5 db ${tetel} ajándékba az appunk felhasználóinak – így ők kipróbálják a helyet, és jó eséllyel maradnak még valamire.
+Az ötletünk a ${name} számára: ${idosav}: naponta legfeljebb 5 ${tetel} ajándékba az appunk felhasználóinak – így ők kipróbálják a helyet, és jó eséllyel maradnak még valamire.
 
 Pár fontos dolog:
 • A béta időszakban teljesen ingyenes a részvétel.
@@ -180,10 +180,10 @@ Ha érdekel, szívesen küldök egy rövid, személyre szabott ajánlatot, vagy 
 
 Köszönöm, szép napot!
 Come Get It csapat`;
-  const dm = `Szia ${name}! 👋 A Come Get It-tól írunk – új vendégeket hozunk budapesti helyekre. Arra gondoltunk, hogy ${idosav} között napi 5 db ${tetel} ajándékba menne az appunk (18+) felhasználóinak, mindig alkoholmentes opcióval is. A béta alatt ingyenes. Küldhetünk egy rövid ajánlatot? 🙂`;
+  const dm = `Szia ${name}! 👋 A Come Get It-től írunk – új vendégeket hozunk budapesti helyekre. Arra gondoltunk, hogy ${idosav}: naponta legfeljebb 5 ${tetel} ajándékba menne az appunk (18+) felhasználóinak, mindig alkoholmentes opcióval is. A béta alatt ingyenes. Küldhetünk egy rövid ajánlatot? 🙂`;
   const follow = `Szia!
 
-Csak finoman rákérdeznék a pár napja küldött ajánlatunkra a ${name} kapcsán: napi 5 db ${tetel} ${idosav} között, a béta alatt ingyenesen, 18+ vendégeknek, mindig alkoholmentes választással is.
+Szeretnék visszatérni a ${name} számára pár napja küldött javaslatunkra: ${idosav}: naponta legfeljebb 5 ${tetel}, a béta alatt ingyenesen, 18+ vendégeknek, mindig alkoholmentes választással is.
 
 Ha most nem aktuális, az is teljesen rendben – egy rövid válasznak is nagyon örülnénk.
 

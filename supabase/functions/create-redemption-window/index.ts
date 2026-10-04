@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { getVenueOpeningState, getWindowAvailability } from '../_shared/venueOfferSchedule.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +17,7 @@ type VenueRow = {
   id: string;
   name: string;
   is_paused?: boolean | null;
+  opening_hours?: unknown;
   coordinates?: { lat?: number | string; lng?: number | string } | null;
 };
 
@@ -63,30 +65,6 @@ function distanceMeters(a: { latitude: number; longitude: number }, b: { latitud
   const deltaLambda = ((b.longitude - a.longitude) * Math.PI) / 180;
   const h = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
   return radius * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
-
-function todayIsoDayInBudapest(): number {
-  const day = Number(new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'Europe/Budapest' })
-    .formatToParts(new Date())
-    .find((part) => part.type === 'weekday')?.value
-    .replace('Mon', '1')
-    .replace('Tue', '2')
-    .replace('Wed', '3')
-    .replace('Thu', '4')
-    .replace('Fri', '5')
-    .replace('Sat', '6')
-    .replace('Sun', '7'));
-  return Number.isFinite(day) ? day : 1;
-}
-
-function currentTimeInBudapest(): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-    timeZone: 'Europe/Budapest',
-  }).format(new Date());
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -139,7 +117,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: venue, error: venueError } = await admin
     .from('venues')
-    .select('id,name,is_paused,coordinates')
+    .select('id,name,is_paused,coordinates,opening_hours')
     .eq('id', venueId)
     .maybeSingle<VenueRow>();
 
@@ -148,6 +126,9 @@ Deno.serve(async (req: Request) => {
   if (venue.is_paused) return json({ error: 'Venue is paused' }, 403);
 
   if (!bypassVenueChecks) {
+    const opening = getVenueOpeningState(venue.opening_hours);
+    if (opening === 'unknown') return json({ error: 'VENUE_HOURS_UNAVAILABLE' }, 409);
+    if (opening !== 'available') return json({ error: 'VENUE_CLOSED' }, 409);
     const venueCoords = venueCoordinates(venue);
     const userLatitude = numeric(body.user_latitude);
     const userLongitude = numeric(body.user_longitude);
@@ -173,22 +154,20 @@ Deno.serve(async (req: Request) => {
       .eq('drink_id', drink.id)
       .returns<WindowRow[]>();
     if (windowError) return json({ error: 'Window lookup failed', detail: windowError.message }, 500);
-    // Drinks without configured windows are redeemable anytime — only enforce
-    // the time check when at least one window exists.
+    // Known empty schedules allow redemption during venue opening hours. Query failures
+    // and malformed schedules never become an unrestricted offer.
     const windowList = windows ?? [];
     if (windowList.length > 0) {
-      const today = todayIsoDayInBudapest();
-      const nowTime = currentTimeInBudapest();
-      const active = windowList.some((window) => {
-        const days = Array.isArray(window.days) ? window.days : [];
-        return days.includes(today) && window.start_time <= nowTime && window.end_time >= nowTime;
-      });
+      const now = new Date();
+      const active = windowList.some((window) => getWindowAvailability({
+        days: window.days ?? [],
+        start: window.start_time,
+        end: window.end_time,
+        timezone: window.timezone ?? undefined,
+      }, now) === 'available');
       if (!active) {
-        console.log('[create-redemption-window] NO_ACTIVE_WINDOW', { today, nowTime, windows: windowList });
         return json({
           error: 'NO_ACTIVE_WINDOW',
-          today_iso_day: today,
-          current_time: nowTime,
           configured_windows: windowList.map((window) => ({
             days: Array.isArray(window.days) ? window.days : [],
             start_time: window.start_time,

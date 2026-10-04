@@ -46,17 +46,21 @@ import { VenueIntegrationSettings } from './VenueIntegrationSettings';
 
 interface VenueFormModalProps {
   venue?: Venue;
-  onSave: (venue: Partial<Venue>) => void;
+  onSave: (venue: Partial<Venue>) => void | Promise<unknown>;
+  initialTab?: 'basic' | 'location' | 'drinks' | 'images' | 'integration';
   trigger?: React.ReactNode;
 }
 
-export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) {
+export function VenueFormModal({ venue, onSave, trigger, initialTab = 'basic' }: VenueFormModalProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [lastGeocodedAddress, setLastGeocodedAddress] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('basic');
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const formRef = useRef<HTMLFormElement>(null);
+  const submitInFlight = useRef(false);
+  const [savedSnapshot, setSavedSnapshot] = useState('');
   const closeAfterSaveRef = useRef<boolean>(false);
   const { toast } = useToast();
   const drinkSelectorRef = useRef<EnhancedDrinkSelectorRef>(null);
@@ -111,7 +115,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   // Rehydrate form with latest venue data each time the modal opens
   useEffect(() => {
     if (!open) return;
-    setFormData({
+    const initialFormData: Partial<Venue> = {
       name: venue?.name || '',
       address: venue?.address || '',
       description: venue?.description || '',
@@ -148,8 +152,29 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
       participates_in_points: venue?.participates_in_points ?? true,
       points_per_visit: venue?.points_per_visit ?? 10,
       redemption_radius_m: venue?.redemption_radius_m ?? null,
-    });
-  }, [open, venue?.id]);
+    };
+    setFormData(initialFormData);
+    setSavedSnapshot(JSON.stringify(initialFormData));
+    setLastGeocodedAddress(venue?.address || '');
+    setGeocodeError(null);
+    setActiveTab(initialTab);
+    // Rehydrate only when opening; a background update must not erase an in-progress edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, venue?.id, initialTab]);
+
+  const isDirty = savedSnapshot !== '' && JSON.stringify(formData) !== savedSnapshot;
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && (saving || geocoding)) return;
+    if (!nextOpen && isDirty && !window.confirm('A nem mentett módosítások elvesznek. Bezárod a szerkesztőt?')) return;
+    setOpen(nextOpen);
+  };
+
+  useEffect(() => {
+    if (!open || !isDirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [open, isDirty]);
 
   const updateCaps = (updates: Partial<RedemptionCap>) => {
     setFormData(prev => ({
@@ -264,7 +289,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         google_maps_url: data.google_maps_url,
       }));
       setLastGeocodedAddress(address);
-      return true;
+      return { coordinates: { lat: data.lat, lng: data.lng }, formatted_address: data.formatted_address, google_maps_url: data.google_maps_url };
     } catch (error: any) {
       console.error('Geocoding failed:', error);
       setGeocodeError(error.message || 'Failed to geocode address');
@@ -274,107 +299,74 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitInFlight.current || geocoding) return;
+    submitInFlight.current = true;
+    setSaving(true);
 
-    // Flush any staged drinks synchronously and get the updated data
-    let finalDrinks = formData.drinks || [];
-    let finalWindows = formData.freeDrinkWindows || [];
-    
-    if (drinkSelectorRef.current) {
-      console.log('[VenueFormModal] Flushing staged drinks before save');
-      const flushResult = await drinkSelectorRef.current.flushStaged();
-      if (!flushResult.success) {
-        console.error('[VenueFormModal] Failed to flush staged drinks:', flushResult.error);
-        return; // Don't proceed with save
-      }
-      
-      // Use the returned drinks and windows to ensure we have the latest data
-      if (flushResult.drinks) {
-        finalDrinks = flushResult.drinks;
-        console.log('[VenueFormModal] Updated drinks from flush:', finalDrinks.length);
-      }
-      if (flushResult.windows) {
-        finalWindows = flushResult.windows;
-        console.log('[VenueFormModal] Updated windows from flush:', finalWindows.length);
-      }
-    }
-
-    // Check if geocoding is needed
-    const addressChanged = formData.address !== lastGeocodedAddress;
-    const lat = formData.coordinates?.lat;
-    const lng = formData.coordinates?.lng;
-    const coordinatesAreDefault = !lat || !lng || (lat === 0 && lng === 0);
-    // Budapest bounding box sanity check — ha a cím Budapest de a koordináta kívül esik, újra geokódolunk
-    const addressLooksBudapest = (formData.address || '').toLowerCase().includes('budapest');
-    const outsideBudapestBBox = addressLooksBudapest && lat != null && lng != null &&
-      (lat < 47.3 || lat > 47.7 || lng < 18.8 || lng > 19.4);
-
-    if (formData.address && (addressChanged || coordinatesAreDefault || outsideBudapestBBox)) {
-      console.log('Geocoding needed:', { addressChanged, coordinatesAreDefault, outsideBudapestBBox });
-      const geocodeSuccess = await geocodeAddress(formData.address);
-      if (!geocodeSuccess) {
-        toast({
-          title: 'Geokódolás sikertelen',
-          description: 'A cím alapján nem sikerült koordinátákat találni. Ellenőrizd a címet vagy add meg kézzel a Speciális szekcióban.',
-          variant: 'destructive' as any,
-        });
-        return;
-      }
-    }
-
-    // Validation: Check that every free drink has at least one time window
-    const freeDrinks = finalDrinks.filter(d => d.is_free_drink) || [];
-    for (const drink of freeDrinks) {
-      const drinkWindows = finalWindows.filter(w => w.drink_id === drink.id) || [];
-      if (drinkWindows.length === 0) {
-        toast({ title: 'Hiba', description: `Az ingyenes ital ("${drink.drinkName}") nem rendelkezik időablakokkal.`, variant: 'destructive' as any });
-        return;
-      }
-    }
-
-    // Extract cover image URL and set it to both image_url and hero_image_url
-    const coverImage = formData.images?.find(img => img.isCover) || formData.images?.find(img => img.url?.trim());
-    const finalFormData: any = {
-      ...formData,
-      drinks: finalDrinks,
-      freeDrinkWindows: finalWindows,
-      image_url: coverImage?.url || null,
-      hero_image_url: coverImage?.url || null,
-    };
-
-    // ALWAYS include drinks and windows in payload - never prune them implicitly
-    console.info('[VenueFormModal] Submit payload preview', {
-      drinksLen: finalDrinks.length,
-      windowsLen: finalWindows.length,
-      drinkNames: finalDrinks.map(d => d.drinkName),
-      freeDrinkNames: freeDrinks.map(d => d.drinkName),
-      hasDrinksInPayload: !!finalFormData.drinks,
-      hasWindowsInPayload: !!finalFormData.freeDrinkWindows,
-    });
     try {
-      setSaving(true);
-      await Promise.resolve(onSave(finalFormData));
-      toast({
-        title: 'Elmentve',
-        description: closeAfterSaveRef.current
-          ? 'Változások elmentve.'
-          : 'Változások elmentve. Folytathatod a szerkesztést.',
-        duration: 3500,
-      });
-
-      if (closeAfterSaveRef.current) {
-        setOpen(false);
+      let finalDrinks = formData.drinks || [];
+      let finalWindows = formData.freeDrinkWindows || [];
+      if (drinkSelectorRef.current) {
+        const staged = await drinkSelectorRef.current.flushStaged();
+        if (!staged.success) throw new Error(staged.error || 'Nem sikerült előkészíteni az italok mentését.');
+        if (staged.drinks) finalDrinks = staged.drinks;
+        if (staged.windows) finalWindows = staged.windows;
       }
-    } catch (error: any) {
-      console.error('Save failed:', error);
-      toast({
-        title: 'Hiba',
-        description: String(error?.message || error),
-        variant: 'destructive' as any,
-        duration: 7000,
-      });
+
+      let geocodedFields: Partial<Venue> = {};
+      const addressChanged = formData.address !== lastGeocodedAddress;
+      const lat = formData.coordinates?.lat;
+      const lng = formData.coordinates?.lng;
+      const coordinatesMissing = !lat || !lng;
+      const isBudapestAddress = (formData.address || '').toLowerCase().includes('budapest');
+      const outsideBudapest = isBudapestAddress && lat != null && lng != null
+        && (lat < 47.3 || lat > 47.7 || lng < 18.8 || lng > 19.4);
+      if (formData.address && (addressChanged || coordinatesMissing || outsideBudapest)) {
+        const result = await geocodeAddress(formData.address);
+        if (!result) throw new Error('A cím helyét nem sikerült meghatározni. Ellenőrizd a címet vagy a koordinátákat.');
+        // Use the returned values immediately; React state updates are asynchronous.
+        geocodedFields = result;
+      }
+
+      const baseline: Record<string, unknown> = savedSnapshot ? JSON.parse(savedSnapshot) : {};
+      const scheduleChanged = !venue || JSON.stringify(finalDrinks) !== JSON.stringify(baseline.drinks)
+        || JSON.stringify(finalWindows) !== JSON.stringify(baseline.freeDrinkWindows);
+      if (scheduleChanged) {
+        for (const drink of finalDrinks.filter((item) => item.is_free_drink)) {
+          if (!finalWindows.some((window) => window.drink_id === drink.id)) {
+            setActiveTab('drinks');
+            throw new Error(`Az ingyenes italhoz („${drink.drinkName}”) adj meg legalább egy időablakot.`);
+          }
+        }
+      }
+
+      const cover = formData.images?.find((image) => image.isCover)
+        || formData.images?.find((image) => image.url?.trim());
+      const imagesChanged = !venue || JSON.stringify(formData.images) !== JSON.stringify(baseline.images);
+      const savedForm: Partial<Venue> = {
+        ...formData,
+        ...geocodedFields,
+        drinks: finalDrinks,
+        freeDrinkWindows: finalWindows,
+        image_url: imagesChanged ? cover?.url || null : venue?.image_url,
+        hero_image_url: imagesChanged ? cover?.url || null : venue?.hero_image_url,
+      };
+      // An unrelated field edit must not rewrite every child collection.
+      const payload: Partial<Venue> = venue ? Object.fromEntries(Object.entries(savedForm).filter(([key, value]) => {
+        const previous = key === 'image_url' || key === 'hero_image_url' ? venue[key] : baseline[key];
+        return JSON.stringify(value) !== JSON.stringify(previous);
+      })) : savedForm;
+      if (Object.keys(payload).length > 0) await onSave(payload);
+      setFormData(savedForm);
+      setSavedSnapshot(JSON.stringify(savedForm));
+      toast({ title: 'Elmentve', description: closeAfterSaveRef.current ? 'Változások elmentve.' : 'Változások elmentve. Folytathatod a szerkesztést.' });
+      if (closeAfterSaveRef.current) setOpen(false);
+    } catch (error) {
+      toast({ title: 'Nem sikerült menteni', description: error instanceof Error ? error.message : 'Próbáld újra a mentést.', variant: 'destructive', duration: 7000 });
     } finally {
+      submitInFlight.current = false;
       setSaving(false);
       closeAfterSaveRef.current = false;
     }
@@ -423,7 +415,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   const ActiveTabIcon = activeTabMeta.icon;
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
+    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col h-full" data-venue-form>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
         <div className="sticky top-0 z-10 bg-cgi-surface pb-1.5 -mx-1 px-1">
           {isMobile ? (
@@ -928,7 +920,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
         <Button
           type="button"
           variant="outline"
-          onClick={() => setOpen(false)}
+          onClick={() => handleOpenChange(false)}
           className={cn("cgi-button-secondary", isMobile ? "flex-1 h-10 text-sm" : "w-full sm:w-auto min-h-[48px]")}
           disabled={saving || geocoding}
         >
@@ -942,7 +934,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
             disabled={saving || geocoding}
             onClick={() => { closeAfterSaveRef.current = false; }}
           >
-            {geocoding ? 'Geocoding...' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
+            {geocoding ? 'Cím ellenőrzése…' : saving && !closeAfterSaveRef.current ? 'Mentés...' : (venue ? 'Mentés' : 'Létrehozás')}
           </Button>
         )}
         <Button
@@ -960,7 +952,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   // Use Sheet on mobile, Dialog on desktop
   if (isMobile) {
     return (
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetTrigger asChild>
           {trigger}
         </SheetTrigger>
@@ -977,8 +969,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
                 disabled={saving || geocoding}
                 onClick={() => {
                   closeAfterSaveRef.current = false;
-                  const form = document.querySelector<HTMLFormElement>('form[data-venue-form]');
-                  form?.requestSubmit();
+                  formRef.current?.requestSubmit();
                 }}
               >
                 {saving ? 'Mentés...' : 'Mentés'}
@@ -994,7 +985,7 @@ export function VenueFormModal({ venue, onSave, trigger }: VenueFormModalProps) 
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
