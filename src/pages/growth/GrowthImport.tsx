@@ -8,58 +8,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { gdb, guessContentType, offerShareUrl } from "@/lib/growth";
 
-const LEAD_COLS = ["id", "name", "venue_type", "district", "address", "email", "phone", "website", "instagram", "rating", "review_count", "grade", "score", "status", "offer_url", "offer_info", "photo_url", "data", "created_at", "updated_at"];
-
-function LeadImport() {
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [done, setDone] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-
-  const onFile = async (f?: File) => {
-    setResult(null); setDone(0);
-    if (!f) return;
-    try {
-      const parsed = JSON.parse(await f.text());
-      if (!Array.isArray(parsed)) throw new Error("A fájlnak JSON tömbnek kell lennie");
-      const clean = parsed.filter((r) => r && r.id && r.name).map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => LEAD_COLS.includes(k))));
-      setRows(clean);
-      toast.success(`${clean.length} lead beolvasva`);
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Hibás JSON"); }
-  };
-
-  const run = async () => {
-    setBusy(true); setDone(0);
-    let ok = 0; const errs: string[] = [];
-    for (let i = 0; i < rows.length; i += 100) {
-      const batch = rows.slice(i, i + 100);
-      const { error } = await gdb.from("growth_leads").upsert(batch, { onConflict: "id" });
-      if (error) errs.push(`${i + 1}–${i + batch.length}: ${error.message}`); else ok += batch.length;
-      setDone(Math.min(i + 100, rows.length));
-    }
-    setBusy(false);
-    setResult(`${ok} lead mentve${errs.length ? `, ${errs.length} hibás csomag: ${errs.join("; ")}` : ""}`);
-  };
-
-  return (
-    <Card className="cgi-card p-5 space-y-4">
-      <h2 className="text-lg font-semibold text-cgi-surface-foreground">Leadek importálása</h2>
-      <p className="text-sm text-cgi-muted-foreground">JSON tömb, a growth_leads oszlopaival (data mezővel együtt). Meglévő azonosítók frissülnek.</p>
-      <Input type="file" accept="application/json,.json" onChange={(e) => onFile(e.target.files?.[0])} disabled={busy} />
-      {rows.length > 0 && (
-        <>
-          <Progress value={(done / rows.length) * 100} />
-          <div className="flex items-center justify-between text-sm text-cgi-muted-foreground">
-            <span>{done} / {rows.length}</span>
-            <Button onClick={run} disabled={busy}>{busy ? "Importálás…" : "Importálás indítása"}</Button>
-          </div>
-        </>
-      )}
-      {result && <p className="text-sm text-cgi-surface-foreground">{result}</p>}
-    </Card>
-  );
-}
-
 interface OfferJob {
   folder: string;
   files: File[];
@@ -104,7 +52,7 @@ async function processOffer(job: OfferJob, update: (p: Partial<OfferJob>) => voi
 
   let leadId: string | null = null;
   if (meta.lead) {
-    const { data } = await gdb.from("growth_leads").select("id").eq("id", meta.lead).maybeSingle();
+    const { data } = await gdb.from("partner_leads").select("id").eq("id", meta.lead).maybeSingle();
     leadId = data?.id ?? null;
   }
 
@@ -136,7 +84,8 @@ async function processOffer(job: OfferJob, update: (p: Partial<OfferJob>) => voi
   const { error: mErr } = await gdb.from("growth_offers").update({ media: media.length ? media : ["index.html"] }).eq("id", offerId);
   if (mErr) throw mErr;
   if (leadId) {
-    await gdb.from("growth_leads").update({ offer_url: offerShareUrl(token!), offer_info: meta.offer_info ?? null }).eq("id", leadId);
+    const { error: lErr } = await gdb.from("partner_leads").update({ offer_url: offerShareUrl(token!), offer_info: meta.offer_info ?? null, offer_request: null }).eq("id", leadId);
+    if (lErr) throw lErr;
   }
   update({ state: "kesz", progress: 100 });
 }
@@ -218,8 +167,7 @@ export default function GrowthImport() {
   return (
     <PageLayout>
       <h1 className="text-2xl font-semibold text-cgi-surface-foreground mb-6">Importálás</h1>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <LeadImport />
+      <div className="grid gap-4 max-w-3xl">
         <OfferImport />
       </div>
     </PageLayout>
