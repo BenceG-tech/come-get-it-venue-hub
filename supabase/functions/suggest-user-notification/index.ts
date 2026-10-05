@@ -91,6 +91,9 @@ Deno.serve(async req => {
         }
       } catch { /* Explicit rule source remains visible. */ }
     }
+    // Show usable choices before empty drafts, even if the model ranks an empty group first.
+    suggestions = [...suggestions].sort((a, b) => Number(b.sendable) - Number(a.sendable))
+      .map((suggestion, index) => ({ ...suggestion, priority_order: index + 1 }));
     const { data: saved, error: saveError } = await db.from('ai_notification_suggestions').insert({
       user_id: profiles.some(p => p.id === input.user_id) ? input.user_id : adminId, created_by: adminId, suggestions,
       context: { scope: input.user_id ? 'user' : 'campaign', scoped_user_id: input.user_id || null, drink_segment: segment, scanned_count: profiles.length, truncated: (rawProfiles || []).length > 500 },
