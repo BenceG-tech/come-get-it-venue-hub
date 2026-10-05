@@ -917,6 +917,30 @@ export type Database = {
           },
         ]
       }
+      notification_scheduler_credentials: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          endpoint_url: string | null
+          id: string
+          secret_hash: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          endpoint_url?: string | null
+          id: string
+          secret_hash: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          endpoint_url?: string | null
+          id?: string
+          secret_hash?: string
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           body_en: string | null
@@ -925,6 +949,10 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           deep_link: string | null
+          dispatch_approved_at: string | null
+          dispatch_started_at: string | null
+          dispatch_status: string
+          dispatch_summary: Json | null
           event_type: string | null
           frequency_limit: Json | null
           icon: string | null
@@ -949,6 +977,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deep_link?: string | null
+          dispatch_approved_at?: string | null
+          dispatch_started_at?: string | null
+          dispatch_status?: string
+          dispatch_summary?: Json | null
           event_type?: string | null
           frequency_limit?: Json | null
           icon?: string | null
@@ -973,6 +1005,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deep_link?: string | null
+          dispatch_approved_at?: string | null
+          dispatch_started_at?: string | null
+          dispatch_status?: string
+          dispatch_summary?: Json | null
           event_type?: string | null
           frequency_limit?: Json | null
           icon?: string | null
@@ -1464,6 +1500,8 @@ export type Database = {
           device_name: string | null
           id: string
           last_seen_at: string
+          marketing_consent_at: string | null
+          marketing_opt_in: boolean
           platform: string
           token: string
           updated_at: string
@@ -1476,6 +1514,8 @@ export type Database = {
           device_name?: string | null
           id?: string
           last_seen_at?: string
+          marketing_consent_at?: string | null
+          marketing_opt_in?: boolean
           platform?: string
           token: string
           updated_at?: string
@@ -1488,6 +1528,8 @@ export type Database = {
           device_name?: string | null
           id?: string
           last_seen_at?: string
+          marketing_consent_at?: string | null
+          marketing_opt_in?: boolean
           platform?: string
           token?: string
           updated_at?: string
@@ -3188,6 +3230,19 @@ export type Database = {
         Args: {
           p_redemption_code: string
           p_reward_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      reserve_notification_delivery: {
+        Args: {
+          p_body: string
+          p_cooldown_hours?: number
+          p_id: string
+          p_max_per_day?: number
+          p_metadata?: Json
+          p_template_id: string
+          p_title: string
           p_user_id: string
         }
         Returns: Json
