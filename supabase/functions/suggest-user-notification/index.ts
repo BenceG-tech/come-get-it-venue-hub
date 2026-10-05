@@ -1,5 +1,5 @@
 import { authorize, corsHeaders, database, failure, json, schedulerReady } from '../_shared/notification-server.ts';
-import { DEFAULT_LIMITS, DEFAULT_QUIET_HOURS, isQuietTime, makeRecommendations, qualifies, validExpoToken, validateMessage, UUID, type Recommendation } from '../_shared/notification-policy.ts';
+import { earliestDispatchTime, makeMixedRecommendations, makeRecommendations, MIXED_DRINK_SEGMENTS, validDrinkSegment, validExpoToken, UUID, type DrinkSegment, type Recommendation } from '../_shared/notification-policy.ts';
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -8,55 +8,66 @@ Deno.serve(async req => {
     const db = database();
     const adminId = await authorize(req, db);
     const input = await req.json();
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Érvénytelen kérés.');
     const now = new Date();
     if (input.action === 'readiness') return json({ ready: await schedulerReady(db) });
-    if (input.action === 'approve') {
+    if (input.action === 'approve' || input.action === 'approve_bulk') {
       if (!await schedulerReady(db)) throw new Error('Az ütemező még nincs bekapcsolva. Az értesítés nem lett ütemezve.');
-      if (!UUID.test(input.batch_id || '') || !UUID.test(input.suggestion_id || '')) throw new Error('Érvénytelen javaslat.');
-      const { data: batch, error } = await db.from('ai_notification_suggestions').select('*').eq('id', input.batch_id).single();
-      if (error || !batch) throw new Error('A javaslat nem található.');
-      if (Date.parse(batch.generated_at) < now.getTime() - 24 * 3600000) throw new Error('A javaslat lejárt. Kérj friss javaslatokat.');
-      const suggestion = (batch.suggestions as Recommendation[]).find(s => s.id === input.suggestion_id);
-      if (!suggestion) throw new Error('A javaslat nem található.');
-      const scheduledAt = input.scheduled_at || suggestion.scheduled_at;
-      const scheduled = new Date(scheduledAt);
-      if (!Number.isFinite(scheduled.getTime()) || scheduled.getTime() < now.getTime() + 60000 || scheduled.getTime() > now.getTime() + 7 * 86400000 || isQuietTime(scheduled)) throw new Error('Válassz jövőbeli időpontot 7 napon belül, 08:00 és 22:00 között (Budapest).');
-      // The browser can edit delivery time, never the server-verified recipient list or claims.
-      const { data: profiles, error: profileError } = await db.from('profiles').select('id,created_at,last_seen_at,is_admin').in('id', suggestion.user_ids);
-      const { data: points, error: pointsError } = await db.from('user_points').select('user_id,balance').in('user_id', suggestion.user_ids);
-      const { data: tokens, error: tokensError } = await db.from('push_tokens').select('user_id,token').eq('marketing_opt_in', true).in('user_id', suggestion.user_ids);
-      if (profileError || pointsError || tokensError) throw new Error('A címzettek friss ellenőrzése sikertelen.');
-      const reachable = new Set((tokens || []).filter(t => validExpoToken(t.token)).map(t => t.user_id));
-      const balances = new Map((points || []).map(p => [p.user_id, p.balance]));
-      const ids = (profiles || []).filter(p => reachable.has(p.id) && qualifies({ ...p, balance: balances.get(p.id) }, suggestion.type, now)).map(p => p.id);
-      if (!ids.length) throw new Error('Már nincs elérhető címzett ebben a csoportban.');
-      validateMessage(suggestion.title_hu, suggestion.body_hu, suggestion.deep_link);
-      const { error: insertError } = await db.from('notification_templates').insert({
-        id: suggestion.id, title_hu: suggestion.title_hu, body_hu: suggestion.body_hu,
-        targeting: { user_ids: ids, platform: 'all', recommendation_kind: suggestion.type, evidence_checked_at: now.toISOString() },
-        scheduled_at: scheduled.toISOString(), send_mode: 'scheduled', category: suggestion.type === 'points' ? 'points' : 'venue_status',
-        priority: suggestion.priority, deep_link: suggestion.deep_link, created_by: adminId,
-        is_active: true, dispatch_status: 'pending', dispatch_approved_at: now.toISOString(), quiet_hours: DEFAULT_QUIET_HOURS, frequency_limit: DEFAULT_LIMITS, ttl_hours: 24,
+      if (typeof input.batch_id !== 'string' || !UUID.test(input.batch_id)) throw new Error('Érvénytelen javaslatcsomag.');
+      const selections = input.action === 'approve' ? [{ suggestion_id: input.suggestion_id, scheduled_at: input.scheduled_at }] : input.selections;
+      if (!Array.isArray(selections) || !selections.length || selections.length > 4 ||
+          selections.some(s => !s || typeof s !== 'object' || typeof s.suggestion_id !== 'string' || !UUID.test(s.suggestion_id) ||
+            (s.scheduled_at !== undefined && (typeof s.scheduled_at !== 'string' || s.scheduled_at.length > 40))) ||
+          new Set(selections.map(s => s.suggestion_id)).size !== selections.length) throw new Error('Válassz 1–4 különböző javaslatot.');
+      const mode = input.delivery_mode || 'recommended';
+      if (!['recommended', 'as_soon_as_possible'].includes(mode)) throw new Error('Ismeretlen ütemezési mód.');
+      const selected = selections.map(s => ({ suggestion_id: s.suggestion_id,
+        ...(mode === 'as_soon_as_possible' ? { scheduled_at: earliestDispatchTime(now) } : s.scheduled_at ? { scheduled_at: s.scheduled_at } : {}) }));
+      // The database reads the immutable server draft, revalidates profiles,
+      // consent, category evidence and time, and locks the entire batch. No
+      // browser-supplied message, audience, category or scope reaches the insert.
+      const { data, error } = await db.rpc('approve_notification_recommendations', {
+        p_batch_id: input.batch_id, p_admin_id: adminId, p_selections: selected,
       });
-      if (insertError && insertError.code !== '23505') throw new Error('Az ütemezés mentése sikertelen.');
-      return json({ success: true, template_id: suggestion.id, status: insertError ? 'already_scheduled' : 'scheduled', recipient_count: ids.length });
+      if (error || !Array.isArray(data?.results)) throw new Error('A biztonságos jóváhagyás nem érhető el. Frissítsd a javaslatokat, vagy ellenőrizd az ütemezési migrációt.');
+      if (input.action === 'approve') {
+        const result = data.results[0];
+        if (!['scheduled', 'already_scheduled'].includes(result?.status)) throw new Error(result?.error || 'A javaslat nem ütemezhető.');
+        return json({ success: true, ...result });
+      }
+      return json({ ...data, delivery_mode: mode });
     }
-    if (input.user_id && !UUID.test(input.user_id)) throw new Error('Érvénytelen felhasználó.');
-    // Bounded review batch. Never pretend this is the entire audience.
-    let query = db.from('profiles').select('id,created_at,last_seen_at,is_admin').eq('is_admin', false).order('created_at', { ascending: false }).limit(501);
-    if (input.user_id) query = query.eq('id', input.user_id);
+    if (input.action && input.action !== 'generate') throw new Error('Ismeretlen művelet.');
+    if (input.user_id !== undefined && (typeof input.user_id !== 'string' || !UUID.test(input.user_id))) throw new Error('Érvénytelen felhasználó.');
+    const segment = input.drink_segment || 'all';
+    if (!validDrinkSegment(segment)) throw new Error('Ismeretlen italcsoport.');
+    // A deliberately selected user's admin flag must not silently hide them.
+    // Broadcast campaigns still exclude admins. Counts describe this bounded scan.
+    let query = db.from('profiles').select('id,created_at,last_seen_at,is_admin').order('created_at', { ascending: false }).limit(501);
+    query = input.user_id ? query.eq('id', input.user_id) : query.eq('is_admin', false);
     const { data: rawProfiles, error: profileError } = await query;
     if (profileError) throw new Error('A célközönség nem tölthető be.');
     const profiles = (rawProfiles || []).slice(0, 500), ids = profiles.map(p => p.id);
-    if (!ids.length) return json({ suggestions: [], empty_reason: 'Még nincs elemezhető felhasználó.', scanned_count: 0 });
-    const [{ data: tokens, error: tokenError }, { data: points, error: pointsError }] = await Promise.all([
-      db.from('push_tokens').select('user_id,token').eq('marketing_opt_in', true).in('user_id', ids),
-      db.from('user_points').select('user_id,balance').in('user_id', ids),
-    ]);
-    if (tokenError || pointsError) throw new Error('A címzettek ellenőrzése sikertelen.');
-    const reachable = new Set((tokens || []).filter(t => validExpoToken(t.token)).map(t => t.user_id));
-    const balances = new Map((points || []).map(p => [p.user_id, p.balance]));
-    let suggestions = makeRecommendations(profiles.filter(p => reachable.has(p.id)).map(p => ({ ...p, balance: balances.get(p.id) })), now);
+    let tokens: Array<{ user_id: string; token: string }> = [];
+    let points: Array<{ user_id: string; balance: number }> = [];
+    const segmentEvidence: Partial<Record<DrinkSegment, Set<string>>> = {};
+    if (ids.length) {
+      const requestedSegments = segment === 'mixed' ? MIXED_DRINK_SEGMENTS : [segment];
+      const [tokenResult, pointsResult, segmentResults] = await Promise.all([
+        db.from('push_tokens').select('user_id,token').eq('marketing_opt_in', true).in('user_id', ids),
+        db.from('user_points').select('user_id,balance').in('user_id', ids),
+        Promise.all(requestedSegments.map(async selectedSegment => ({ segment: selectedSegment, result: selectedSegment === 'all' ? { data: ids, error: null } :
+          await db.rpc('notification_segment_recipients', { p_user_ids: ids, p_segment: selectedSegment }) }))),
+      ]);
+      if (tokenResult.error || pointsResult.error || segmentResults.some(entry => entry.result.error)) throw new Error('A címzettek és a beváltási előzmények ellenőrzése sikertelen.');
+      tokens = tokenResult.data || []; points = pointsResult.data || [];
+      for (const entry of segmentResults) segmentEvidence[entry.segment] = new Set(entry.result.data || []);
+    }
+    const reachable = new Set(tokens.filter(t => validExpoToken(t.token)).map(t => t.user_id));
+    const balances = new Map(points.map(p => [p.user_id, p.balance]));
+    const audience = profiles.filter(p => reachable.has(p.id)).map(p => ({ ...p, balance: balances.get(p.id) }));
+    let suggestions = segment === 'mixed' ? makeMixedRecommendations(audience, now, { scopedUserId: input.user_id }, segmentEvidence) :
+      makeRecommendations(audience, now, { scopedUserId: input.user_id, drinkSegment: segment, segmentUserIds: segmentEvidence[segment] });
     // AI may only rank verified candidates. It cannot invent offers, claims, recipients or times.
     const key = Deno.env.get('LOVABLE_API_KEY');
     if (key && suggestions.length > 1) {
@@ -65,25 +76,27 @@ Deno.serve(async req => {
           method: 'POST', signal: AbortSignal.timeout(12000), headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
           body: JSON.stringify({ model: 'google/gemini-2.5-flash', temperature: 0,
             messages: [{ role: 'system', content: 'Rangsorold az ellenőrzött értesítési javaslatokat. Kizárólag JSON: {"order":["azonosító",...]}. Minden kapott azonosító pontosan egyszer szerepeljen. Ne adj hozzá szöveget vagy új tényt.' },
-              { role: 'user', content: JSON.stringify(suggestions.map(s => ({ id: s.id, type: s.type, recipients: s.recipient_count }))) }] }),
+              { role: 'user', content: JSON.stringify(suggestions.map(s => ({ id: s.id, type: s.type, drink_segment: s.drink_segment, recipients: s.recipient_count }))) }] }),
         });
         if (response.ok) {
           const payload = await response.json();
           const content = payload.choices?.[0]?.message?.content || '';
           const order = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, '')).order;
           if (Array.isArray(order) && new Set(order).size === suggestions.length && order.length === suggestions.length && order.every(id => suggestions.some(s => s.id === id))) {
-            suggestions = order.map(id => ({ ...suggestions.find(s => s.id === id)!, source: 'ai_ranked' }));
+            // General discovery cannot consume audiences before specific drafts.
+            const ranked = order.map(id => suggestions.find(s => s.id === id)!);
+            suggestions = [...ranked.filter(s => s.type !== 'discovery'), ...ranked.filter(s => s.type === 'discovery')]
+              .map((s, i) => ({ ...s, source: 'ai_ranked', priority_order: i + 1 }));
           }
         }
       } catch { /* Explicit rule source remains visible. */ }
     }
-    if (!suggestions.length) return json({ suggestions: [], scanned_count: profiles.length, empty_reason: 'Nincs ellenőrzött, elérhető címzett a javasolt csoportokban.' });
     const { data: saved, error: saveError } = await db.from('ai_notification_suggestions').insert({
-      user_id: input.user_id || adminId, created_by: adminId, suggestions,
-      context: { scope: input.user_id ? 'user' : 'campaign', scanned_count: profiles.length, truncated: (rawProfiles || []).length > 500 },
+      user_id: profiles.some(p => p.id === input.user_id) ? input.user_id : adminId, created_by: adminId, suggestions,
+      context: { scope: input.user_id ? 'user' : 'campaign', scoped_user_id: input.user_id || null, drink_segment: segment, scanned_count: profiles.length, truncated: (rawProfiles || []).length > 500 },
     }).select('id').single();
     if (saveError || !saved) throw new Error('A javaslatok mentése sikertelen.');
     return json({ batch_id: saved.id, suggestions: suggestions.map(({ user_ids, ...visible }) => visible), scanned_count: profiles.length,
-      truncated: (rawProfiles || []).length > 500, checked_at: now.toISOString() });
+      truncated: (rawProfiles || []).length > 500, checked_at: now.toISOString(), scope: input.user_id ? 'user' : 'campaign', drink_segment: segment, approval_order: 'display_order' });
   } catch (error) { return failure(error); }
 });

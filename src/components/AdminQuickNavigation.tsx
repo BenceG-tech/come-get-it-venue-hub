@@ -9,7 +9,7 @@ const destinations = [
   ['Áttekintés', '/dashboard', 'dashboard mai feladatok'],
   ['Felhasználók', '/users', 'ügyfél profil keresés'],
   ['Helyszínek', '/venues', 'hely étterem kocsma szerkesztés'],
-  ['Értékesítés', '/partner-leads', 'partner CRM megkeresés'],
+  ['Leadek', '/partner-leads', 'partner CRM megkeresés'],
   ['Ajánlatok', '/growth/offers', 'értékesítés kész ajánlat link'],
   ['Jelentkezők', '/applicants', 'új partner jelentkezés'],
   ['Értesítések', '/notifications', 'kommunikáció push AI'],
