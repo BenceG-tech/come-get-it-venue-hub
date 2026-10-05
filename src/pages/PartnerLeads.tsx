@@ -148,7 +148,7 @@ export default function PartnerLeads() {
     <PageLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-cgi-surface-foreground">Értékesítés</h1>
+          <h1 className="text-3xl font-bold text-cgi-surface-foreground">Leadek</h1>
           <p className="text-cgi-muted-foreground mt-1">
             Partnerjelöltek, kész ajánlatok és a következő lépés egy helyen.
           </p>
@@ -163,7 +163,7 @@ export default function PartnerLeads() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2" aria-label="Értékesítési munkalisták">
+      <div className="mb-4 flex flex-wrap gap-2" aria-label="Leadlisták">
         {[
           ["all", "Minden partner", leads.length],
           ["prepare", "Előkészítés", leads.filter((lead) => lead.stage < 2).length],

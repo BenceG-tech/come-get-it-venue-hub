@@ -1,5 +1,5 @@
 import { authorizeScheduler, corsHeaders, database, deliverNotification, failure, json } from '../_shared/notification-server.ts';
-import { explicitAudience, isQuietTime, qualifies, validateMessage } from '../_shared/notification-policy.ts';
+import { audienceScopeFromTargeting, explicitAudience, isQuietTime, qualifies, validateMessage } from '../_shared/notification-policy.ts';
 import { advanceProgress, hasDispatchBudget, resumeProgress } from '../_shared/notification-progress.ts';
 
 Deno.serve(async req => {
@@ -44,7 +44,13 @@ Deno.serve(async req => {
         if (profilesError || pointsError) throw new Error('A célközönség friss ellenőrzése sikertelen.');
         const balances = new Map((points || []).map(p => [p.user_id, p.balance]));
         const kind = template.targeting?.recommendation_kind;
-        const eligible = new Set((profiles || []).filter(p => !p.is_admin && (!kind || qualifies({ ...p, balance: balances.get(p.id) }, kind, now))).map(p => p.id));
+        const scope = audienceScopeFromTargeting(template.targeting || {});
+        if (scope.drinkSegment !== 'all') {
+          const { data: segmentIds, error: segmentError } = await db.rpc('notification_segment_recipients', { p_user_ids: ids, p_segment: scope.drinkSegment });
+          if (segmentError || !Array.isArray(segmentIds)) throw new Error('A beváltási előzmények friss ellenőrzése sikertelen.');
+          scope.segmentUserIds = new Set(segmentIds);
+        }
+        const eligible = new Set((profiles || []).filter(p => qualifies({ ...p, balance: balances.get(p.id) }, kind || 'discovery', now, scope)).map(p => p.id));
         let progress = resumeProgress(template.dispatch_summary, ids.length);
         for (let index = progress.cursor; index < ids.length; index++) {
           if (!hasDispatchBudget(deadline)) break;

@@ -27,7 +27,7 @@ const navigation: NavItem[] = [
   // FŐ
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['cgi_admin', 'venue_owner', 'venue_staff', 'brand_admin'], tourId: 'nav-dashboard', group: 'core', adminGroup: 'ma', adminName: 'Áttekintés' },
   { name: 'Jelentkezők', href: '/applicants', icon: Inbox, roles: ['cgi_admin'], tourId: 'nav-applicants', group: 'admin', adminGroup: 'partnerek' },
-  { name: 'Partnerszerzés', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek', adminName: 'Értékesítés' },
+  { name: 'Leadek', href: '/partner-leads', icon: Handshake, roles: ['cgi_admin'], tourId: 'nav-partner-leads', group: 'admin', adminGroup: 'partnerek', adminName: 'Leadek' },
   { name: 'Ajánlatok', href: '/growth/offers', icon: Send, roles: ['cgi_admin'], tourId: 'nav-growth-offers', group: 'growth', adminGroup: 'partnerek' },
   { name: 'Helyszínek', href: '/venues', icon: Building, roles: ['cgi_admin'], tourId: 'nav-venues', group: 'core', adminGroup: 'helyek' },
   { name: 'Felhasználók', href: '/users', icon: Users, roles: ['cgi_admin'], tourId: 'nav-users', group: 'core', adminGroup: 'ugyfelek' },

@@ -73,7 +73,7 @@ export default function GrowthOffers() {
     <PageLayout>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link to="/partner-leads" className="mb-2 inline-flex items-center gap-1 text-xs text-cgi-muted-foreground hover:text-cgi-primary"><ArrowLeft className="h-3 w-3" />Értékesítés</Link>
+          <Link to="/partner-leads" className="mb-2 inline-flex items-center gap-1 text-xs text-cgi-muted-foreground hover:text-cgi-primary"><ArrowLeft className="h-3 w-3" />Leadek</Link>
           <h1 className="text-2xl font-semibold text-cgi-surface-foreground">Ajánlatok</h1>
           <p className="mt-1 text-sm text-cgi-muted-foreground">Előnézet, megosztás és visszajelzések egy helyen.</p>
         </div>
