@@ -69,3 +69,10 @@ test('single approval remains compatible with previously scheduled idempotent re
   const result=await f.call({action:'approve',batch_id:BATCH,suggestion_id:USER});
   assert.equal(result.body.success,true);assert.equal(result.body.status,'already_scheduled');assert.equal(result.body.template_id,USER);
 });
+
+test('sendable suggestions precede empty lifecycle drafts',async()=>{
+  const f=fixture({profiles:[{...profile(ADMIN,true),created_at:'2020-01-01T00:00:00Z'}],reachable:[ADMIN]});
+  const {body}=await f.call({user_id:ADMIN});
+  assert.deepEqual(body.suggestions.map(s=>s.sendable),[true,true,false,false]);
+  assert.deepEqual(body.suggestions.map(s=>s.priority_order),[1,2,3,4]);
+});
