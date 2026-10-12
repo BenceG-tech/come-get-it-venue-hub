@@ -10,10 +10,34 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          id: string
+          reason: string
+          requested_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          reason: string
+          requested_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          reason?: string
+          requested_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_notification_suggestions: {
         Row: {
           action_taken: string | null
@@ -3144,6 +3168,14 @@ export type Database = {
       }
     }
     Functions: {
+      account_deletion_dependencies: {
+        Args: { target_user_id: string }
+        Returns: string
+      }
+      approve_notification_recommendations: {
+        Args: { p_admin_id: string; p_batch_id: string; p_selections: Json }
+        Returns: Json
+      }
       award_spend_points: { Args: { p_transaction_id: string }; Returns: Json }
       claim_venue_referral_code: { Args: { p_code: string }; Returns: Json }
       cleanup_old_snapshots: { Args: never; Returns: undefined }
@@ -3225,6 +3257,10 @@ export type Database = {
           p_venue_id?: string
         }
         Returns: number
+      }
+      notification_segment_recipients: {
+        Args: { p_segment: string; p_user_ids: string[] }
+        Returns: string[]
       }
       redeem_reward_atomic: {
         Args: {
